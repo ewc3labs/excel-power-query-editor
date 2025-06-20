@@ -12,10 +12,14 @@ This VS Code extension provides a modern, reliable way to extract Power Query M 
 powerquery.vscode-powerquery
 ```
 
-Install this extension via VS Code Extensions view or from a `.vsix` file:
-```bash
-code --install-extension excel-power-query-editor-[version].vsix
-```
+**Install from VS Code Marketplace (Recommended):**
+
+1. **Extensions View**: Open VS Code → Extensions (`Ctrl+Shift+X`) → Search "Excel Power Query Editor" → Install
+2. **Command Line**: `code --install-extension ewc3labs.excel-power-query-editor`
+3. **Direct Link**: [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=ewc3labs.excel-power-query-editor)
+
+**Alternative - VSIX File**: `code --install-extension excel-power-query-editor-[version].vsix`
+
 *The Power Query extension will be automatically installed via Extension Pack.*
 
 ### 2. Extract Power Query from Excel

@@ -2,7 +2,7 @@
   "name": "excel-power-query-editor",
   "displayName": "Excel Power Query Editor",
   "description": "Extract and sync Power Query M code from Excel files",
-  "version": "0.4.2",
+  "version": "0.4.3",
   "publisher": "ewc3labs",
   "repository": {
     "type": "git",

@@ -6,7 +6,29 @@
 [![VS Code Marketplace](https://img.shields.io/badge/VS%20Code-Marketplace-blue.svg)](https://marketplace.visualstudio.com/items?itemName=ewc3labs.excel-power-query-editor)
 [![Buy Me a Coffee](https://img.shields.io/badge/-Buy%20Me%20a%20Coffee-ffdd00?style=flat-square&logo=buy-me-a-coffee&logoColor=black)](https://www.buymeacoffee.com/ewc3labs)
 
-## 🚨 IMPORTANT: Install Required Extension
+## � Installation
+
+### **From VS Code Marketplace (Recommended)**
+
+1. **VS Code Extensions View**: 
+   - Open VS Code → Extensions (Ctrl+Shift+X)
+   - Search for "Excel Power Query Editor" 
+   - Click Install
+
+2. **Command Line**:
+   ```bash
+   code --install-extension ewc3labs.excel-power-query-editor
+   ```
+
+3. **Direct Link**: [Install from Marketplace](https://marketplace.visualstudio.com/items?itemName=ewc3labs.excel-power-query-editor)
+
+### **Alternative: From VSIX File**
+Download and install a specific version manually:
+```bash
+code --install-extension excel-power-query-editor-[version].vsix
+```
+
+## 🚨 IMPORTANT: Required Extension
 
 **This extension requires the Microsoft Power Query / M Language extension for proper syntax highlighting and IntelliSense:**
 
@@ -21,6 +43,14 @@ powerquery.vscode-powerquery
 - **📖 [Complete User Guide](USER_GUIDE.md)** - Detailed usage instructions, features, and troubleshooting
 - **⚙️ [Configuration Guide](CONFIGURATION.md)** - Quick reference for all settings 
 - **📝 [Changelog](CHANGELOG.md)** - Version history and updates
+
+## ⚡ Quick Start
+
+1. **Install**: Search "Excel Power Query Editor" in Extensions view
+2. **Open Excel file**: Right-click `.xlsx`/`.xlsm` → "Extract Power Query from Excel"  
+3. **Edit**: Modify the generated `.m` file with full VS Code features
+4. **Auto-Sync**: Right-click `.m` file → "Toggle Watch" for automatic sync on save
+5. **Enjoy**: Modern Power Query development workflow! 🎉
 
 ## Why This Extension?
 
