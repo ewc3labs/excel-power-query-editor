@@ -2,7 +2,7 @@
   "name": "excel-power-query-editor",
   "displayName": "Excel Power Query Editor",
   "description": "Extract and sync Power Query M code from Excel files",
-  "version": "0.1.3",
+  "version": "0.3.0",
   "publisher": "ewc3labs",
   "repository": {
     "type": "git",
@@ -35,6 +35,11 @@
         "category": "Excel PQ"
       },
       {
+        "command": "excel-power-query-editor.toggleWatch",
+        "title": "Toggle Watch",
+        "category": "Excel PQ"
+      },
+      {
         "command": "excel-power-query-editor.stopWatching",
         "title": "Stop Watching File",
         "category": "Excel PQ"
@@ -50,6 +55,69 @@
         "category": "Excel PQ"
       }
     ],
+    "configuration": {
+      "title": "Excel Power Query Editor",
+      "properties": {
+        "excel-power-query-editor.watchAlways": {
+          "type": "boolean",
+          "default": false,
+          "description": "Automatically start watching when extracting Power Query files"
+        },
+        "excel-power-query-editor.watchOffOnDelete": {
+          "type": "boolean",
+          "default": true,
+          "description": "Automatically stop watching when the .m file is deleted"
+        },
+        "excel-power-query-editor.syncDeleteTurnsWatchOff": {
+          "type": "boolean",
+          "default": true,
+          "description": "Stop watching when using 'Sync & Delete'"
+        },
+        "excel-power-query-editor.syncDeleteAlwaysConfirm": {
+          "type": "boolean",
+          "default": true,
+          "description": "Always ask for confirmation before 'Sync & Delete' (uncheck to skip confirmation)"
+        },
+        "excel-power-query-editor.verboseMode": {
+          "type": "boolean",
+          "default": false,
+          "description": "Show detailed output in the Output panel"
+        },
+        "excel-power-query-editor.autoBackupBeforeSync": {
+          "type": "boolean",
+          "default": true,
+          "description": "Create automatic backups before syncing to Excel"
+        },
+        "excel-power-query-editor.backupLocation": {
+          "type": "string",
+          "enum": ["sameFolder", "tempFolder", "custom"],
+          "default": "sameFolder",
+          "description": "Where to store backup files"
+        },
+        "excel-power-query-editor.customBackupPath": {
+          "type": "string",
+          "default": "",
+          "description": "Custom path for backups (when backupLocation is 'custom')"
+        },
+        "excel-power-query-editor.syncTimeout": {
+          "type": "number",
+          "default": 30000,
+          "minimum": 5000,
+          "maximum": 120000,
+          "description": "Timeout in milliseconds for sync operations"
+        },
+        "excel-power-query-editor.debugMode": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable debug logging and save debug files"
+        },
+        "excel-power-query-editor.showStatusBarInfo": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show watch status and sync info in the status bar"
+        }
+      }
+    },
     "menus": {
       "explorer/context": [
         {
@@ -71,6 +139,11 @@
         },
         {
           "command": "excel-power-query-editor.watchFile",
+          "when": "resourceExtname == '.m'",
+          "group": "powerquery@2"
+        },
+        {
+          "command": "excel-power-query-editor.toggleWatch",
           "when": "resourceExtname == '.m'",
           "group": "powerquery@2"
         },
@@ -124,8 +197,10 @@
   },
   "dependencies": {
     "@types/jszip": "^3.4.0",
+    "@types/xml2js": "^0.4.14",
     "chokidar": "^4.0.3",
     "excel-datamashup": "^1.0.6",
-    "jszip": "^3.10.1"
+    "jszip": "^3.10.1",
+    "xml2js": "^0.6.2"
   }
 }
