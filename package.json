@@ -2,7 +2,13 @@
   "name": "excel-power-query-editor",
   "displayName": "Excel Power Query Editor",
   "description": "Extract and sync Power Query M code from Excel files",
-  "version": "0.0.1",
+  "version": "0.1.3",
+  "publisher": "ewc3labs",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ewc3labs/excel-power-query-editor.git"
+  },
+  "license": "MIT",
   "engines": {
     "vscode": "^1.101.0"
   },
@@ -14,8 +20,78 @@
   "contributes": {
     "commands": [
       {
-        "command": "excel-power-query-editor.helloWorld",
-        "title": "Hello World"
+        "command": "excel-power-query-editor.extractFromExcel",
+        "title": "Extract Power Query from Excel",
+        "category": "Excel PQ"
+      },
+      {
+        "command": "excel-power-query-editor.syncToExcel",
+        "title": "Sync Power Query to Excel",
+        "category": "Excel PQ"
+      },
+      {
+        "command": "excel-power-query-editor.watchFile",
+        "title": "Watch File for Changes",
+        "category": "Excel PQ"
+      },
+      {
+        "command": "excel-power-query-editor.stopWatching",
+        "title": "Stop Watching File",
+        "category": "Excel PQ"
+      },
+      {
+        "command": "excel-power-query-editor.syncAndDelete",
+        "title": "Sync & Delete",
+        "category": "Excel PQ"
+      },
+      {
+        "command": "excel-power-query-editor.rawExtraction",
+        "title": "Raw Excel Extraction (Debug)",
+        "category": "Excel PQ"
+      }
+    ],
+    "menus": {
+      "explorer/context": [
+        {
+          "command": "excel-power-query-editor.extractFromExcel",
+          "when": "resourceExtname =~ /\\.(xlsx|xlsm|xlsb)$/",
+          "group": "powerquery@1"
+        },
+        {
+          "command": "excel-power-query-editor.rawExtraction",
+          "when": "resourceExtname =~ /\\.(xlsx|xlsm|xlsb)$/",
+          "group": "powerquery@2"
+        }
+      ],
+      "editor/context": [
+        {
+          "command": "excel-power-query-editor.syncToExcel",
+          "when": "resourceExtname == '.m'",
+          "group": "powerquery@1"
+        },
+        {
+          "command": "excel-power-query-editor.watchFile",
+          "when": "resourceExtname == '.m'",
+          "group": "powerquery@2"
+        },
+        {
+          "command": "excel-power-query-editor.syncAndDelete",
+          "when": "resourceExtname == '.m'",
+          "group": "powerquery@3"
+        }
+      ]
+    },
+    "languages": [
+      {
+        "id": "powerquery-m",
+        "aliases": [
+          "Power Query M",
+          "M"
+        ],
+        "extensions": [
+          ".m"
+        ],
+        "configuration": "./language-configuration.json"
       }
     ]
   },
@@ -34,16 +110,22 @@
     "test": "vscode-test"
   },
   "devDependencies": {
-    "@types/vscode": "^1.101.0",
     "@types/mocha": "^10.0.10",
-    "@types/node": "20.x",
+    "@types/node": "^20.19.1",
+    "@types/vscode": "^1.101.0",
     "@typescript-eslint/eslint-plugin": "^8.31.1",
     "@typescript-eslint/parser": "^8.31.1",
-    "eslint": "^9.25.1",
-    "esbuild": "^0.25.3",
-    "npm-run-all": "^4.1.5",
-    "typescript": "^5.8.3",
     "@vscode/test-cli": "^0.0.10",
-    "@vscode/test-electron": "^2.5.2"
+    "@vscode/test-electron": "^2.5.2",
+    "esbuild": "^0.25.3",
+    "eslint": "^9.25.1",
+    "npm-run-all": "^4.1.5",
+    "typescript": "^5.8.3"
+  },
+  "dependencies": {
+    "@types/jszip": "^3.4.0",
+    "chokidar": "^4.0.3",
+    "excel-datamashup": "^1.0.6",
+    "jszip": "^3.10.1"
   }
 }
