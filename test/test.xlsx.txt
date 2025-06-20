@@ -1,3 +1,0 @@
-// This is a test Excel file placeholder
-// In a real scenario, you would have an actual Excel file (.xlsx, .xlsm, or .xlsb)
-// For testing purposes, we'll create a simple file to test the extension
