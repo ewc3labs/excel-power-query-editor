@@ -3,6 +3,4 @@ dist
 node_modules
 .vscode-test/
 *.vsix
-test/PowerQueryFunctions_copy.xlsx_PowerQuery.m
-test/PowerQueryFunctions_copy.xlsx.backup.2025-06-20T12-04-44-152Z
-test/PowerQueryFunctions_copy.xlsx
+test/*

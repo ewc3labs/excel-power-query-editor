@@ -2,20 +2,42 @@
   "name": "excel-power-query-editor",
   "displayName": "Excel Power Query Editor",
   "description": "Extract and sync Power Query M code from Excel files",
-  "version": "0.3.0",
+  "version": "0.4.2",
   "publisher": "ewc3labs",
   "repository": {
     "type": "git",
     "url": "https://github.com/ewc3labs/excel-power-query-editor.git"
   },
+  "bugs": {
+    "url": "https://github.com/ewc3labs/excel-power-query-editor/issues"
+  },
+  "homepage": "https://github.com/ewc3labs/excel-power-query-editor#readme",
+  "sponsor": {
+    "url": "https://www.buymeacoffee.com/ewc3labs"
+  },
   "license": "MIT",
+  "icon": "images/excel-power-query-editor-logo-128x128.png",
   "engines": {
     "vscode": "^1.101.0"
   },
   "categories": [
-    "Other"
+    "Programming Languages",
+    "Data Science",
+    "Formatters"
   ],
-  "activationEvents": [],
+  "keywords": [
+    "excel",
+    "power query",
+    "m language",
+    "data analysis",
+    "etl",
+    "xlsx",
+    "xlsm",
+    "xlsb"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
   "main": "./dist/extension.js",
   "contributes": {
     "commands": [
@@ -52,6 +74,11 @@
       {
         "command": "excel-power-query-editor.rawExtraction",
         "title": "Raw Excel Extraction (Debug)",
+        "category": "Excel PQ"
+      },
+      {
+        "command": "excel-power-query-editor.cleanupBackups",
+        "title": "Cleanup Old Backups",
         "category": "Excel PQ"
       }
     ],
@@ -99,6 +126,18 @@
           "default": "",
           "description": "Custom path for backups (when backupLocation is 'custom')"
         },
+        "excel-power-query-editor.maxBackups": {
+          "type": "number",
+          "default": 5,
+          "minimum": 1,
+          "maximum": 50,
+          "description": "Maximum number of backup files to keep per Excel file (older backups are automatically deleted)"
+        },
+        "excel-power-query-editor.autoCleanupBackups": {
+          "type": "boolean",
+          "default": true,
+          "description": "Automatically delete old backup files when exceeding maxBackups limit"
+        },
         "excel-power-query-editor.syncTimeout": {
           "type": "number",
           "default": 30000,
@@ -129,6 +168,11 @@
           "command": "excel-power-query-editor.rawExtraction",
           "when": "resourceExtname =~ /\\.(xlsx|xlsm|xlsb)$/",
           "group": "powerquery@2"
+        },
+        {
+          "command": "excel-power-query-editor.cleanupBackups",
+          "when": "resourceExtname =~ /\\.(xlsx|xlsm|xlsb)$/",
+          "group": "powerquery@3"
         }
       ],
       "editor/context": [
@@ -168,6 +212,9 @@
       }
     ]
   },
+  "extensionPack": [
+    "powerquery.vscode-powerquery"
+  ],
   "scripts": {
     "vscode:prepublish": "npm run package",
     "compile": "npm run check-types && npm run lint && node esbuild.js",

@@ -18,6 +18,99 @@ function getConfig(): vscode.WorkspaceConfiguration {
 	return vscode.workspace.getConfiguration('excel-power-query-editor');
 }
 
+// Backup path helper
+function getBackupPath(excelFile: string, timestamp: string): string {
+	const config = getConfig();
+	const backupLocation = config.get<string>('backupLocation', 'sameFolder');
+	const baseFileName = path.basename(excelFile);
+	const backupFileName = `${baseFileName}.backup.${timestamp}`;
+	
+	switch (backupLocation) {
+		case 'tempFolder':
+			return path.join(require('os').tmpdir(), 'excel-pq-backups', backupFileName);
+		case 'custom':
+			const customPath = config.get<string>('customBackupPath', '');
+			if (customPath) {
+				// Resolve relative paths relative to the Excel file directory
+				const resolvedPath = path.isAbsolute(customPath) 
+					? customPath 
+					: path.resolve(path.dirname(excelFile), customPath);
+				return path.join(resolvedPath, backupFileName);
+			}
+			// Fall back to same folder if custom path is not set
+			return path.join(path.dirname(excelFile), backupFileName);
+		case 'sameFolder':
+		default:
+			return path.join(path.dirname(excelFile), backupFileName);
+	}
+}
+
+// Backup cleanup helper
+function cleanupOldBackups(excelFile: string): void {
+	const config = getConfig();
+	const maxBackups = config.get<number>('maxBackups', 5);
+	const autoCleanup = config.get<boolean>('autoCleanupBackups', true);
+	
+	if (!autoCleanup || maxBackups <= 0) {
+		return;
+	}
+	
+	try {
+		// Get the backup directory based on settings
+		const sampleTimestamp = '2000-01-01T00-00-00-000Z';
+		const sampleBackupPath = getBackupPath(excelFile, sampleTimestamp);
+		const backupDir = path.dirname(sampleBackupPath);
+		const baseFileName = path.basename(excelFile);
+		
+		if (!fs.existsSync(backupDir)) {
+			return;
+		}
+		
+		// Find all backup files for this Excel file
+		const backupPattern = `${baseFileName}.backup.`;
+		const allFiles = fs.readdirSync(backupDir);
+		const backupFiles = allFiles
+			.filter(file => file.startsWith(backupPattern))
+			.map(file => {
+				const fullPath = path.join(backupDir, file);
+				const timestampMatch = file.match(/\.backup\.(.+)$/);
+				const timestamp = timestampMatch ? timestampMatch[1] : '';
+				return {
+					path: fullPath,
+					filename: file,
+					timestamp: timestamp,
+					// Parse timestamp for sorting (ISO format sorts naturally)
+					sortKey: timestamp
+				};
+			})
+			.filter(backup => backup.timestamp) // Only files with valid timestamps
+			.sort((a, b) => b.sortKey.localeCompare(a.sortKey)); // Newest first
+		
+		// Delete excess backups
+		if (backupFiles.length > maxBackups) {
+			const filesToDelete = backupFiles.slice(maxBackups);
+			let deletedCount = 0;
+			
+			for (const backup of filesToDelete) {
+				try {
+					fs.unlinkSync(backup.path);
+					deletedCount++;
+					log(`Deleted old backup: ${backup.filename}`);
+				} catch (deleteError) {
+					log(`Failed to delete backup ${backup.filename}: ${deleteError}`, true);
+				}
+			}
+			
+			if (deletedCount > 0) {
+				log(`Cleaned up ${deletedCount} old backup files (keeping ${maxBackups} most recent)`);
+			}
+		}
+		
+	} catch (error) {
+		log(`Backup cleanup failed: ${error}`, true);
+	}
+}
+
 // Verbose logging helper
 function log(message: string, isError: boolean = false) {
 	const config = getConfig();
@@ -59,8 +152,76 @@ function updateStatusBar() {
 	}
 }
 
+// Initialize auto-watch for existing .m files
+async function initializeAutoWatch(): Promise<void> {
+	const config = getConfig();
+	const watchAlways = config.get<boolean>('watchAlways', false);
+	
+	if (!watchAlways) {
+		log('Extension activated - auto-watch disabled, staying dormant until manual command');
+		return; // Auto-watch is disabled - minimal initialization
+	}
+
+	log('Extension activated - auto-watch enabled, scanning workspace for .m files...');
+
+	try {
+		// Find all .m files in the workspace
+		const mFiles = await vscode.workspace.findFiles('**/*.m', '**/node_modules/**');
+		
+		if (mFiles.length === 0) {
+			log('Auto-watch enabled but no .m files found in workspace');
+			vscode.window.showInformationMessage('🔍 Auto-watch enabled but no .m files found in workspace');
+			return;
+		}
+
+		log(`Found ${mFiles.length} .m files in workspace, checking for corresponding Excel files...`);
+
+		let watchedCount = 0;
+		const maxAutoWatch = 20; // Prevent watching too many files automatically
+		
+		for (const mFileUri of mFiles.slice(0, maxAutoWatch)) {
+			const mFile = mFileUri.fsPath;
+			
+			// Check if there's a corresponding Excel file
+			const excelFile = await findExcelFile(mFile);
+			if (excelFile && fs.existsSync(excelFile)) {
+				try {
+					await watchFile(mFileUri);
+					watchedCount++;
+					log(`Auto-watch initialized: ${path.basename(mFile)} → ${path.basename(excelFile)}`);
+				} catch (error) {
+					log(`Failed to auto-watch ${path.basename(mFile)}: ${error}`, true);
+				}
+			} else {
+				log(`Skipping ${path.basename(mFile)} - no corresponding Excel file found`);
+			}
+		}
+
+		if (watchedCount > 0) {
+			vscode.window.showInformationMessage(
+				`🚀 Auto-watch enabled: Now watching ${watchedCount} Power Query file${watchedCount > 1 ? 's' : ''}`
+			);
+			log(`Auto-watch initialization complete: ${watchedCount} files being watched`);
+		} else {
+			log('Auto-watch enabled but no .m files with corresponding Excel files found');
+			vscode.window.showInformationMessage('⚠️ Auto-watch enabled but no .m files with corresponding Excel files found');
+		}
+
+		if (mFiles.length > maxAutoWatch) {
+			vscode.window.showWarningMessage(
+				`Found ${mFiles.length} .m files but only auto-watching first ${maxAutoWatch}. Use "Watch File" command for others.`
+			);
+			log(`Limited auto-watch to ${maxAutoWatch} files (found ${mFiles.length} total)`);
+		}
+
+	} catch (error) {
+		log(`Auto-watch initialization failed: ${error}`, true);
+		vscode.window.showErrorMessage(`Auto-watch initialization failed: ${error}`);
+	}
+}
+
 // This method is called when your extension is activated
-export function activate(context: vscode.ExtensionContext) {
+export async function activate(context: vscode.ExtensionContext) {
 	console.log('Excel Power Query Editor extension is now active!');
 
 	// Register all commands
@@ -71,7 +232,8 @@ export function activate(context: vscode.ExtensionContext) {
 		vscode.commands.registerCommand('excel-power-query-editor.toggleWatch', toggleWatch),
 		vscode.commands.registerCommand('excel-power-query-editor.stopWatching', stopWatching),
 		vscode.commands.registerCommand('excel-power-query-editor.syncAndDelete', syncAndDelete),
-		vscode.commands.registerCommand('excel-power-query-editor.rawExtraction', rawExtraction)
+		vscode.commands.registerCommand('excel-power-query-editor.rawExtraction', rawExtraction),
+		vscode.commands.registerCommand('excel-power-query-editor.cleanupBackups', cleanupBackupsCommand)
 	];
 
 	context.subscriptions.push(...commands);
@@ -81,6 +243,9 @@ export function activate(context: vscode.ExtensionContext) {
 	updateStatusBar();
 	
 	log('Excel Power Query Editor extension activated');
+	
+	// Auto-watch existing .m files if setting is enabled
+	await initializeAutoWatch();
 }
 
 async function extractFromExcel(uri?: vscode.Uri): Promise<void> {
@@ -223,6 +388,14 @@ ${formula}`;
 				await vscode.window.showTextDocument(document);
 				
 				vscode.window.showInformationMessage(`Power Query extracted to: ${path.basename(outputPath)}`);
+				log(`Successfully extracted Power Query from ${path.basename(excelFile)} to ${path.basename(outputPath)}`);
+				
+				// Auto-watch if enabled
+				const config = getConfig();
+				if (config.get<boolean>('watchAlways', false)) {
+					await watchFile(vscode.Uri.file(outputPath));
+					log(`Auto-watch enabled for ${path.basename(outputPath)}`);
+				}
 				
 			} else {
 				// Handle QueryTable or Connection format (extract what we can)
@@ -284,6 +457,14 @@ in
 				await vscode.window.showTextDocument(document);
 				
 				vscode.window.showInformationMessage(`Power Query partially extracted to: ${path.basename(outputPath)} (${queryType} format - limited support)`);
+				log(`Partially extracted Power Query from ${path.basename(excelFile)} to ${path.basename(outputPath)} (${queryType} format)`);
+				
+				// Auto-watch if enabled
+				const config = getConfig();
+				if (config.get<boolean>('watchAlways', false)) {
+					await watchFile(vscode.Uri.file(outputPath));
+					log(`Auto-watch enabled for ${path.basename(outputPath)}`);
+				}
 			}
 
 			// ...existing code...
@@ -324,15 +505,27 @@ in
 			await vscode.window.showTextDocument(document);
 			
 			vscode.window.showInformationMessage(`Placeholder file created: ${path.basename(outputPath)}`);
+			log(`Created placeholder file: ${path.basename(outputPath)}`);
+			
+			// Auto-watch if enabled
+			const config = getConfig();
+			if (config.get<boolean>('watchAlways', false)) {
+				await watchFile(vscode.Uri.file(outputPath));
+				log(`Auto-watch enabled for placeholder ${path.basename(outputPath)}`);
+			}
 		}
 		
 	} catch (error) {
-		vscode.window.showErrorMessage(`Failed to extract Power Query: ${error}`);
+		const errorMsg = `Failed to extract Power Query: ${error}`;
+		vscode.window.showErrorMessage(errorMsg);
+		log(errorMsg, true);
 		console.error('Extract error:', error);
 	}
 }
 
 async function syncToExcel(uri?: vscode.Uri): Promise<void> {
+	let backupPath: string | null = null;
+	
 	try {
 		const mFile = uri?.fsPath || vscode.window.activeTextEditor?.document.fileName;
 		if (!mFile || !mFile.endsWith('.m')) {
@@ -363,12 +556,28 @@ async function syncToExcel(uri?: vscode.Uri): Promise<void> {
 			return;
 		}
 		
-		// Create backup of Excel file
-		const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-		const backupPath = `${excelFile}.backup.${timestamp}`;
-		fs.copyFileSync(excelFile, backupPath);
+		// Create backup of Excel file if enabled
+		const config = getConfig();
 		
-		vscode.window.showInformationMessage(`Syncing to Excel... (Backup created: ${path.basename(backupPath)})`);
+		if (config.get<boolean>('autoBackupBeforeSync', true)) {
+			const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+			backupPath = getBackupPath(excelFile, timestamp);
+			
+			// Ensure backup directory exists
+			const backupDir = path.dirname(backupPath);
+			if (!fs.existsSync(backupDir)) {
+				fs.mkdirSync(backupDir, { recursive: true });
+			}
+			
+			fs.copyFileSync(excelFile, backupPath);
+			vscode.window.showInformationMessage(`Syncing to Excel... (Backup created: ${path.basename(backupPath)})`);
+			log(`Backup created: ${backupPath}`);
+			
+			// Clean up old backups
+			cleanupOldBackups(excelFile);
+		} else {
+			vscode.window.showInformationMessage(`Syncing to Excel... (No backup - disabled in settings)`);
+		}
 		
 		// Load Excel file as ZIP
 		const JSZip = (await import('jszip')).default;
@@ -536,25 +745,24 @@ async function syncToExcel(uri?: vscode.Uri): Promise<void> {
 		}
 		
 	} catch (error) {
-		vscode.window.showErrorMessage(`Failed to sync to Excel: ${error}`);
+		const errorMsg = `Failed to sync to Excel: ${error}`;
+		vscode.window.showErrorMessage(errorMsg);
+		log(errorMsg, true);
 		console.error('Sync error:', error);
 		
 		// If we have a backup, offer to restore it
 		const mFile = uri?.fsPath || vscode.window.activeTextEditor?.document.fileName;
-		if (mFile) {
-			const excelFile = await findExcelFile(mFile);
-			if (excelFile) {
-				const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-				const backupPath = `${excelFile}.backup.${timestamp}`;
-				if (fs.existsSync(backupPath)) {
-					const restore = await vscode.window.showErrorMessage(
-						'Sync failed. Restore from backup?',
-						'Restore', 'Keep Current'
-					);
-					if (restore === 'Restore') {
-						fs.copyFileSync(backupPath, excelFile);
-						vscode.window.showInformationMessage('Excel file restored from backup.');
-					}
+		if (mFile && backupPath && fs.existsSync(backupPath)) {
+			const restore = await vscode.window.showErrorMessage(
+				'Sync failed. Restore from backup?',
+				'Restore', 'Keep Current'
+			);
+			if (restore === 'Restore') {
+				const excelFile = await findExcelFile(mFile);
+				if (excelFile) {
+					fs.copyFileSync(backupPath, excelFile);
+					vscode.window.showInformationMessage('Excel file restored from backup.');
+					log(`Restored from backup: ${backupPath}`);
 				}
 			}
 		}
@@ -867,6 +1075,74 @@ async function findExcelFile(mFilePath: string): Promise<string | undefined> {
 	}
 	
 	return undefined;
+}
+
+async function cleanupBackupsCommand(uri?: vscode.Uri): Promise<void> {
+	try {
+		const excelFile = uri?.fsPath || await selectExcelFile();
+		if (!excelFile) {
+			return;
+		}
+
+		const config = getConfig();
+		const maxBackups = config.get<number>('maxBackups', 5);
+		
+		// Get backup information
+		const sampleTimestamp = '2000-01-01T00-00-00-000Z';
+		const sampleBackupPath = getBackupPath(excelFile, sampleTimestamp);
+		const backupDir = path.dirname(sampleBackupPath);
+		const baseFileName = path.basename(excelFile);
+		
+		if (!fs.existsSync(backupDir)) {
+			vscode.window.showInformationMessage(`No backup directory found for ${path.basename(excelFile)}`);
+			return;
+		}
+		
+		// Count existing backups
+		const backupPattern = `${baseFileName}.backup.`;
+		const allFiles = fs.readdirSync(backupDir);
+		const backupFiles = allFiles.filter(file => file.startsWith(backupPattern));
+		
+		if (backupFiles.length === 0) {
+			vscode.window.showInformationMessage(`No backup files found for ${path.basename(excelFile)}`);
+			return;
+		}
+		
+		const willKeep = Math.min(backupFiles.length, maxBackups);
+		const willDelete = Math.max(0, backupFiles.length - maxBackups);
+		
+		if (willDelete === 0) {
+			vscode.window.showInformationMessage(`${backupFiles.length} backup files found for ${path.basename(excelFile)}. All within limit of ${maxBackups}.`);
+			return;
+		}
+		
+		const confirmation = await vscode.window.showWarningMessage(
+			`Found ${backupFiles.length} backup files for ${path.basename(excelFile)}.\n` +
+			`Keep ${willKeep} most recent, delete ${willDelete} oldest?`,
+			{ modal: true },
+			'Yes, Cleanup', 'Cancel'
+		);
+		
+		if (confirmation === 'Yes, Cleanup') {
+			// Force cleanup by temporarily enabling auto-cleanup
+			const originalAutoCleanup = config.get<boolean>('autoCleanupBackups', true);
+			await config.update('autoCleanupBackups', true, vscode.ConfigurationTarget.Global);
+			
+			try {
+				cleanupOldBackups(excelFile);
+				vscode.window.showInformationMessage(`✅ Backup cleanup completed for ${path.basename(excelFile)}`);
+			} finally {
+				// Restore original setting
+				await config.update('autoCleanupBackups', originalAutoCleanup, vscode.ConfigurationTarget.Global);
+			}
+		}
+		
+	} catch (error) {
+		const errorMsg = `Failed to cleanup backups: ${error}`;
+		vscode.window.showErrorMessage(errorMsg);
+		log(errorMsg, true);
+		console.error('Backup cleanup error:', error);
+	}
 }
 
 // This method is called when your extension is deactivated

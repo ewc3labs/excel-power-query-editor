@@ -4,6 +4,23 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![VS Code Marketplace](https://img.shields.io/badge/VS%20Code-Marketplace-blue.svg)](https://marketplace.visualstudio.com/items?itemName=ewc3labs.excel-power-query-editor)
+[![Buy Me a Coffee](https://img.shields.io/badge/-Buy%20Me%20a%20Coffee-ffdd00?style=flat-square&logo=buy-me-a-coffee&logoColor=black)](https://www.buymeacoffee.com/ewc3labs)
+
+## 🚨 IMPORTANT: Install Required Extension
+
+**This extension requires the Microsoft Power Query / M Language extension for proper syntax highlighting and IntelliSense:**
+
+```vscode-extensions
+powerquery.vscode-powerquery
+```
+
+*The Power Query extension will be automatically installed when you install this extension (via Extension Pack).*
+
+## 📚 Complete Documentation
+
+- **📖 [Complete User Guide](USER_GUIDE.md)** - Detailed usage instructions, features, and troubleshooting
+- **⚙️ [Configuration Guide](CONFIGURATION.md)** - Quick reference for all settings 
+- **📝 [Changelog](CHANGELOG.md)** - Version history and updates
 
 ## Why This Extension?
 
@@ -113,6 +130,89 @@ npm test
 
 Inspired by the original [EditExcelPQM](https://github.com/amalanov/EditExcelPQM) by Alexander Malanov, but completely rewritten with modern architecture to solve reliability issues.
 
+## ⚙️ Settings
+
+The extension provides comprehensive settings for customizing your workflow. Access via `File` > `Preferences` > `Settings` > search "Excel Power Query":
+
+### **Watch & Auto-Sync Settings**
+
+| Setting | Default | Description |
+|---------|---------|-------------|
+| **Watch Always** | `false` | Automatically start watching when extracting Power Query files. Perfect for active development. |
+| **Watch Off On Delete** | `true` | Automatically stop watching when .m files are deleted (prevents zombie watchers). |
+| **Sync Delete Turns Watch Off** | `true` | Stop watching when using "Sync & Delete" command. |
+| **Show Status Bar Info** | `true` | Display watch status in status bar (e.g., "👁 Watching 3 PQ files"). |
+
+### **Backup & Safety Settings**
+
+| Setting | Default | Description |
+|---------|---------|-------------|
+| **Auto Backup Before Sync** | `true` | Create automatic backups before syncing to Excel files. |
+| **Backup Location** | `"sameFolder"` | Where to store backup files: `"sameFolder"`, `"tempFolder"`, or `"custom"`. |
+| **Custom Backup Path** | `""` | Custom path for backups (when Backup Location is "custom"). Supports relative paths like `./backups`. |
+| **Max Backups** | `5` | Maximum backup files to keep per Excel file (1-50). Older backups are auto-deleted. |
+| **Auto Cleanup Backups** | `true` | Automatically delete old backups when exceeding Max Backups limit. |
+
+### **User Experience Settings**
+
+| Setting | Default | Description |
+|---------|---------|-------------|
+| **Sync Delete Always Confirm** | `true` | Ask for confirmation before "Sync & Delete" (uncheck for instant deletion). |
+| **Verbose Mode** | `false` | Show detailed logging in Output panel for debugging and monitoring. |
+| **Debug Mode** | `false` | Enable advanced debug logging and save debug files for troubleshooting. |
+| **Sync Timeout** | `30000` | Timeout in milliseconds for sync operations (5000-120000). |
+
+### **Example Workflows**
+
+**🔄 Active Development Setup:**
+```json
+{
+  "excel-power-query-editor.watchAlways": true,
+  "excel-power-query-editor.verboseMode": true,
+  "excel-power-query-editor.maxBackups": 10
+}
+```
+
+**🛡️ Conservative/Production Setup:**
+```json
+{
+  "excel-power-query-editor.watchAlways": false,
+  "excel-power-query-editor.maxBackups": 3,
+  "excel-power-query-editor.backupLocation": "custom",
+  "excel-power-query-editor.customBackupPath": "./excel-backups"
+}
+```
+
+**⚡ Speed/Minimal Setup:**
+```json
+{
+  "excel-power-query-editor.autoBackupBeforeSync": false,
+  "excel-power-query-editor.syncDeleteAlwaysConfirm": false,
+  "excel-power-query-editor.showStatusBarInfo": false
+}
+```
+
+### **Accessing Verbose Output**
+
+When Verbose Mode is enabled:
+1. Go to `View` > `Output`
+2. Select "Excel Power Query Editor" from the dropdown
+3. See detailed logs of all operations, watch events, and errors
+
+## 💖 Support This Project
+
+If this extension saves you time and makes your Power Query development more enjoyable, consider supporting its development:
+
+[![Buy Me a Coffee](https://img.shields.io/badge/-Buy%20Me%20a%20Coffee-ffdd00?style=for-the-badge&logo=buy-me-a-coffee&logoColor=black)](https://www.buymeacoffee.com/ewc3labs)
+
+Your support helps:
+- 🛠️ **Continue development** and add new features
+- 🐛 **Fix bugs** and improve reliability
+- 📚 **Maintain documentation** and user guides
+- 💡 **Respond to feature requests** from the community
+
+*Even a small contribution makes a big difference!*
+
 ## Contributing
 
 Contributions are welcome! This extension is built to serve the Power Query community.
@@ -133,6 +233,10 @@ This project is licensed under the MIT License - see the [LICENSE](https://githu
 
 *Because editing Power Query in Excel shouldn't be painful.*
 
+---
+
+**☕ Enjoying this extension?** [Buy me a coffee](https://www.buymeacoffee.com/ewc3labs) to support continued development!
+
 ## Credits and Attribution
 
 This extension uses the excellent [excel-datamashup](https://github.com/Vladinator/excel-datamashup) library by [Vladinator](https://github.com/Vladinator) for robust Excel Power Query extraction. The excel-datamashup library is licensed under GPL-3.0 and provides the core functionality for parsing Excel DataMashup binary formats.
@@ -143,33 +247,15 @@ This extension uses the excellent [excel-datamashup](https://github.com/Vladinat
 
 This VS Code extension adds the user interface, file management, and editing workflow on top of the excel-datamashup parsing engine.
 
-## Following extension guidelines
+## 🤝 Recommended Extensions
 
-Ensure that you've read through the extensions guidelines and follow the best practices for creating your extension.
+This extension works best with these companion extensions:
 
-* [Extension Guidelines](https://code.visualstudio.com/api/references/extension-guidelines)
+```vscode-extensions
+powerquery.vscode-powerquery,grapecity.gc-excelviewer
+```
 
-## Working with Markdown
+- **[Power Query / M Language](https://marketplace.visualstudio.com/items?itemName=powerquery.vscode-powerquery)** *(Required)* - Provides syntax highlighting and IntelliSense for .m files
+- **[Excel Viewer by GrapeCity](https://marketplace.visualstudio.com/items?itemName=GrapeCity.gc-excelviewer)** *(Optional)* - View Excel files directly in VS Code for seamless workflow
 
-You can author your README using Visual Studio Code. Here are some useful editor keyboard shortcuts:
-
-* Split the editor (`Cmd+\` on macOS or `Ctrl+\` on Windows and Linux).
-* Toggle preview (`Shift+Cmd+V` on macOS or `Shift+Ctrl+V` on Windows and Linux).
-* Press `Ctrl+Space` (Windows, Linux, macOS) to see a list of Markdown snippets.
-
-## For more information
-
-* [Visual Studio Code's Markdown Support](http://code.visualstudio.com/docs/languages/markdown)
-* [Markdown Syntax Reference](https://help.github.com/articles/markdown-basics/)
-
-**Enjoy!**
-
-## 🤝 **Recommended Extensions**
-
-This extension works great with **[Excel Viewer by GrapeCity](https://marketplace.visualstudio.com/items?itemName=GrapeCity.gc-excelviewer)** which displays Excel files natively in VS Code. Together they provide:
-
-- **View Excel files** directly in VS Code (supports .xlsx, .xlsm)
-- **Edit Power Query** in the same workspace
-- **Seamless workflow** without leaving VS Code
-
-*The Excel Viewer will be automatically suggested when you install this extension.*
+*The Power Query extension is automatically installed via Extension Pack when you install this extension.*
