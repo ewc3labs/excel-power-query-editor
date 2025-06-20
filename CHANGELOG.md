@@ -2,6 +2,18 @@
 
 All notable changes to the "excel-power-query-editor" extension will be documented in this file.
 
+## [0.4.3] - 2025-06-20
+
+### Added
+- **📦 VS Code Marketplace**: Published extension to VS Code Marketplace (ewc3labs.excel-power-query-editor)
+- **🚀 Installation Instructions**: Updated README and USER_GUIDE with marketplace installation steps
+- **⚡ Quick Start**: Added Quick Start section to README for immediate user value
+
+### Improved
+- **🎨 Extension Icon**: Optimized extension logo for better marketplace presentation
+- **📚 Documentation**: Updated installation instructions to prioritize marketplace over VSIX files
+- **🧹 Repository Cleanup**: Removed test folder and test files from public repository
+
 ## [0.4.2] - 2025-06-20
 
 ### Added
