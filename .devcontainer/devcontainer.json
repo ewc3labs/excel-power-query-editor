@@ -5,9 +5,11 @@
   "features": {
     // ✅ Existing
     "ghcr.io/devcontainers/features/github-cli:1": {},
-    "ghcr.io/devcontainers/features/git:1": {}
+    "ghcr.io/devcontainers/features/git:1": {},
+    // For VS Code testing
+    "ghcr.io/devcontainers/features/desktop-lite:1": {}
   },
-  "postCreateCommand": "npm install && npm run compile",
+  "postCreateCommand": "sudo npm install -g npm@latest && npm --version && npm install && npm run compile",
   "customizations": {
     "vscode": {
       "extensions": [
@@ -17,6 +19,7 @@
         "esbenp.prettier-vscode",
         "ms-vscode.vscode-typescript-next",
         "ms-vscode.vscode-json",
+        "grapecity.gc-excelviewer",
         // 🆕 Testing and debugging tools
         "hbenl.vscode-test-explorer",
         "ms-vscode.test-adapter-converter",

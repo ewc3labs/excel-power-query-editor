@@ -3,6 +3,7 @@ import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
 import { watch, FSWatcher } from 'chokidar';
+import { getConfig } from './configHelper';
 
 // File watchers storage
 const fileWatchers = new Map<string, FSWatcher>();
@@ -15,11 +16,6 @@ let outputChannel: vscode.OutputChannel;
 
 // Status bar item for watch status
 let statusBarItem: vscode.StatusBarItem;
-
-// Configuration helper
-function getConfig(): vscode.WorkspaceConfiguration {
-	return vscode.workspace.getConfiguration('excel-power-query-editor');
-}
 
 // Backup path helper
 function getBackupPath(excelFile: string, timestamp: string): string {
@@ -51,8 +47,8 @@ function getBackupPath(excelFile: string, timestamp: string): string {
 // Backup cleanup helper
 function cleanupOldBackups(excelFile: string): void {
 	const config = getConfig();
-	const maxBackups = config.get<number>('backup.maxFiles', 5);
-	const autoCleanup = config.get<boolean>('autoCleanupBackups', true);
+	const maxBackups = config.get<number>('backup.maxFiles', 5) || 5;
+	const autoCleanup = config.get<boolean>('autoCleanupBackups', true) || false;
 	
 	if (!autoCleanup || maxBackups <= 0) {
 		return;
@@ -1128,7 +1124,7 @@ async function cleanupBackupsCommand(uri?: vscode.Uri): Promise<void> {
 		}
 
 		const config = getConfig();
-		const maxBackups = config.get<number>('backup.maxFiles', 5);
+		const maxBackups = config.get<number>('backup.maxFiles', 5) || 5;
 		
 		// Get backup information
 		const sampleTimestamp = '2000-01-01T00-00-00-000Z';
@@ -1169,14 +1165,18 @@ async function cleanupBackupsCommand(uri?: vscode.Uri): Promise<void> {
 		if (confirmation === 'Yes, Cleanup') {
 			// Force cleanup by temporarily enabling auto-cleanup
 			const originalAutoCleanup = config.get<boolean>('autoCleanupBackups', true);
-			await config.update('autoCleanupBackups', true, vscode.ConfigurationTarget.Global);
+			if (config.update) {
+				await config.update('autoCleanupBackups', true, vscode.ConfigurationTarget.Global);
+			}
 			
 			try {
 				cleanupOldBackups(excelFile);
 				vscode.window.showInformationMessage(`✅ Backup cleanup completed for ${path.basename(excelFile)}`);
 			} finally {
 				// Restore original setting
-				await config.update('autoCleanupBackups', originalAutoCleanup, vscode.ConfigurationTarget.Global);
+				if (config.update) {
+					await config.update('autoCleanupBackups', originalAutoCleanup, vscode.ConfigurationTarget.Global);
+				}
 			}
 		}
 		

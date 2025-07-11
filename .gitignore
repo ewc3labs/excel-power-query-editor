@@ -5,3 +5,6 @@ node_modules
 *.vsix
 test/out/
 test/.vscode-test/
+
+# Testing folder with large files and sensitive data
+temp-testing/

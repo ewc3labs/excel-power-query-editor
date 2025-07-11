@@ -1,491 +1,358 @@
-# Excel Power Query Editor - User Guide
+<!-- HEADER_TABLE -->
+<table align="center">
+<tr>
+  <td width="112" align="center" valign="middle">
+    <img src="assets/excel-power-query-editor-logo-128x128.png" width="128" height="128"><br>
+    <strong>E · P · Q · E</strong>
+  </td>
 
-## Overview
-This VS Code extension provides a modern, reliable way to extract Power Query M code from Excel files, edit it with full VS Code functionality, and sync changes back to Excel. No COM dependencies, no Excel installation required, and works across platforms.
+  <td align="center" valign="middle">
+    <h1 align="center">Excel Power Query Editor</h1>
+    <p align="left">
+      <b>Edit Power Query M code directly from Excel files in VS Code. No Excel needed. No bullshit. It Just Works™.</b><br>
+      <sub>
+        Built by <strong>EWC3 Labs</strong> — where we rage-build the tools everyone needs, but nobody <del>cares to build</del>
+        <em>is deranged enough to spend days perfecting until it actually works right.</em>
+      </sub>
+    </p>
+  </td>
 
-## 🚀 Quick Start
+  <td width="112" align="center" valign="middle">
+    <img src="assets/EWC3LabsLogo-blue-128x128.png" width="128" height="128"><br>
+    <strong><em>QA Officer</em></strong>
+  </td>
+</tr>
+</table>
+<!-- /HEADER_TABLE -->
 
-### 1. Install the Extension(s)
-**This extension requires the Microsoft Power Query / M Language extension:**
+## Complete User Guide
 
-```vscode-extensions
-powerquery.vscode-powerquery
+> **Power Query productivity unlocked for engineers and data nerds**
+
+---
+
+## 🚀 The Complete Workflow: Extract → Edit → Watch → Sync
+
+### 1. 📤 Extract Power Query from Excel
+
+**Right-click any Excel file** (`.xlsx`, `.xlsm`, `.xlsb`) in VS Code Explorer:
+
+```
+my-data-analysis.xlsx  ← Right-click here
+└── Select "Extract Power Query from Excel"
 ```
 
-**Install from VS Code Marketplace (Recommended):**
+**What happens:**
 
-1. **Extensions View**: Open VS Code → Extensions (`Ctrl+Shift+X`) → Search "Excel Power Query Editor" → Install
-2. **Command Line**: `code --install-extension ewc3labs.excel-power-query-editor`
-3. **Direct Link**: [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=ewc3labs.excel-power-query-editor)
+- Extension reads Power Query queries from Excel's internal DataMashup
+- Creates `my-data-analysis.xlsx_PowerQuery.m` file
+- Opens automatically with full M language syntax highlighting
+- **Preserves all comments and formatting**
 
-**Alternative - VSIX File**: `code --install-extension excel-power-query-editor-[version].vsix`
+**Supported Excel formats:**
 
-*The Power Query extension will be automatically installed via Extension Pack.*
+- `.xlsx` - Standard Excel workbook
+- `.xlsm` - Macro-enabled workbook
+- `.xlsb` - Binary workbook (faster for large files)
 
-### 2. Extract Power Query from Excel
-1. Right-click any `.xlsx`, `.xlsm`, or `.xlsb` file in Explorer
-2. Select **"Extract Power Query from Excel"**
-3. Extension creates `filename.xlsx_PowerQuery.m` in the same directory
-4. File opens automatically with syntax highlighting
+### 2. ✏️ Edit with Full VS Code Power
 
-### 3. Edit Your Power Query Code
-- Full VS Code editing experience with IntelliSense
-- Syntax highlighting for M language
-- Comments preserved during sync operations
-- Save changes normally (`Ctrl+S`)
+**IntelliSense & Syntax Highlighting:**
 
-### 4. Sync Changes Back to Excel
+- Install recommended: `powerquery.vscode-powerquery` (auto-installed)
+- Full M language support with autocomplete
+- Error highlighting and syntax validation
+- Comment preservation through sync cycles
+
+**Pro Tips:**
+
+- Use `Ctrl+/` for quick commenting
+- `F12` for function definitions (with Power Query extension)
+- `Ctrl+Shift+P` → "Format Document" for clean code
+
+### 3. 👁️ Enable Auto-Watch (Recommended)
+
+**Right-click your `.m` file** → **"Toggle Watch"** or **"Watch File for Changes"**
+
+**Status Bar Indicator:**
+
+```
+👁 Watching 1 PQ file    ← Shows active watch count
+```
+
+**What Auto-Watch Does:**
+
+- Monitors `.m` file for saves (`Ctrl+S`)
+- **Intelligent debouncing** prevents duplicate syncs (configurable 500ms delay)
+- Automatic backup before each sync
+- **Smart change detection** - only syncs when content actually changes
+
+### 4. 🔄 Sync Changes Back to Excel
+
+**Automatic (with Watch enabled):**
+
+- Save your `.m` file (`Ctrl+S`)
+- Watch triggers sync automatically
+- Backup created, Excel updated
+- **Optional**: Automatically opens Excel after sync
+
 **Manual Sync:**
-1. Right-click the `.m` file
-2. Select **"Sync Power Query to Excel"**
-3. Automatic backup created, changes applied
 
-**Auto-Sync (Recommended):**
-1. Right-click the `.m` file
-2. Select **"Watch File for Changes"** or **"Toggle Watch"**
-3. Any saved changes automatically sync to Excel
-4. Status bar shows `👁 Watching X PQ files`
+- Right-click `.m` file → **"Sync Power Query to Excel"**
+- Useful for one-off changes without enabling watch
 
-## 📋 All Available Commands
+**Sync Process:**
 
-### Context Menu Commands (Right-Click)
+1. **Backup Creation**: `my-data-analysis_backup_2025-07-11_14-30-45.xlsx`
+2. **Content Validation**: Ensures M code is syntactically valid
+3. **Excel Update**: Replaces Power Query content in Excel's DataMashup
+4. **Verification**: Confirms successful write operation
 
-#### **On Excel Files** (`.xlsx`, `.xlsm`, `.xlsb`):
-- **Extract Power Query from Excel** - Create `.m` files from Power Query
-- **Raw Excel Extraction (Debug)** - Extract all Excel components for debugging
-- **Cleanup Old Backups** - Manage backup files for this Excel file
+## 🛠️ Advanced Features & Configuration
 
-#### **On Power Query Files** (`.m`):
-- **Sync Power Query to Excel** - Update Excel with current `.m` file content
-- **Watch File for Changes** - Enable automatic sync on file save
-- **Toggle Watch** - Smart toggle: start watching if not watched, stop if watched
-- **Sync & Delete** - Sync to Excel then safely delete the `.m` file
+### Smart Defaults (v0.5.0)
 
-### Command Palette (`Ctrl+Shift+P`)
-All commands available via Command Palette with `Excel PQ:` prefix:
-- `Excel PQ: Extract Power Query from Excel`
-- `Excel PQ: Sync Power Query to Excel` 
-- `Excel PQ: Watch File for Changes`
-- `Excel PQ: Toggle Watch`
-- `Excel PQ: Stop Watching File`
-- `Excel PQ: Sync & Delete`
-- `Excel PQ: Raw Excel Extraction (Debug)`
-- `Excel PQ: Cleanup Old Backups`
+**First-time setup?** Run this command:
 
-## 📁 File Naming Convention
+- `Ctrl+Shift+P` → **"Excel Power Query: Apply Recommended Defaults"**
 
-The extension uses a **full filename** approach for better organization:
+**Sets optimal configuration for:**
 
-### **Naming Pattern**:
-- **Excel file**: `MyWorkbook.xlsx`
-- **Power Query file**: `MyWorkbook.xlsx_PowerQuery.m`
+- Auto-backup enabled
+- 500ms debounce delay
+- Watch mode behavior
+- Backup retention (5 files)
 
-### **Examples**:
-```
-Financial_Report.xlsx          → Financial_Report.xlsx_PowerQuery.m
-SalesData.xlsm                → SalesData.xlsm_PowerQuery.m
-Dashboard.xlsb                 → Dashboard.xlsb_PowerQuery.m
-Q4_Analysis_2025.xlsx          → Q4_Analysis_2025.xlsx_PowerQuery.m
-```
+### Backup Management
 
-### **Auto-Detection Logic**:
-The sync feature finds Excel files by:
-1. **Removing** `_PowerQuery.m` from filename
-2. **Checking** for exact match: `filename.xlsx`, `filename.xlsm`, `filename.xlsb`
-3. **Searching** same directory first, then parent directories
-4. **Prompting** for manual selection if not found
+**Automatic Backups:**
 
-## 🔄 Auto-Watch Feature
-
-### **What It Does**:
-- Monitors `.m` files for changes
-- Automatically syncs to Excel on save
-- Survives VS Code reloads (if **Watch Always** setting enabled)
-- Shows status in status bar
-
-### **How to Use**:
-1. **Enable Watch Always**: `Settings` → `Excel-power-query-editor: Watch Always`
-2. **Extract any file** → Automatically starts watching
-3. **Or manually**: Right-click `.m` file → "Toggle Watch"
-
-### **Status Indicators**:
-- **Status Bar**: `👁 Watching 3 PQ files` (when files are being watched)
-- **Notifications**: `📝 File changed, syncing: filename.m`
-- **Verbose Logs**: Real-time sync details in Output panel
-
-## 🛡️ Backup & Safety Features
-
-### **Automatic Backups**:
 - Created before every sync operation
-- Timestamped: `filename.xlsx.backup.2025-06-20T18-10-19-087Z`
-- Configurable location: same folder, temp, or custom path
+- Timestamped: `filename_backup_YYYY-MM-DD_HH-MM-SS.xlsx`
+- Configurable retention limit (default: 5 files per Excel file)
+- Auto-cleanup when limit exceeded
 
-### **Backup Management**:
-- **Max Backups**: Keep only N most recent (default: 5)
-- **Auto-Cleanup**: Delete old backups automatically
-- **Manual Cleanup**: Right-click Excel file → "Cleanup Old Backups"
+**Backup Locations:**
 
-### **Custom Backup Locations**:
+- **Same Folder** (default): Next to original Excel file
+- **System Temp**: OS temporary directory
+- **Custom Path**: Specify your own backup directory
+
+**Manual Cleanup:**
+
+- `Ctrl+Shift+P` → **"Excel Power Query: Cleanup Old Backups"**
+- Select Excel file to clean up its backups
+
+### CoPilot Integration (v0.5.0 Excellence)
+
+**Problem Solved:** CoPilot Agent mode causing triple-sync
+
+- ✅ **Intelligent Debouncing**: 500ms delay prevents duplicate operations
+- ✅ **File Hash Deduplication**: Only syncs when content actually changes
+- ✅ **Smart Change Detection**: Timestamp + content validation
+
+**Optimal CoPilot Workflow:**
+
+1. Enable watch mode on your `.m` file
+2. Use CoPilot to edit/refactor your Power Query
+3. Accept CoPilot suggestions
+4. Single sync triggered automatically (no duplicates!)
+
+### Team Collaboration Best Practices
+
+**Shared Projects:**
+
 ```json
-// Same folder as Excel file (default)
-"excel-power-query-editor.backupLocation": "sameFolder"
-
-// OS temp directory
-"excel-power-query-editor.backupLocation": "tempFolder"
-
-// Custom path (relative or absolute)
-"excel-power-query-editor.backupLocation": "custom"
-"excel-power-query-editor.customBackupPath": "./excel-backups"
-```
-
-## 📂 File Structure Examples
-
-### **Simple Workspace**:
-```
-project/
-├── SalesReport.xlsx
-├── SalesReport.xlsx_PowerQuery.m           ← Auto-syncs to Excel
-└── SalesReport.xlsx.backup.2025-06-20T...  ← Automatic backup
-```
-
-### **Multi-File Project**:
-```
-analytics/
-├── Q1_Report.xlsx
-├── Q1_Report.xlsx_PowerQuery.m              ← Watching ✓
-├── Q2_Report.xlsm  
-├── Q2_Report.xlsm_PowerQuery.m              ← Watching ✓
-├── Dashboard.xlsb
-├── Dashboard.xlsb_PowerQuery.m              ← Watching ✓
-└── excel-backups/                           ← Custom backup location
-    ├── Q1_Report.xlsx.backup.2025...
-    ├── Q2_Report.xlsm.backup.2025...
-    └── Dashboard.xlsb.backup.2025...
-```
-
-### **Status Bar Display**:
-```
-👁 Watching 3 PQ files    [Bottom-right corner when files are being watched]
-```
-
-## 🔧 Troubleshooting
-
-### **Sync Asks for File Selection**
-**Problem**: Sync prompts to select Excel file instead of auto-detecting
-**Solutions**:
-1. ✅ Check Excel file exists in same directory
-2. ✅ Verify naming: `filename.xlsx_PowerQuery.m` format
-3. ✅ Ensure Excel extension is `.xlsx`, `.xlsm`, or `.xlsb`
-4. ✅ Try placing both files in same folder
-
-### **No Power Query Found**
-**Problem**: Extraction reports "No Power Query found"
-**Solutions**:
-1. ✅ Use **"Raw Excel Extraction"** to see all content
-2. ✅ Check if Excel uses external connections instead of Power Query
-3. ✅ Verify file contains actual Power Query (Data → Get Data)
-4. ✅ Try with known Power Query-enabled file first
-
-### **Auto-Watch Not Working After Reload**
-**Problem**: Watch stops after VS Code reload
-**Solutions**:
-1. ✅ Enable **"Watch Always"** setting for automatic restoration
-2. ✅ Check **Verbose Mode** for initialization messages
-3. ✅ Manually restart: Right-click `.m` file → "Toggle Watch"
-4. ✅ Verify settings: Search "Excel Power Query" in Settings
-
-### **Backup Files Accumulating**
-**Problem**: Too many backup files in directory
-**Solutions**:
-1. ✅ Adjust **"Max Backups"** setting (default: 5)
-2. ✅ Use **"Cleanup Old Backups"** command on Excel files
-3. ✅ Set custom backup location: `./backups` or temp folder
-4. ✅ Disable backups entirely (not recommended): `"autoBackupBeforeSync": false`
-
-### **Slow Performance**
-**Problem**: Extension feels sluggish
-**Solutions**:
-1. ✅ Reduce **"Max Backups"** to 3
-2. ✅ Disable **"Verbose Mode"** if not needed
-3. ✅ Use temp folder for backups instead of custom path
-4. ✅ Consider disabling auto-watch for large projects
-
-## 🐛 Debug Features
-
-### **Raw Extraction** (Advanced)
-Access all Excel components for debugging:
-1. Right-click Excel file
-2. Select **"Raw Excel Extraction (Debug)"**
-3. Creates `debug_extraction/` folder with:
-   - All XML files from Excel archive
-   - Power Query DataMashup content
-   - Parsed structure files
-
-### **Verbose Logging**
-Enable detailed operation logging:
-1. **Settings**: `"excel-power-query-editor.verboseMode": true`
-2. **View Output**: `View` → `Output` → "Excel Power Query Editor"
-3. **See Logs**: Real-time sync, watch, and backup operations
-
-### **Debug Mode**
-Enable enhanced debugging:
-1. **Settings**: `"excel-power-query-editor.debugMode": true`
-2. **Creates**: Additional debug files during sync operations
-3. **Helps With**: Troubleshooting sync failures and Excel format issues
-
-## 📋 Supported File Types
-
-### **Excel Files** (Source)
-| Extension | Description | Support Level |
-|-----------|-------------|---------------|
-| `.xlsx` | Excel Workbook | ✅ Full Support |
-| `.xlsm` | Excel Macro-Enabled Workbook | ✅ Full Support |
-| `.xlsb` | Excel Binary Workbook | ✅ Full Support |
-
-### **Power Query Files** (Generated)
-| Extension | Description | Features |
-|-----------|-------------|----------|
-| `.m` | Power Query M Language | ✅ Syntax highlighting<br>✅ Auto-sync<br>✅ Comment preservation |
-
-### **Power Query Storage Formats**
-| Format | Description | Extraction |
-|--------|-------------|------------|
-| **DataMashup** | Modern Power Query storage | ✅ Full support with comments |
-| **QueryTable** | Legacy query storage | ⚠️ Limited support |
-| **Connection** | External data connections | ⚠️ Partial support |
-
-## ⚙️ Advanced Settings Configuration
-
-### **Quick Access**
-`File` → `Preferences` → `Settings` → Search "Excel Power Query"
-
-### **Essential Settings**
-
-#### **Auto-Watch & Productivity**
-```json
+// .vscode/settings.json (workspace)
 {
-  // Auto-watch when extracting files
-  "excel-power-query-editor.watchAlways": true,
-  
-  // Show detailed logs for debugging
-  "excel-power-query-editor.verboseMode": true,
-  
-  // Display watch count in status bar
-  "excel-power-query-editor.showStatusBarInfo": true,
-  
-  // Stop watching when files are deleted
-  "excel-power-query-editor.watchOffOnDelete": true
-}
-```
-
-#### **Backup & Safety**
-```json
-{
-  // Create backups before sync (recommended)
   "excel-power-query-editor.autoBackupBeforeSync": true,
-  
-  // Custom backup location
-  "excel-power-query-editor.backupLocation": "custom",
-  "excel-power-query-editor.customBackupPath": "./PQ-backups",
-  
-  // Keep 5 most recent backups
-  "excel-power-query-editor.maxBackups": 5,
-  
-  // Auto-delete old backups
-  "excel-power-query-editor.autoCleanupBackups": true
+  "excel-power-query-editor.backup.maxFiles": 10,
+  "excel-power-query-editor.sync.openExcelAfterWrite": false,
+  "excel-power-query-editor.verboseMode": true
 }
 ```
 
-#### **User Experience**
-```json
-{
-  // Confirm before sync & delete
-  "excel-power-query-editor.syncDeleteAlwaysConfirm": true,
-  
-  // Stop watching when using Sync & Delete
-  "excel-power-query-editor.syncDeleteTurnsWatchOff": true,
-  
-  // Operation timeout (30 seconds)
-  "excel-power-query-editor.syncTimeout": 30000
-}
-```
+**CI/CD Integration:**
 
-### **Recommended Configurations**
-
-#### **🚀 Active Development Setup**
 ```json
+// Disable interactive features for automation
 {
-  "excel-power-query-editor.watchAlways": true,
-  "excel-power-query-editor.verboseMode": true,
-  "excel-power-query-editor.maxBackups": 10,
-  "excel-power-query-editor.syncDeleteAlwaysConfirm": false,
-  "excel-power-query-editor.backupLocation": "custom",
-  "excel-power-query-editor.customBackupPath": "./PQ-backups"
-}
-```
-
-#### **🛡️ Production/Shared Files Setup**
-```json
-{
-  "excel-power-query-editor.watchAlways": false,
-  "excel-power-query-editor.maxBackups": 3,
-  "excel-power-query-editor.syncDeleteAlwaysConfirm": true,
-  "excel-power-query-editor.verboseMode": false,
-  "excel-power-query-editor.backupLocation": "tempFolder"
-}
-```
-
-#### **⚡ Performance/Minimal Setup**
-```json
-{
+  "excel-power-query-editor.sync.openExcelAfterWrite": false,
   "excel-power-query-editor.autoBackupBeforeSync": false,
-  "excel-power-query-editor.showStatusBarInfo": false,
-  "excel-power-query-editor.verboseMode": false,
   "excel-power-query-editor.watchAlways": false
 }
 ```
 
-### **Settings Scope**
+**Performance Optimization:**
 
-#### **User Settings** (`settings.json`)
-Apply to all VS Code workspaces globally.
-
-#### **Workspace Settings** (`.vscode/settings.json`)
-Apply only to current project. Example for Power Query development:
 ```json
+// For SSD-constrained environments
 {
-  "excel-power-query-editor.watchAlways": true,
-  "excel-power-query-editor.verboseMode": true,
-  "excel-power-query-editor.customBackupPath": "./backups",
-  "excel-power-query-editor.maxBackups": 15
+  "excel-power-query-editor.autoBackupBeforeSync": false,
+  "excel-power-query-editor.backupLocation": "temp"
 }
 ```
 
-## 🔍 Monitoring & Debugging
+## 🔧 All Available Commands
 
-### **Verbose Output Usage**
-1. **Enable**: `"excel-power-query-editor.verboseMode": true`
-2. **Access**: `View` → `Output` → Select "Excel Power Query Editor"
-3. **Monitor**: Real-time logs of all operations:
-   ```
-   [2025-06-20T18:10:19.087Z] Started watching: SalesReport.xlsx_PowerQuery.m
-   [2025-06-20T18:10:25.123Z] File changed, auto-syncing: SalesReport.xlsx_PowerQuery.m
-   [2025-06-20T18:10:25.156Z] Backup created: ./backups/SalesReport.xlsx.backup.2025...
-   [2025-06-20T18:10:25.234Z] Sync completed successfully
-   ```
+Access via `Ctrl+Shift+P` (Command Palette) or right-click context menus:
 
-### **Debug Mode Features**
-When `"debugMode": true`:
-- 🔍 **Enhanced Error Messages**: Detailed failure analysis
-- 📁 **Debug File Creation**: XML structure saved to `debug_sync/` folder
-- 🔬 **Raw Content Analysis**: Full Excel content extraction for troubleshooting
-- 📊 **Sync Attempt Logging**: Step-by-step sync process details
+| Command                            | Context                | Description                      |
+| ---------------------------------- | ---------------------- | -------------------------------- |
+| **Extract Power Query from Excel** | Right-click Excel file | Extract queries to `.m` file     |
+| **Sync Power Query to Excel**      | Right-click `.m` file  | Manual sync back to Excel        |
+| **Watch File for Changes**         | Right-click `.m` file  | Enable auto-sync on save         |
+| **Toggle Watch**                   | Right-click `.m` file  | Toggle watch on/off              |
+| **Stop Watching**                  | Right-click `.m` file  | Disable auto-sync                |
+| **Sync and Delete**                | Right-click `.m` file  | Sync then delete `.m` file       |
+| **Raw Extract (Debug)**            | Right-click Excel file | Debug extraction with raw output |
+| **Apply Recommended Defaults**     | Command Palette        | Set optimal configuration        |
+| **Cleanup Old Backups**            | Command Palette        | Manual backup management         |
 
-## ⚠️ Current Limitations
+## 🚨 Troubleshooting
 
-### **Technical Constraints**
-- ✅ **No Excel Installation Required** (unlike legacy extensions)
-- ✅ **Cross-Platform Support** (Windows, macOS, Linux)
-- ✅ **No COM Dependencies** (reliable across VS Code updates)
-- ⚠️ **Single Power Query per Excel File** (current implementation)
-- ⚠️ **Limited QueryTable Support** (legacy format)
+### Excel File Locked / Permission Issues
 
-### **File Operation Requirements**
-- 📄 **Excel Files Should Be Closed** during sync operations
-- 🔒 **Avoid Network Drive Issues** by using local files when possible
-- 💾 **Backup Files Created** automatically (can be disabled)
+**Problem:** "Could not sync - Excel file is locked"
 
-### **Performance Considerations**
-- 🚀 **Fast Extraction**: Direct file parsing, no COM overhead
-- ⚡ **Quick Sync**: Efficient binary blob updates
-- 📊 **Scalable**: Tested with files up to several MB
-- 🔄 **Auto-Watch Limit**: Maximum 20 files auto-watched on startup
+**Solutions:**
 
-## 💡 Pro Tips & Best Practices
+1. **Close Excel** if file is open in Excel application
+2. **Check file permissions** - ensure VS Code can write to the file
+3. **Wait and retry** - Excel may release lock after a moment
+4. **Enable write access checking**: Set `watch.checkExcelWriteable: true` (default)
 
-### **Workflow Optimization**
-1. 🎯 **Enable Watch Always** for active Power Query development
-2. 📁 **Use Custom Backup Path** like `./PQ-backups` for organization
-3. 🔍 **Enable Verbose Mode** during initial setup for visibility
-4. ⚡ **Use Toggle Watch** command for quick enable/disable
+**Advanced:** Extension automatically detects locked files and retries with user feedback.
 
-### **File Management**
-1. 📝 **Keep Descriptive Names**: `Q4_Sales_Analysis.xlsx` instead of `report.xlsx`
-2. 📂 **Organize by Project**: Separate folders for different analyses
-3. 🗂️ **Use Workspace Settings** for project-specific configurations
-4. 🔄 **Regular Cleanup**: Use "Cleanup Old Backups" periodically
+### Right-Click Menu Not Working
 
-### **Safety Practices**
-1. 🛡️ **Test on Copies** before working on important files
-2. 💾 **Verify Backups** are being created in expected location
-3. 🔍 **Check Verbose Logs** if operations seem unsuccessful
-4. 📊 **Use Debug Mode** for troubleshooting complex sync issues
+**Problem:** Context menu commands not appearing
 
-### **Collaboration**
-1. 👥 **Share Workspace Settings** via `.vscode/settings.json` in repository
-2. 📁 **Use Relative Backup Paths** like `./backups` for portability
-3. 🔄 **Document Watch Status** in project README
-4. ⚙️ **Standardize Team Settings** for consistent behavior
+**Solutions:**
 
-## 🤝 Integrations & Credits
+1. **Click inside the editor** - Commands require editor focus, not just file selection
+2. **Reload VS Code** - `Ctrl+Shift+P` → "Developer: Reload Window"
+3. **Check file type** - Ensure `.xlsx/.xlsm/.xlsb` for Excel files, `.m` for Power Query files
+4. **Extension activation** - Commands appear after first usage
 
-### **Core Dependencies**
-- **[excel-datamashup](https://github.com/Vladinator/excel-datamashup)** by Vladinator (GPL-3.0)
-  - Powers reliable Power Query extraction and sync
-  - Handles Excel DataMashup XML parsing and generation
-- **[Chokidar](https://github.com/paulmillr/chokidar)** - Robust file watching
-- **[JSZip](https://github.com/Stuk/jszip)** - Excel file parsing
+### Sync Failures / Corrupted Excel Files
 
-### **Recommended Companion Extensions**
+**Problem:** Sync operation fails or produces corrupted Excel
 
-```vscode-extensions
-powerquery.vscode-powerquery,grapecity.gc-excelviewer
+**Solutions:**
+
+1. **Restore from backup** - Use timestamped backup files
+2. **Validate M syntax** - Ensure your Power Query code is syntactically correct
+3. **Enable verbose logging**: Set `verboseMode: true` in settings
+4. **Check Output panel**: View → Output → "Excel Power Query Editor"
+
+**Debug Mode:**
+
+```json
+{
+  "excel-power-query-editor.debugMode": true,
+  "excel-power-query-editor.verboseMode": true
+}
 ```
 
-- **[Power Query / M Language](https://marketplace.visualstudio.com/items?itemName=powerquery.vscode-powerquery)** *(Required)*
-  - Essential for M language syntax highlighting and IntelliSense
-  - Automatically installed via Extension Pack
-  - Provides proper code completion and error detection
-- **[Excel Viewer by GrapeCity](https://marketplace.visualstudio.com/items?itemName=grapecity.gc-excelviewer)** *(Optional)*
-  - View Excel files directly in VS Code without opening Excel
-  - Perfect companion for Power Query development workflow
-  - Seamless integration with this extension
+### Watch Mode Not Triggering
 
-### **Version History**
-- **v0.4.x**: Extension Pack with Power Query M Language, improved categories and documentation
-- **v0.4.1**: Auto-watch initialization, hybrid activation
-- **v0.4.0**: Backup management, cleanup commands
-- **v0.3.1**: Settings implementation, auto-watch fixes
-- **v0.2.2**: Sync improvements, binary blob handling
-- **v0.1.3**: Initial stable release
+**Problem:** Auto-sync not working when saving `.m` file
+
+**Diagnostic Steps:**
+
+1. **Check status bar** - Look for `👁 Watching X PQ files`
+2. **File saved?** - Ensure you actually saved (`Ctrl+S`) the `.m` file
+3. **Debounce delay** - Wait 500ms after save (configurable)
+4. **Toggle watch** - Right-click → "Toggle Watch" to restart
+
+**Common Causes:**
+
+- File system events not firing (rare)
+- Debounce period too long for your workflow
+- Excel file locked preventing sync
+
+### Performance Issues
+
+**Problem:** Slow sync operations or VS Code lag
+
+**Solutions:**
+
+1. **Reduce backup retention**: Lower `backup.maxFiles` setting
+2. **Use temp folder for backups**: Set `backupLocation: "temp"`
+3. **Disable auto-open Excel**: Set `sync.openExcelAfterWrite: false`
+4. **Increase debounce delay**: Higher `sync.debounceMs` for rapid saves
+
+**Large Excel Files:**
+
+- Use `.xlsb` format for better performance
+- Consider disabling auto-backup for CI/CD scenarios
+- Monitor backup disk usage with high retention settings
+
+## ⌨️ Keyboard Shortcuts & Power User Tips
+
+### Efficient Workflows
+
+**Extract Multiple Files:**
+
+```bash
+# Use VS Code's multi-select (Ctrl+click) then right-click → Extract
+File1.xlsx  ← Ctrl+click
+File2.xlsx  ← Ctrl+click
+File3.xlsx  ← Right-click → "Extract Power Query from Excel"
+```
+
+**Bulk Watch Setup:**
+
+```bash
+# After extraction, select all .m files → Right-click → "Watch File for Changes"
+*.m files → Ctrl+A → Right-click → Enable watch
+```
+
+**Quick Configuration:**
+
+```bash
+# Command Palette shortcuts
+Ctrl+Shift+P → "excel" → Shows all extension commands
+Ctrl+Shift+P → "apply" → Quick access to Apply Recommended Defaults
+```
+
+### Status Bar Integration
+
+Monitor your Power Query workflow:
+
+```
+👁 Watching 3 PQ files    ← Active watch count
+🔄 Syncing...             ← Sync in progress
+✅ Synced to Excel        ← Successful sync (temporary)
+❌ Sync failed           ← Error occurred (temporary)
+```
+
+**Click status bar** for quick actions and detailed information.
+
+### Integration with Other Extensions
+
+**Recommended Extension Stack:**
+
+```vscode-extensions
+powerquery.vscode-powerquery        # M language support (auto-installed)
+ms-vscode.vscode-json               # Settings.json editing
+eamodio.gitlens                     # Git integration for .m files
+ms-python.python                    # For data analysis workflows
+```
+
+**Git Integration:**
+
+- Add `.m` files to version control
+- `.gitignore` backup files: `*_backup_*.xlsx`
+- Use Git diff to review Power Query changes
+
+## 🔗 Related Documentation
+
+- **⚙️ [Configuration Reference](CONFIGURATION.md)** - Complete settings guide with examples
+- **🤝 [Contributing Guide](CONTRIBUTING.md)** - Development setup and contribution guidelines
+- **📝 [Changelog](../CHANGELOG.md)** - Version history and feature updates
 
 ---
 
-## 📞 Support & Feedback
-
-### **💖 Support This Project**
-If this extension makes your Power Query development more productive, consider supporting its continued development:
-
-[![Buy Me a Coffee](https://img.shields.io/badge/-Buy%20Me%20a%20Coffee-ffdd00?style=for-the-badge&logo=buy-me-a-coffee&logoColor=black)](https://www.buymeacoffee.com/ewc3labs)
-
-*Your support helps maintain and improve this extension for the entire Power Query community!*
-
-### **Getting Help**
-1. 🔍 **Check Verbose Logs**: Enable verbose mode for detailed operation info
-2. 🐛 **Use Debug Mode**: For complex sync issues
-3. 🔧 **Try Raw Extraction**: For troubleshooting extraction problems
-4. 📖 **Consult Settings**: Many behaviors are configurable
-
-### **Known Working Configurations**
-- ✅ **Windows 11** with Excel 2021 (.xlsx, .xlsm, .xlsb)
-- ✅ **Cross-platform** VS Code (Windows, macOS, Linux)
-- ✅ **Large Files** up to several MB with complex Power Query
-- ✅ **Network Drives** (with proper permissions)
-
-*This extension provides a modern, reliable alternative to COM-based Power Query editing solutions.*
-
----
-
-**📝 Last Updated**: June 2025  
-**📄 For installation and overview**: See `README.md`  
-**⚙️ For quick settings**: See `CONFIGURATION.md`
+**Excel Power Query Editor v0.5.0** - Professional-grade Power Query development in VS Code
