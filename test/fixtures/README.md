@@ -1,33 +1,32 @@
-# Test Fixtures
+# Test Fixtures Documentation
 
-This directory contains sample Excel files for testing the Excel Power Query Editor extension.
+This directory contains test Excel files for comprehensive end-to-end testing of the Excel Power Query Editor extension.
 
-## Files
+## Test Files
 
-- `sample-with-powerquery.xlsx` - Sample Excel file containing Power Query for testing extraction and sync operations
-- `sample-without-powerquery.xlsx` - Sample Excel file without Power Query for testing edge cases
-- `test-data.csv` - Sample CSV data that can be referenced in Power Query scripts
+### Core Test Files
+- **simple.xlsx** - Basic Power Query with single table import
+- **complex.xlsm** - Multiple queries with dependencies and macros
+- **binary.xlsb** - Binary format with Power Query content
+- **no-powerquery.xlsx** - Excel file without any Power Query (edge case)
 
-## Usage
+### Expected Outputs
+The `expected/` directory contains the expected `.m` file content that should be extracted from each test file.
 
-These files are used by the automated test suite to validate:
-- Power Query extraction from Excel files
-- Sync operations back to Excel
-- Watch mode functionality
-- Backup and cleanup operations
+## Test Scenarios Covered
 
-## Creating Test Files
+1. **Format Support**: .xlsx, .xlsm, .xlsb files
+2. **Content Variety**: Simple vs complex Power Query scenarios
+3. **Edge Cases**: Files without Power Query content
+4. **Binary Format**: Specific testing for .xlsb handling
 
-To create new test Excel files with Power Query:
-1. Open Excel
-2. Go to Data > Get Data > From Other Sources > Blank Query
-3. Create a simple M query like:
-   ```m
-   let
-       Source = "Hello, World!",
-       Result = Source
-   in
-       Result
-   ```
-4. Save the file in this directory
-5. Update test cases to reference the new file
+## Usage in Tests
+
+Tests use these files to verify:
+- Extraction produces expected .m content
+- Sync operations work correctly
+- Watch functionality operates properly
+- Backup and cleanup functions work as expected
+- Error handling for edge cases
+
+Each test file should contain realistic Power Query scenarios that mirror real-world usage.
