@@ -2,7 +2,7 @@
   "name": "excel-power-query-editor",
   "displayName": "Excel Power Query Editor",
   "description": "Extract and sync Power Query M code from Excel files",
-  "version": "0.4.3",
+  "version": "0.5.0",
   "publisher": "ewc3labs",
   "repository": {
     "type": "git",
@@ -80,6 +80,11 @@
         "command": "excel-power-query-editor.cleanupBackups",
         "title": "Cleanup Old Backups",
         "category": "Excel PQ"
+      },
+      {
+        "command": "excel-power-query-editor.applyRecommendedDefaults",
+        "title": "Apply Recommended Defaults",
+        "category": "Excel PQ"
       }
     ],
     "configuration": {
@@ -93,67 +98,79 @@
         "excel-power-query-editor.watchOffOnDelete": {
           "type": "boolean",
           "default": true,
-          "description": "Automatically stop watching when the .m file is deleted"
-        },
-        "excel-power-query-editor.syncDeleteTurnsWatchOff": {
-          "type": "boolean",
-          "default": true,
-          "description": "Stop watching when using 'Sync & Delete'"
+          "description": "Stop watching a .m file if it is deleted from disk."
         },
         "excel-power-query-editor.syncDeleteAlwaysConfirm": {
           "type": "boolean",
           "default": true,
-          "description": "Always ask for confirmation before 'Sync & Delete' (uncheck to skip confirmation)"
+          "description": "Show a confirmation dialog before syncing and deleting the .m file. Uncheck to perform without confirmation."
         },
         "excel-power-query-editor.verboseMode": {
           "type": "boolean",
           "default": false,
-          "description": "Show detailed output in the Output panel"
+          "description": "Output detailed logs to the VS Code Output panel (recommended for troubleshooting)."
         },
         "excel-power-query-editor.autoBackupBeforeSync": {
           "type": "boolean",
           "default": true,
-          "description": "Create automatic backups before syncing to Excel"
+          "description": "Automatically create a backup of the Excel file before syncing from .m."
         },
         "excel-power-query-editor.backupLocation": {
           "type": "string",
           "enum": ["sameFolder", "tempFolder", "custom"],
           "default": "sameFolder",
-          "description": "Where to store backup files"
+          "description": "Folder to store backup files: same as Excel file, system temp folder, or a custom path."
         },
         "excel-power-query-editor.customBackupPath": {
           "type": "string",
           "default": "",
-          "description": "Custom path for backups (when backupLocation is 'custom')"
+          "description": "Path to use if backupLocation is set to \"custom\". Can be relative to the workspace root."
         },
-        "excel-power-query-editor.maxBackups": {
+        "excel-power-query-editor.backup.maxFiles": {
           "type": "number",
           "default": 5,
           "minimum": 1,
           "maximum": 50,
-          "description": "Maximum number of backup files to keep per Excel file (older backups are automatically deleted)"
+          "description": "Maximum number of backup files to retain per Excel file. Older backups are deleted when exceeded."
         },
         "excel-power-query-editor.autoCleanupBackups": {
           "type": "boolean",
           "default": true,
-          "description": "Automatically delete old backup files when exceeding maxBackups limit"
+          "description": "Enable automatic deletion of old backups when the number exceeds maxBackups."
         },
         "excel-power-query-editor.syncTimeout": {
           "type": "number",
           "default": 30000,
           "minimum": 5000,
           "maximum": 120000,
-          "description": "Timeout in milliseconds for sync operations"
+          "description": "Time in milliseconds before a sync attempt is aborted."
         },
         "excel-power-query-editor.debugMode": {
           "type": "boolean",
           "default": false,
-          "description": "Enable debug logging and save debug files"
+          "description": "Enable debug-level logging and write internal debug files to disk."
         },
         "excel-power-query-editor.showStatusBarInfo": {
           "type": "boolean",
           "default": true,
-          "description": "Show watch status and sync info in the status bar"
+          "description": "Display sync and watch status indicators in the VS Code status bar."
+        },
+        "excel-power-query-editor.sync.openExcelAfterWrite": {
+          "type": "boolean",
+          "default": false,
+          "description": "Automatically open the Excel file after a successful sync."
+        },
+        "excel-power-query-editor.sync.debounceMs": {
+          "type": "number",
+          "default": 500,
+          "minimum": 100,
+          "maximum": 5000,
+          "description": "Milliseconds to debounce file saves before sync. Prevents duplicate syncs in rapid succession."
+        },
+        "excel-power-query-editor.watch.checkExcelWriteable": {
+          "type": "boolean",
+          "default": true,
+          "description": "Before syncing, check if Excel file is writable. Warn or retry if locked."
         }
       }
     },
@@ -222,6 +239,9 @@
     "watch:esbuild": "node esbuild.js --watch",
     "watch:tsc": "tsc --noEmit --watch --project tsconfig.json",
     "package": "npm run check-types && npm run lint && node esbuild.js --production",
+    "package-vsix": "npm run package && vsce package",
+    "install-local": "npm run package-vsix && code --install-extension excel-power-query-editor-0.5.0.vsix",
+    "dev-install": "npm run package-vsix && code --install-extension excel-power-query-editor-0.5.0.vsix --force",
     "compile-tests": "tsc -p . --outDir out",
     "watch-tests": "tsc -p . -w --outDir out",
     "pretest": "npm run compile-tests && npm run compile && npm run lint",
@@ -237,6 +257,7 @@
     "@typescript-eslint/parser": "^8.31.1",
     "@vscode/test-cli": "^0.0.10",
     "@vscode/test-electron": "^2.5.2",
+    "@vscode/vsce": "^3.2.1",
     "esbuild": "^0.25.3",
     "eslint": "^9.25.1",
     "npm-run-all": "^4.1.5",

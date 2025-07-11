@@ -7,6 +7,9 @@ import { watch, FSWatcher } from 'chokidar';
 // File watchers storage
 const fileWatchers = new Map<string, FSWatcher>();
 
+// Debounce timers for file sync operations
+const debounceTimers = new Map<string, NodeJS.Timeout>();
+
 // Output channel for verbose logging
 let outputChannel: vscode.OutputChannel;
 
@@ -48,7 +51,7 @@ function getBackupPath(excelFile: string, timestamp: string): string {
 // Backup cleanup helper
 function cleanupOldBackups(excelFile: string): void {
 	const config = getConfig();
-	const maxBackups = config.get<number>('maxBackups', 5);
+	const maxBackups = config.get<number>('backup.maxFiles', 5);
 	const autoCleanup = config.get<boolean>('autoCleanupBackups', true);
 	
 	if (!autoCleanup || maxBackups <= 0) {
@@ -233,7 +236,8 @@ export async function activate(context: vscode.ExtensionContext) {
 		vscode.commands.registerCommand('excel-power-query-editor.stopWatching', stopWatching),
 		vscode.commands.registerCommand('excel-power-query-editor.syncAndDelete', syncAndDelete),
 		vscode.commands.registerCommand('excel-power-query-editor.rawExtraction', rawExtraction),
-		vscode.commands.registerCommand('excel-power-query-editor.cleanupBackups', cleanupBackupsCommand)
+		vscode.commands.registerCommand('excel-power-query-editor.cleanupBackups', cleanupBackupsCommand),
+		vscode.commands.registerCommand('excel-power-query-editor.applyRecommendedDefaults', applyRecommendedDefaults)
 	];
 
 	context.subscriptions.push(...commands);
@@ -544,6 +548,21 @@ async function syncToExcel(uri?: vscode.Uri): Promise<void> {
 			excelFile = selected;
 		}
 
+		// Check if Excel file is writable (not locked by Excel or another process)
+		const isWritable = await isExcelFileWritable(excelFile);
+		if (!isWritable) {
+			const fileName = path.basename(excelFile);
+			const retry = await vscode.window.showWarningMessage(
+				`Excel file "${fileName}" appears to be locked (possibly open in Excel). Close the file and try again.`,
+				'Retry', 'Cancel'
+			);
+			if (retry === 'Retry') {
+				// Retry after a short delay
+				setTimeout(() => syncToExcel(uri), 1000);
+			}
+			return;
+		}
+
 		// Read the .m file content
 		const mContent = fs.readFileSync(mFile, 'utf8');
 		
@@ -680,6 +699,18 @@ async function syncToExcel(uri?: vscode.Uri): Promise<void> {
 				fs.writeFileSync(excelFile, updatedBuffer);
 				
 				vscode.window.showInformationMessage(`✅ Successfully synced Power Query to Excel: ${path.basename(excelFile)}`);
+				log(`Successfully synced Power Query to Excel: ${path.basename(excelFile)}`);
+				
+				// Open Excel after sync if enabled
+				const config = getConfig();
+				if (config.get<boolean>('sync.openExcelAfterWrite', false)) {
+					try {
+						await vscode.commands.executeCommand('vscode.open', vscode.Uri.file(excelFile));
+						log(`Opened Excel file after sync: ${path.basename(excelFile)}`);
+					} catch (openError) {
+						log(`Failed to open Excel file after sync: ${openError}`, true);
+					}
+				}
 				return;
 				
 			} else {
@@ -738,6 +769,18 @@ async function syncToExcel(uri?: vscode.Uri): Promise<void> {
 				fs.writeFileSync(excelFile, updatedBuffer);
 				
 				vscode.window.showInformationMessage(`✅ Successfully synced Power Query to Excel (manual method): ${path.basename(excelFile)}`);
+				log(`Successfully synced Power Query to Excel (manual method): ${path.basename(excelFile)}`);
+				
+				// Open Excel after sync if enabled
+				const config = getConfig();
+				if (config.get<boolean>('sync.openExcelAfterWrite', false)) {
+					try {
+						await vscode.commands.executeCommand('vscode.open', vscode.Uri.file(excelFile));
+						log(`Opened Excel file after sync: ${path.basename(excelFile)}`);
+					} catch (openError) {
+						log(`Failed to open Excel file after sync: ${openError}`, true);
+					}
+				}
 				
 			} catch (manualError) {
 				throw new Error(`Both excel-datamashup and manual XML approaches failed. DataMashup error: ${dataMashupError}. Manual error: ${manualError}`);
@@ -805,8 +848,8 @@ async function watchFile(uri?: vscode.Uri): Promise<void> {
 		watcher.on('change', async () => {
 			try {
 				vscode.window.showInformationMessage(`📝 File changed, syncing: ${path.basename(mFile)}`);
-				log(`File changed, auto-syncing: ${path.basename(mFile)}`);
-				await syncToExcel(vscode.Uri.file(mFile));
+				log(`File changed, triggering debounced sync: ${path.basename(mFile)}`);
+				debouncedSyncToExcel(mFile);
 			} catch (error) {
 				const errorMsg = `Auto-sync failed: ${error}`;
 				vscode.window.showErrorMessage(errorMsg);
@@ -1085,7 +1128,7 @@ async function cleanupBackupsCommand(uri?: vscode.Uri): Promise<void> {
 		}
 
 		const config = getConfig();
-		const maxBackups = config.get<number>('maxBackups', 5);
+		const maxBackups = config.get<number>('backup.maxFiles', 5);
 		
 		// Get backup information
 		const sampleTimestamp = '2000-01-01T00-00-00-000Z';
@@ -1142,6 +1185,108 @@ async function cleanupBackupsCommand(uri?: vscode.Uri): Promise<void> {
 		vscode.window.showErrorMessage(errorMsg);
 		log(errorMsg, true);
 		console.error('Backup cleanup error:', error);
+	}
+}
+
+// Apply recommended default settings for v0.5.0
+async function applyRecommendedDefaults(): Promise<void> {
+	try {
+		const config = vscode.workspace.getConfiguration('excel-power-query-editor');
+		
+		// Recommended settings for v0.5.0
+		const recommendedSettings = {
+			'watchAlways': false,
+			'watchOffOnDelete': true,
+			'syncDeleteAlwaysConfirm': true,
+			'verboseMode': false,
+			'autoBackupBeforeSync': true,
+			'backupLocation': 'sameFolder',
+			'backup.maxFiles': 5,
+			'autoCleanupBackups': true,
+			'syncTimeout': 30000,
+			'debugMode': false,
+			'showStatusBarInfo': true,
+			'sync.openExcelAfterWrite': false,
+			'sync.debounceMs': 500,
+			'watch.checkExcelWriteable': true
+		};
+		
+		let updatedCount = 0;
+		const changedSettings: string[] = [];
+		
+		for (const [setting, value] of Object.entries(recommendedSettings)) {
+			const currentValue = config.get(setting);
+			if (currentValue !== value) {
+				await config.update(setting, value, vscode.ConfigurationTarget.Global);
+				changedSettings.push(`${setting}: ${currentValue} → ${value}`);
+				updatedCount++;
+			}
+		}
+		
+		if (updatedCount > 0) {
+			vscode.window.showInformationMessage(
+				`✅ Applied recommended defaults for v0.5.0 (${updatedCount} settings updated)`
+			);
+			log(`Applied recommended defaults - Updated settings:\n${changedSettings.join('\n')}`);
+		} else {
+			vscode.window.showInformationMessage(
+				'All settings already match recommended defaults for v0.5.0'
+			);
+			log('All settings already match recommended defaults');
+		}
+		
+	} catch (error) {
+		const errorMsg = `Failed to apply recommended defaults: ${error}`;
+		vscode.window.showErrorMessage(errorMsg);
+		log(errorMsg, true);
+	}
+}
+
+// Debounced sync helper to prevent multiple syncs in rapid succession
+function debouncedSyncToExcel(mFile: string): void {
+	const config = getConfig();
+	const debounceMs = config.get<number>('sync.debounceMs', 500);
+	
+	// Clear existing timer for this file
+	const existingTimer = debounceTimers.get(mFile);
+	if (existingTimer) {
+		clearTimeout(existingTimer);
+	}
+	
+	// Set new timer
+	const timer = setTimeout(async () => {
+		try {
+			log(`Debounced sync executing for ${path.basename(mFile)}`);
+			await syncToExcel(vscode.Uri.file(mFile));
+			debounceTimers.delete(mFile);
+		} catch (error) {
+			log(`Debounced sync failed for ${path.basename(mFile)}: ${error}`, true);
+			debounceTimers.delete(mFile);
+		}
+	}, debounceMs);
+	
+	debounceTimers.set(mFile, timer);
+	log(`Sync debounced for ${path.basename(mFile)} (${debounceMs}ms)`);
+}
+
+// Check if Excel file is writable (not locked)
+async function isExcelFileWritable(excelFile: string): Promise<boolean> {
+	const config = getConfig();
+	const checkWriteable = config.get<boolean>('watch.checkExcelWriteable', true);
+	
+	if (!checkWriteable) {
+		return true; // Skip check if disabled
+	}
+	
+	try {
+		// Try to open the file for writing to check if it's locked
+		const handle = await fs.promises.open(excelFile, 'r+');
+		await handle.close();
+		return true;
+	} catch (error: any) {
+		// File is likely locked by Excel or another process
+		log(`Excel file appears to be locked: ${error.message}`, true);
+		return false;
 	}
 }
 
