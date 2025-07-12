@@ -10,7 +10,13 @@
 
 🔍 **Migration Logic Not Triggered**: Extension v0.5.0 installed but migration not occurring because:
 1. `getEffectiveLogLevel()` only called within new `log()` function
-2. Most existing log calls bypass new logging system entirely  
+2. Most existing log ca- [ ] **🚨 CRITICAL**: Windows file watching causing excessive auto-sync (4+ events per save)
+- [ ] **🚨 CRITICAL**: Metadata headers not stripped before Excel sync (data corruption risk)
+- [ ] **🚨 CRITICAL**: Test suite timeouts - toggleWatch command hanging (immediate blocker)
+- [ ] **🚨 CRITICAL**: File dialog popups block automated testing (UI interaction required)
+- [x] **🚨 CRITICAL**: File picker for sync operations allows accidental data destruction ✅ **FIXED**
+- [ ] **🚨 HIGH**: Duplicate metadata headers in .m files
+- [ ] **⚠️ MEDIUM**: Migration system implemented but not activated (users not seeing benefits)ass new logging system entirely  
 3. Settings dump shows: `verboseMode: true, debugMode: true` - legacy settings still active
 4. No migration notification appeared during activation
 
@@ -497,7 +503,9 @@ When a user with legacy settings first activates v0.5.0:
 - [ ] **🚨 CRITICAL**: Windows file watching causing excessive auto-sync (4+ events per save)
 - [ ] **🚨 CRITICAL**: Metadata headers not stripped before Excel sync (data corruption risk)
 - [ ] **🚨 CRITICAL**: Test suite timeouts - toggleWatch command hanging (immediate blocker)
-- [ ] **🚨 HIGH**: Duplicate metadata headers in .m files
+- [ ] **🚨 CRITICAL**: File dialog popups block automated testing (UI interaction required)
+- [ ] **🚨 CRITICAL**: File picker for sync operations allows accidental data destruction
+- [ ] **🚨 CRITICAL**: Duplicate metadata headers in .m files
 - [ ] **⚠️ MEDIUM**: Migration system implemented but not activated (users not seeing benefits)
 
 ### 🎯 Production Impact
