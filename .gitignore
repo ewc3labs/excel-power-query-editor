@@ -24,3 +24,7 @@ test/fixtures/*_debug_extraction/
 # Debug sync folders
 debug_sync/
 test/fixtures/debug_sync/
+
+* Logs folders and log files *
+logs/
+*.log

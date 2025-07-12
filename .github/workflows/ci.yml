@@ -11,7 +11,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
-        node-version: [18, 20]
+        node-version: [22, 24]
 
     runs-on: ${{ matrix.os }}
 
@@ -49,11 +49,11 @@ jobs:
         continue-on-error: false
 
       - name: Package VSIX
-        if: matrix.os == 'ubuntu-latest' && matrix.node-version == '20'
+        if: matrix.os == 'ubuntu-latest' && matrix.node-version == '24'
         run: npm run package-vsix
 
       - name: Upload VSIX artifact
-        if: matrix.os == 'ubuntu-latest' && matrix.node-version == '20'
+        if: matrix.os == 'ubuntu-latest' && matrix.node-version == '24'
         uses: actions/upload-artifact@v4
         with:
           name: excel-power-query-editor-vsix

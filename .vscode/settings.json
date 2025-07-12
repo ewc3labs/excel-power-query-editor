@@ -18,5 +18,44 @@
     "excel-power-query-editor.customBackupPath": "./VSCodeBackups",
     "excel-power-query-editor.debugMode": true,
     "excel-power-query-editor.watchOffOnDelete": true,
-    "excel-power-query-editor.sync.debounceMs": 100
+    "excel-power-query-editor.sync.debounceMs": 100,
+    
+    // Enterprise DevOps Settings
+    "git.autofetch": true,
+    "git.confirmSync": false,
+    "git.enableSmartCommit": true,
+    "git.autoStash": true,
+    "explorer.confirmDragAndDrop": false,
+    "explorer.confirmDelete": false,
+    "workbench.editor.enablePreview": false,
+    "workbench.editor.revealIfOpen": true,
+    "editor.formatOnSave": true,
+    "editor.codeActionsOnSave": {
+        "source.fixAll.eslint": "explicit"
+    },
+    "files.autoSave": "afterDelay",
+    "files.autoSaveDelay": 1000,
+    
+    // Test Explorer Settings
+    "testExplorer.useNativeTesting": true,
+    "typescript.preferences.includePackageJsonAutoImports": "on",
+    "npm.enableRunFromFolder": true,
+    
+    // Terminal configuration
+    "terminal.integrated.profiles.windows": {
+        "PowerShell": {
+            "source": "PowerShell",
+            "icon": "terminal-powershell"
+        },
+        "Command Prompt": {
+            "path": "cmd.exe",
+            "icon": "terminal-cmd"
+        },
+        "Git Bash": {
+            "path": "C:\\Program Files\\Git\\bin\\bash.exe",
+            "icon": "terminal-bash",
+            "args": ["-l"]
+        }
+    },
+    "terminal.integrated.defaultProfile.windows": "Git Bash"
 }
