@@ -6,5 +6,21 @@ node_modules
 test/out/
 test/.vscode-test/
 
+# Generated Power Query files (extracted from Excel)
+*_PowerQuery.m
+
 # Testing folder with large files and sensitive data
 temp-testing/
+
+# Test backup files
+*.backup.*
+test/**/*.backup.*
+test/fixtures/*.backup.*
+
+# Debug extraction folders
+*_debug_extraction/
+test/fixtures/*_debug_extraction/
+
+# Debug sync folders
+debug_sync/
+test/fixtures/debug_sync/

@@ -4,7 +4,35 @@
 
 ### Dev Container Settings Issue
 
-**Issue**: Settings configured in local user settings (`C:\Users\[user]\AppData\Roaming\Code\User\settings.json`) do not flow into dev container environments.
+**Issue**: Settings configured in local**Status**: 🔄 **IMPLEMENTED BUT NEEDS ACTIVATION** - Migration logic ready, needs application
+
+**Current Issue Discovered** (2025-07-12):
+
+🔍 **Migration Logic Not Triggered**: Extension v0.5.0 installed but migration not occurring because:
+1. `getEffectiveLogLevel()` only called within new `log()` function
+2. Most existing log calls bypass new logging system entirely  
+3. Settings dump shows: `verboseMode: true, debugMode: true` - legacy settings still active
+4. No migration notification appeared during activation
+
+**Root Cause**: Two-phase implementation issue
+- ✅ **Phase 1 Complete**: New logLevel setting and migration logic implemented
+- ❌ **Phase 2 Needed**: Replace all existing `log()` calls to use new system
+
+**Evidence from v0.5.0 Test Run**:
+```log
+[2025-07-12T02:40:04.093Z] verboseMode: true  
+[2025-07-12T02:40:04.093Z] debugMode: true
+[2025-07-12T02:40:04.128Z] Formula extracted successfully. Creating output file...
+```
+- Shows excessive logging despite should be "info" level
+- No migration message = `getEffectiveLogLevel()` never called
+- Legacy boolean settings still controlling output
+
+**Next Steps for Logging Refactoring**:
+1. **Audit all log calls** throughout codebase to categorize by level
+2. **Force migration trigger** during extension activation  
+3. **Replace critical log calls** with level-appropriate versions
+4. **Test migration UX** with actual user notificationer settings (`C:\Users\[user]\AppData\Roaming\Code\User\settings.json`) do not flow into dev container environments.
 
 **Solution**: Extension settings must be configured in workspace settings (`.vscode/settings.json`) when working in dev containers.
 
@@ -149,7 +177,61 @@ await config.update(setting, value, target);
 
 ### 4. Legacy Settings Migration + Logging Standardization
 
-**Status**: ✅ **COMPLETED - AUTOMATIC MIGRATION IMPLEMENTED & TESTED**
+**Status**: ✅ **MIGRATION SYSTEM WORKING - READY FOR SYSTEMATIC REFACTORING**
+
+**Latest Test Results** (2025-07-12T02:48:27):
+
+✅ **Log Level Detection Working**: 
+```
+[2025-07-12T02:48:27.573Z] Excel Power Query Editor extension activated (log level: info)
+```
+
+✅ **Cleaner Info-Level Output**: Massive reduction in noise compared to legacy verbose mode
+✅ **Context Prefixes Preserved**: Function-level organization maintained
+✅ **Migration Logic Correct**: Skips migration when `logLevel` already exists
+✅ **Dev Container Detection**: Environment properly detected for Apply Recommended Defaults
+
+**Current State**:
+- ✅ New `logLevel` setting working and detected
+- ✅ Legacy settings marked as deprecated but preserved for compatibility
+- ✅ Apply Recommended Defaults updated for dev container compatibility
+- 🔄 **Next: Systematic refactoring** of all log calls to use new level-based system
+
+**Refactoring Plan**:
+
+**Phase 1**: Convert Critical Functions (High Priority)
+- `extractFromExcel()` - Most verbose function, biggest impact
+- `syncToExcel()` - Core functionality
+- `watchFile()` - Auto-watch system
+- `dumpAllExtensionSettings()` - Currently dumps everything regardless of level
+
+**Phase 2**: Convert Utility Functions (Medium Priority)  
+- `initializeAutoWatch()`
+- `cleanupOldBackups()`
+- File watcher event handlers
+
+**Phase 3**: Convert Edge Cases (Low Priority)
+- Error messages (should always show)
+- Raw extraction debug output
+- Test-related logging
+
+**Implementation Strategy**:
+1. **Add level parameter** to existing log calls: `log(message, context, level)`
+2. **Categorize each message** by appropriate level:
+   - `error`: Failures, exceptions, critical issues
+   - `warn`: Warnings, fallbacks, potential issues  
+   - `info`: Key operations, user-visible progress (DEFAULT)
+   - `verbose`: Detailed progress, internal state
+   - `debug`: Fine-grained debugging, technical details
+3. **Test each function** at different log levels to verify appropriate filtering
+
+**Expected Benefits**:
+- **User Experience**: Cleaner output at default info level
+- **Debugging**: Rich detail available at verbose/debug levels
+- **Performance**: Reduced logging overhead at lower levels
+- **Maintainability**: Clear categorization of log importance
+
+**Next Steps**: Start with `extractFromExcel()` function as it's the most verbose
 
 **Implementation Completed** (2025-07-12):
 
@@ -407,6 +489,16 @@ When a user with legacy settings first activates v0.5.0:
 - [x] ~~Hardcoded customXml scanning limitation~~ ✅ **FIXED**
 - [x] ~~Sync vs extraction DataMashup detection inconsistency~~ ✅ **FIXED**
 - [x] ~~File auto-watch not working in dev containers~~ ✅ **FIXED** (debounce was masking success)
+- [x] ~~Configuration system consistency~~ ✅ **FIXED** (unified config system with test mocking)
+- [x] ~~Extension activation and command registration~~ ✅ **FIXED** (initialization order corrected)
+
+### 🔴 NEW Critical Issues Discovered (2025-07-12T22:30)
+
+- [ ] **🚨 CRITICAL**: Windows file watching causing excessive auto-sync (4+ events per save)
+- [ ] **🚨 CRITICAL**: Metadata headers not stripped before Excel sync (data corruption risk)
+- [ ] **🚨 CRITICAL**: Test suite timeouts - toggleWatch command hanging (immediate blocker)
+- [ ] **🚨 HIGH**: Duplicate metadata headers in .m files
+- [ ] **⚠️ MEDIUM**: Migration system implemented but not activated (users not seeing benefits)
 
 ### 🎯 Production Impact
 
@@ -419,28 +511,105 @@ When a user with legacy settings first activates v0.5.0:
 
 ---
 
-## Next Steps
+## 🚨 URGENT ACTION ITEMS - IMMEDIATE PRIORITIES (2025-07-12T22:30)
 
-1. **Current Priority**: Complete file auto-watch debugging in dev containers
+### Phase 1: Critical Test Suite Failures (IMMEDIATE - Day 1)
 
-   - Test dual watcher system (chokidar + VS Code FileSystemWatcher)
-   - Verify polling mode effectiveness in Docker mounted volumes
-   - Consider `onDidSaveTextDocument` event as alternative trigger
+**🔥 BLOCKING ISSUE**: Test suite failing with timeouts
+- `toggleWatch command execution` timing out after 2000ms
+- Tests were passing earlier, regression introduced during final sessions
+- **Impact**: Cannot validate any changes until test suite is stable
+- **Priority**: P0 - Must fix before any other work
 
-2. **Logging Standardization**: Complete function context logging migration
+**Actions Required**:
+1. Investigate `toggleWatch` command implementation for deadlocks
+2. Check if file watcher cleanup is causing hangs
+3. Validate test timeout settings vs actual operation times
+4. Consider splitting watch tests into smaller, focused units
 
-   - Replace remaining `function() completed.` style with `[functionName]` format
-   - Implement consolidated log level setting (none/error/warn/info/verbose/debug)
+### Phase 2: Windows File Watching Crisis (HIGH - Day 1-2)
 
-3. **Dev Container UX**: Fix Apply Recommended Defaults for dev container users
+**🚨 CRITICAL WINDOWS ISSUE**: Triple watcher system causing chaos
+- File creation triggers immediate unwanted sync
+- 4+ sync events per single file save
+- Excessive backup creation (performance killer)
+- User experience severely degraded
 
-   - Implement workspace vs global scope detection
-   - Add user choice for settings scope
+**Root Causes Identified**:
+1. **Over-engineered solution**: Dev container workarounds harmful on Windows
+2. **No environment detection**: Same watchers used regardless of platform
+3. **Event cascade**: Multiple watchers triggering each other
+4. **Missing debounce**: Events firing faster than debounce can handle
 
-4. **Documentation Updates**: Reflect major fixes in user documentation
-   - Update user guide with large file capability
-   - Document dev container settings requirements
-   - Add troubleshooting guide for file watching issues
+**Actions Required**:
+1. **Platform-specific watcher logic**: Simple Chokidar-only for Windows
+2. **Prevent creation-triggered sync**: Only watch user edits, not file creation
+3. **Increase Windows debounce**: 500ms → 2000ms to handle fast events
+4. **Add event deduplication**: Hash-based change detection
+
+### Phase 3: Data Integrity Risk (HIGH - Day 2)
+
+**🚨 DATA CORRUPTION RISK**: Metadata headers syncing to Excel
+- Informational headers supposed to be stripped before sync
+- Currently writing comment headers into DataMashup binary content
+- Potential for corrupted Excel files in production
+
+**Evidence**:
+```
+// Power Query from: example.xlsx
+// Pathname: C:\path\to\example.xlsx
+// Extracted: 2025-07-12T01:52:13.000Z
+```
+- Above content being written to Excel DataMashup instead of M code only
+
+**Actions Required**:
+1. **Fix header stripping logic**: Enhance regex to remove ALL comment headers
+2. **Validate clean M code**: Ensure only `section` and below reaches Excel
+3. **Test round-trip integrity**: Verify no header pollution in sync
+4. **Add content validation**: Pre-sync verification of clean M code
+
+### Phase 4: Migration System Activation (MEDIUM - Day 3)
+
+**⚠️ WASTED EFFORT**: Users not benefiting from new logging system
+- Migration logic implemented but never triggered
+- Users still seeing excessive verbose output
+- New `logLevel` setting not being adopted automatically
+
+**Actions Required**:
+1. **Force migration trigger**: Call `getEffectiveLogLevel()` during activation
+2. **Replace legacy log calls**: Convert high-volume functions to use new system
+3. **Test migration UX**: Verify user notification and settings update
+4. **Document migration**: Clear upgrade path for existing users
+
+---
+
+## 📋 **NEXT ACTIONS - IMMEDIATE LOGGING SYSTEM COMPLETION**
+
+📊 **COMPREHENSIVE AUDIT COMPLETED**: See `docs/LOGGING_AUDIT_v0.5.0.md` for complete analysis of all 89 logging instances
+
+### **🔥 CRITICAL FINDINGS**
+- **96.6% of log calls** (86/89 instances) are NOT log-level aware
+- **10 direct console.error calls** bypass logging system entirely  
+- **Massive performance impact**: All verbose/debug content always logs regardless of setting
+
+### **📈 IMPLEMENTATION ROADMAP**
+
+#### **Phase 1: Emergency Error Suppression** (P0 - 2 hours)
+1. **Replace 10 console.error calls** with log-level aware versions
+2. **Update log() function signature** to accept optional level parameter  
+3. **Test critical error filtering** at different log levels
+
+#### **Phase 2: High-Impact User Experience** (P1 - 3 hours)  
+1. **Fix Power Query extraction** (25 calls) - Core user-facing feature
+2. **Fix Excel sync operations** (15 calls) - High-frequency operations
+3. **Validate info level experience** - Should be clean and professional
+
+#### **Phase 3: Complete System** (P2 - 2 hours)
+1. **Fix file watching** (20 calls) - Reduce excessive watch noise
+2. **Fix extension activation** (15 calls) - Professional startup experience
+3. **Comprehensive level testing** - Verify all 6 log levels work correctly
+
+**Expected Result**: ~90% reduction in log noise at default `info` level, professional user experience
 
 ---
 

@@ -39,6 +39,11 @@ export function getConfig(): ConfigHelper {
             },
             has(section: string): boolean {
                 return testConfig!.has(section);
+            },
+            update(section: string, value: any, configurationTarget?: any): Thenable<void> {
+                // In test environment, just update the test config map
+                testConfig!.set(section, value);
+                return Promise.resolve();
             }
         };
     } else {
