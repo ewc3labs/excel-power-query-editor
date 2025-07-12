@@ -1,10 +1,10 @@
 name: VS Code Extension CI/CD
-
 on:
   push:
-    branches: [main, develop]
+    branches: [main, release/**, wip/**, hotfix/**]
   pull_request:
-    branches: [main]
+    branches: [main, release/**, wip/**, hotfix/**]
+
 
 jobs:
   test:
