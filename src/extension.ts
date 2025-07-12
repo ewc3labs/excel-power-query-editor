@@ -6,7 +6,8 @@ import { watch, FSWatcher } from 'chokidar';
 import { getConfig } from './configHelper';
 
 // File watchers storage
-const fileWatchers = new Map<string, FSWatcher>();
+const fileWatchers = new Map<string, { chokidar: FSWatcher; vscode: vscode.FileSystemWatcher | null; document: vscode.Disposable | null }>();
+const recentExtractions = new Set<string>(); // Track recently extracted files to prevent immediate auto-sync
 
 // Debounce timers for file sync operations
 const debounceTimers = new Map<string, NodeJS.Timeout>();
@@ -96,7 +97,7 @@ function cleanupOldBackups(excelFile: string): void {
 					deletedCount++;
 					log(`Deleted old backup: ${backup.filename}`);
 				} catch (deleteError) {
-					log(`Failed to delete backup ${backup.filename}: ${deleteError}`, true);
+					log(`Failed to delete backup ${backup.filename}: ${deleteError}`, 'cleanupBackups');
 				}
 			}
 			
@@ -106,27 +107,88 @@ function cleanupOldBackups(excelFile: string): void {
 		}
 		
 	} catch (error) {
-		log(`Backup cleanup failed: ${error}`, true);
+		log(`Backup cleanup failed: ${error}`, 'cleanupBackups');
 	}
 }
 
-// Verbose logging helper
-function log(message: string, isError: boolean = false) {
+// Enhanced logging function with context and log levels
+function log(message: string, context?: string): void {
 	const config = getConfig();
-	const timestamp = new Date().toISOString();
-	const logMessage = `[${timestamp}] ${message}`;
+	const logLevel = getEffectiveLogLevel();
 	
-	console.log(logMessage);
-	
-	if (config.get<boolean>('verboseMode', false)) {
-		if (!outputChannel) {
-			outputChannel = vscode.window.createOutputChannel('Excel Power Query Editor');
-		}
-		outputChannel.appendLine(logMessage);
-		if (isError) {
-			outputChannel.show();
-		}
+	// Determine message level based on context or content
+	let messageLevel = 'info';
+	if (context === 'error' || message.includes('❌') || message.toLowerCase().includes('error')) {
+		messageLevel = 'error';
+	} else if (message.includes('⚠️') || message.toLowerCase().includes('warning')) {
+		messageLevel = 'warn';
+	} else if (context === 'debug' || context === 'extractPowerQuery' || context === 'syncToExcel' || context === 'watchFile') {
+		messageLevel = 'verbose';
 	}
+	
+	// Check if message should be logged at current level
+	const levelOrder = ['none', 'error', 'warn', 'info', 'verbose', 'debug'];
+	const currentLevelIndex = levelOrder.indexOf(logLevel);
+	const messageLevelIndex = levelOrder.indexOf(messageLevel);
+	
+	if (currentLevelIndex < messageLevelIndex) {
+		return; // Don't log this message at current level
+	}
+	
+	const timestamp = new Date().toISOString();
+	const contextInfo = context ? `[${context}] ` : '';
+	const fullMessage = `[${timestamp}] ${contextInfo}${message}`;
+	console.log(fullMessage);
+	outputChannel.appendLine(fullMessage);
+}
+
+// Get effective log level with automatic migration from legacy settings
+function getEffectiveLogLevel(): string {
+	const config = getConfig();
+	
+	// Check if new setting exists
+	const logLevel = config.get<string>('logLevel');
+	if (logLevel) {
+		return logLevel;
+	}
+	
+	// Check legacy settings and migrate
+	const verboseMode = config.get<boolean>('verboseMode');
+	const debugMode = config.get<boolean>('debugMode');
+	
+	let migratedLevel = 'info'; // Default
+	
+	if (debugMode) {
+		migratedLevel = 'debug';
+	} else if (verboseMode) {
+		migratedLevel = 'verbose';
+	}
+	
+	// Perform one-time migration if legacy settings exist
+	if (verboseMode !== undefined || debugMode !== undefined) {
+		// Use Promise for async operation
+		Promise.resolve(vscode.workspace.getConfiguration('excel-power-query-editor')
+			.update('logLevel', migratedLevel, vscode.ConfigurationTarget.Global))
+			.then(() => {
+				vscode.window.showInformationMessage(
+					`Excel Power Query Editor: Updated logging settings. ` +
+					`Your previous settings (verbose: ${verboseMode}, debug: ${debugMode}) ` +
+					`have been migrated to logLevel: "${migratedLevel}". ` +
+					`Legacy settings can be safely removed from your configuration.`,
+					'OK', 'Open Settings'
+				).then(choice => {
+					if (choice === 'Open Settings') {
+						vscode.commands.executeCommand('workbench.action.openSettings', 'excel-power-query-editor');
+					}
+				});
+				log(`Migrated legacy logging settings to logLevel: ${migratedLevel}`, 'migration');
+			})
+			.catch((error: any) => {
+				log(`Failed to migrate legacy settings: ${error}`, 'error');
+			});
+	}
+	
+	return migratedLevel;
 }
 
 // Update status bar
@@ -189,7 +251,7 @@ async function initializeAutoWatch(): Promise<void> {
 					watchedCount++;
 					log(`Auto-watch initialized: ${path.basename(mFile)} → ${path.basename(excelFile)}`);
 				} catch (error) {
-					log(`Failed to auto-watch ${path.basename(mFile)}: ${error}`, true);
+					log(`Failed to auto-watch ${path.basename(mFile)}: ${error}`, 'autoWatchInit');
 				}
 			} else {
 				log(`Skipping ${path.basename(mFile)} - no corresponding Excel file found`);
@@ -214,7 +276,7 @@ async function initializeAutoWatch(): Promise<void> {
 		}
 
 	} catch (error) {
-		log(`Auto-watch initialization failed: ${error}`, true);
+		log(`Auto-watch initialization failed: ${error}`, 'autoWatchInit');
 		vscode.window.showErrorMessage(`Auto-watch initialization failed: ${error}`);
 	}
 }
@@ -250,42 +312,71 @@ export async function activate(context: vscode.ExtensionContext) {
 
 async function extractFromExcel(uri?: vscode.Uri): Promise<void> {
 	try {
+		// First, dump all extension settings for debugging
+		dumpAllExtensionSettings();
+		
 		const excelFile = uri?.fsPath || await selectExcelFile();
 		if (!excelFile) {
+			log('No Excel file selected for extraction');
 			return;
 		}
 
+		log(`Starting Power Query extraction from: ${path.basename(excelFile)}`, 'extractPowerQuery');
 		vscode.window.showInformationMessage(`Extracting Power Query from: ${path.basename(excelFile)}`);
 		
 		// Try to use excel-datamashup for extraction
 		try {
-			// First, we need to extract customXml/item1.xml from the Excel file
+			log('Loading required modules...', 'extractPowerQuery');
+			// First, we need to extract the DataMashup XML from the Excel file (scanning all customXml files)
 			const JSZip = (await import('jszip')).default;
 			
 			// Use require for excel-datamashup to avoid ES module issues
 			const excelDataMashup = require('excel-datamashup');
-			
-			const buffer = fs.readFileSync(excelFile);
-			const zip = await JSZip.loadAsync(buffer);
+			log('Modules loaded successfully', 'extractPowerQuery');
+					log('Reading Excel file buffer...', 'extractPowerQuery');
+		let buffer: Buffer;
+		try {
+			buffer = fs.readFileSync(excelFile);
+			const fileSizeMB = (buffer.length / (1024 * 1024)).toFixed(2);
+			log(`Excel file read: ${fileSizeMB} MB`);
+		} catch (error) {
+			const errorMsg = `Failed to read Excel file: ${error}`;
+			vscode.window.showErrorMessage(errorMsg);
+			log(errorMsg, "error");
+			return;
+		}
+
+		log('Loading ZIP structure...');
+		let zip: any;
+		try {
+			zip = await JSZip.loadAsync(buffer, {
+				checkCRC32: false // Skip CRC check for better performance on large files
+			});
+			log('ZIP structure loaded successfully');
+		} catch (error) {
+			const errorMsg = `Failed to load Excel file as ZIP: ${error}`;
+			vscode.window.showErrorMessage(errorMsg);
+			log(errorMsg, "error");
+			return;
+		}
 			
 			// Debug: List all files in the Excel zip
 			const allFiles = Object.keys(zip.files).filter(name => !zip.files[name].dir);
 			console.log('Files in Excel archive:', allFiles);
 			
-			// Look for Power Query in multiple possible locations
-			const powerQueryLocations = [
-				'customXml/item1.xml',
-				'customXml/item2.xml', 
-				'customXml/item3.xml',
-				'xl/queryTables/queryTable1.xml',
-				'xl/connections.xml'
-			];
+			// Look for Power Query DataMashup (the only format with actual M code)
+			// Scan ALL customXml files instead of just hardcoded item1/2/3
+			const customXmlFiles = Object.keys(zip.files)
+				.filter(name => name.startsWith('customXml/') && name.endsWith('.xml'))
+				.filter(name => !name.includes('/_rels/')) // Exclude relationship files
+				.sort(); // Process in consistent order
+			
+			log(`Found ${customXmlFiles.length} customXml files to scan: ${customXmlFiles.join(', ')}`);
 			
 			let xmlContent: string | null = null;
 			let foundLocation = '';
-			let queryType = '';
 			
-			for (const location of powerQueryLocations) {
+			for (const location of customXmlFiles) {
 				const xmlFile = zip.file(location);
 				if (xmlFile) {
 					try {
@@ -295,11 +386,11 @@ async function extractFromExcel(uri?: vscode.Uri): Promise<void> {
 						
 						// Check for UTF-16 LE BOM (FF FE)
 						if (binaryData.length >= 2 && binaryData[0] === 0xFF && binaryData[1] === 0xFE) {
-							console.log(`Detected UTF-16 LE BOM in ${location}`);
+							log(`Detected UTF-16 LE BOM in ${location}`);
 							// Decode UTF-16 LE (skip the 2-byte BOM)
 							content = binaryData.subarray(2).toString('utf16le');
 						} else if (binaryData.length >= 3 && binaryData[0] === 0xEF && binaryData[1] === 0xBB && binaryData[2] === 0xBF) {
-							console.log(`Detected UTF-8 BOM in ${location}`);
+							log(`Detected UTF-8 BOM in ${location}`);
 							// Decode UTF-8 (skip the 3-byte BOM)
 							content = binaryData.subarray(3).toString('utf8');
 						} else {
@@ -307,170 +398,127 @@ async function extractFromExcel(uri?: vscode.Uri): Promise<void> {
 							content = binaryData.toString('utf8');
 						}
 						
-						console.log(`Content preview from ${location} (first 200 chars):`, content.substring(0, 200));
+						log(`Scanning ${location} for DataMashup content (${(content.length / 1024).toFixed(1)} KB)`);
 						
-						// Check for DataMashup format (what excel-datamashup expects)
+						// Only accept DataMashup format - the only one with actual Power Query M code
 						if (content.includes('DataMashup')) {
 							xmlContent = content;
 							foundLocation = location;
-							queryType = 'DataMashup';
-							console.log(`Found DataMashup Power Query in: ${location}`);
-							break;
-						}
-						// Check for query table format (newer Excel)
-						else if (content.includes('queryTable') && location.includes('queryTables')) {
-							xmlContent = content;
-							foundLocation = location;
-							queryType = 'QueryTable';
-							console.log(`Found QueryTable Power Query in: ${location}`);
-							break;
-						}
-						// Check for connections format
-						else if (content.includes('connection') && (content.includes('Query') || content.includes('PowerQuery'))) {
-							xmlContent = content;
-							foundLocation = location;
-							queryType = 'Connection';
-							console.log(`Found Connection Power Query in: ${location}`);
-							break;
+							log(`✅ Found DataMashup Power Query in: ${location}`);
+							break; // Found actual Power Query, stop searching
+						} else {
+							log(`❌ No DataMashup content in ${location}`);
 						}
 					} catch (e) {
-						console.log(`Could not read ${location}:`, e);
+						log(`❌ Could not read ${location}: ${e}`);
 					}
 				}
 			}
 			
 			if (!xmlContent) {
-				// No Power Query found, let's check what customXml files exist
+				// No DataMashup found - no actual Power Query in this file
 				const customXmlFiles = allFiles.filter(f => f.startsWith('customXml/'));
 				const xlFiles = allFiles.filter(f => f.startsWith('xl/') && f.includes('quer'));
 				
 				vscode.window.showWarningMessage(
-					`No Power Query found. Available files:\n` +
+					`No Power Query found. This Excel file does not contain DataMashup Power Query M code.\n` +
+					`Available files:\n` +
 					`CustomXml: ${customXmlFiles.join(', ') || 'none'}\n` +
-					`Query files: ${xlFiles.join(', ') || 'none'}\n` +
+					`Query files: ${xlFiles.join(', ') || 'none'} (these contain only metadata, not M code)\n` +
 					`Total files: ${allFiles.length}`
 				);
 				return;
 			}
 			
-			console.log(`Attempting to parse Power Query from: ${foundLocation} (type: ${queryType})`);
+			log(`Attempting to parse DataMashup Power Query from: ${foundLocation}`);
+			log(`DataMashup XML content size: ${(xmlContent.length / 1024).toFixed(2)} KB`);
 			
-			if (queryType === 'DataMashup') {
-				// Use excel-datamashup for DataMashup format
-				const parseResult = await excelDataMashup.ParseXml(xmlContent);
-				
-				if (typeof parseResult === 'string') {
-					vscode.window.showErrorMessage(`Power Query parsing failed: ${parseResult}\nLocation: ${foundLocation}\nXML preview: ${xmlContent.substring(0, 200)}...`);
-					return;
-				}
-				
-				// Extract the formula
-				const formula = parseResult.getFormula();
-				if (!formula) {
-					vscode.window.showWarningMessage(`No Power Query formula found in ${foundLocation}. ParseResult keys: ${Object.keys(parseResult).join(', ')}`);
-					return;
-				}
-				
-				// Create output file with the actual formula
-				const baseName = path.basename(excelFile);
-				const outputPath = path.join(path.dirname(excelFile), `${baseName}_PowerQuery.m`);
-				
-				const content = `// Power Query extracted from: ${path.basename(excelFile)}
-// Location: ${foundLocation} (DataMashup format)
-// Extracted on: ${new Date().toISOString()}
-
-${formula}`;
-
-				fs.writeFileSync(outputPath, content, 'utf8');
-				
-				// Open the created file
-				const document = await vscode.workspace.openTextDocument(outputPath);
-				await vscode.window.showTextDocument(document);
-				
-				vscode.window.showInformationMessage(`Power Query extracted to: ${path.basename(outputPath)}`);
-				log(`Successfully extracted Power Query from ${path.basename(excelFile)} to ${path.basename(outputPath)}`);
-				
-				// Auto-watch if enabled
-				const config = getConfig();
-				if (config.get<boolean>('watchAlways', false)) {
-					await watchFile(vscode.Uri.file(outputPath));
-					log(`Auto-watch enabled for ${path.basename(outputPath)}`);
-				}
-				
-			} else {
-				// Handle QueryTable or Connection format (extract what we can)
-				const baseName = path.basename(excelFile);
-				const outputPath = path.join(path.dirname(excelFile), `${baseName}_PowerQuery.m`);
-				
-				let extractedContent = '';
-				
-				if (queryType === 'QueryTable') {
-					// Try to extract useful information from query table XML
-					const connectionMatch = xmlContent.match(/<connectionId>(\d+)<\/connectionId>/);
-					const nameMatch = xmlContent.match(/name="([^"]+)"/);
-					
-					extractedContent = `// Power Query extracted from: ${path.basename(excelFile)}
-// Location: ${foundLocation} (QueryTable format)
-// Extracted on: ${new Date().toISOString()}
-//
-// Note: This is a QueryTable format, not full Power Query M code.
-// Connection ID: ${connectionMatch ? connectionMatch[1] : 'unknown'}
-// Table Name: ${nameMatch ? nameMatch[1] : 'unknown'}
-//
-// TODO: Full M code extraction not yet supported for this format.
-// Raw XML content below for reference:
-
-/*
-${xmlContent}
-*/
-
-let
-    // Placeholder - actual query needs to be reconstructed
-    Source = Excel.CurrentWorkbook(){[Name="${nameMatch ? nameMatch[1] : 'Table1'}"]}[Content],
-    Result = Source
-in
-    Result`;
-				} else {
-					extractedContent = `// Power Query extracted from: ${path.basename(excelFile)}
-// Location: ${foundLocation} (${queryType} format)
-// Extracted on: ${new Date().toISOString()}
-//
-// Note: This format is not fully supported yet.
-// Raw XML content below for reference:
-
-/*
-${xmlContent}
-*/
-
-let
-    // Placeholder - actual query needs to be reconstructed
-    Source = "Power Query data found but format not yet supported",
-    Result = Source
-in
-    Result`;
-				}
-				
-				fs.writeFileSync(outputPath, extractedContent, 'utf8');
-				
-				// Open the created file
-				const document = await vscode.workspace.openTextDocument(outputPath);
-				await vscode.window.showTextDocument(document);
-				
-				vscode.window.showInformationMessage(`Power Query partially extracted to: ${path.basename(outputPath)} (${queryType} format - limited support)`);
-				log(`Partially extracted Power Query from ${path.basename(excelFile)} to ${path.basename(outputPath)} (${queryType} format)`);
-				
-				// Auto-watch if enabled
-				const config = getConfig();
-				if (config.get<boolean>('watchAlways', false)) {
-					await watchFile(vscode.Uri.file(outputPath));
-					log(`Auto-watch enabled for ${path.basename(outputPath)}`);
-				}
+			// Use excel-datamashup for DataMashup format
+			log('Calling excelDataMashup.ParseXml()...');
+			const parseResult = await excelDataMashup.ParseXml(xmlContent);
+			log(`ParseXml() completed. Result type: ${typeof parseResult}`);
+			
+			if (typeof parseResult === 'string') {
+				const errorMsg = `Power Query parsing failed: ${parseResult}\nLocation: ${foundLocation}\nXML preview: ${xmlContent.substring(0, 200)}...`;
+				log(errorMsg, 'extraction');
+				vscode.window.showErrorMessage(errorMsg);
+				return;
 			}
+			
+			log('ParseXml() succeeded. Extracting formula...');
+			let formula: string;
+			try {
+				// Extract the formula
+				formula = parseResult.getFormula();
+				log(`getFormula() completed. Formula length: ${formula ? formula.length : 'null'}`);
+			} catch (formulaError) {
+				const errorMsg = `Formula extraction failed: ${formulaError}`;
+				log(errorMsg, "error");
+				vscode.window.showErrorMessage(errorMsg);
+				return;
+			}
+			
+			if (!formula) {
+				const warningMsg = `No Power Query formula found in ${foundLocation}. ParseResult keys: ${Object.keys(parseResult).join(', ')}`;
+				log(warningMsg, "error");
+				vscode.window.showWarningMessage(warningMsg);
+				return;
+			}
+			
+			log('Formula extracted successfully. Creating output file...');
+			// Create output file with the actual formula
+			const baseName = path.basename(excelFile);
+			const outputPath = path.join(path.dirname(excelFile), `${baseName}_PowerQuery.m`);
+			
+			// Enhanced metadata header with structured format for reliable parsing
+			const metadataHeader = `/*
+===============================================================================
+ EXCEL POWER QUERY EDITOR - EXTRACTION METADATA
+===============================================================================
+ DO NOT MODIFY THIS SECTION - Required for sync functionality
+ 
+ Source File: ${path.basename(excelFile)}
+ Full Path: ${excelFile}
+ DataMashup Location: ${foundLocation}
+ Format: DataMashup
+ Extracted: ${new Date().toISOString()}
+ Version: 1.0
+===============================================================================
+*/
+
+`;
+
+			const content = metadataHeader + formula;
+
+			fs.writeFileSync(outputPath, content, 'utf8');
+			
+			// Open the created file
+			const document = await vscode.workspace.openTextDocument(outputPath);
+			await vscode.window.showTextDocument(document);
+			
+			vscode.window.showInformationMessage(`Power Query extracted to: ${path.basename(outputPath)}`);		log(`Successfully extracted Power Query from ${path.basename(excelFile)} to ${path.basename(outputPath)}`);
+		
+		// Track this file as recently extracted to prevent immediate auto-sync
+		recentExtractions.add(outputPath);
+		setTimeout(() => {
+			recentExtractions.delete(outputPath);
+			log(`Cleared recent extraction flag for ${path.basename(outputPath)}`, 'extractPowerQuery');
+		}, 2000); // Prevent auto-sync for 2 seconds after extraction
+		
+		// Auto-watch if enabled
+		const config = getConfig();
+		if (config.get<boolean>('watchAlways', false)) {
+			await watchFile(vscode.Uri.file(outputPath));
+			log(`Auto-watch enabled for ${path.basename(outputPath)}`);
+		}
 
 			// ...existing code...
 		} catch (moduleError) {
 			// Fallback: create a placeholder file
-			vscode.window.showWarningMessage(`Excel parsing failed: ${moduleError}. Creating placeholder file for testing.`);
+			const errorMsg = `Excel DataMashup parsing failed: ${moduleError}`;
+			log(errorMsg, "error");
+			log(`Error stack: ${moduleError instanceof Error ? moduleError.stack : 'No stack trace'}`);
+			vscode.window.showWarningMessage(`${errorMsg}. Creating placeholder file for testing.`);
 			
 			const baseName = path.basename(excelFile); // Keep full filename including extension
 			const outputPath = path.join(path.dirname(excelFile), `${baseName}_PowerQuery.m`);
@@ -503,22 +551,28 @@ in
 			// Open the created file
 			const document = await vscode.workspace.openTextDocument(outputPath);
 			await vscode.window.showTextDocument(document);
-			
-			vscode.window.showInformationMessage(`Placeholder file created: ${path.basename(outputPath)}`);
-			log(`Created placeholder file: ${path.basename(outputPath)}`);
-			
-			// Auto-watch if enabled
-			const config = getConfig();
-			if (config.get<boolean>('watchAlways', false)) {
-				await watchFile(vscode.Uri.file(outputPath));
-				log(`Auto-watch enabled for placeholder ${path.basename(outputPath)}`);
-			}
+					vscode.window.showInformationMessage(`Placeholder file created: ${path.basename(outputPath)}`);
+		log(`Created placeholder file: ${path.basename(outputPath)}`);
+		
+		// Track this file as recently extracted to prevent immediate auto-sync
+		recentExtractions.add(outputPath);
+		setTimeout(() => {
+			recentExtractions.delete(outputPath);
+			log(`Cleared recent extraction flag for placeholder ${path.basename(outputPath)}`, 'extractPowerQuery');
+		}, 2000); // Prevent auto-sync for 2 seconds after extraction
+		
+		// Auto-watch if enabled
+		const config = getConfig();
+		if (config.get<boolean>('watchAlways', false)) {
+			await watchFile(vscode.Uri.file(outputPath));
+			log(`Auto-watch enabled for placeholder ${path.basename(outputPath)}`);
+		}
 		}
 		
 	} catch (error) {
 		const errorMsg = `Failed to extract Power Query: ${error}`;
 		vscode.window.showErrorMessage(errorMsg);
-		log(errorMsg, true);
+		log(errorMsg, "error");
 		console.error('Extract error:', error);
 	}
 }
@@ -533,8 +587,22 @@ async function syncToExcel(uri?: vscode.Uri): Promise<void> {
 			return;
 		}
 
+		// Parse metadata from file header first
+		const metadata = parseFileMetadata(mFile);
+		
 		// Find corresponding Excel file
-		let excelFile = await findExcelFile(mFile);
+		let excelFile = metadata?.excelFile;
+		
+		// Verify the metadata Excel file exists, if not fall back to search
+		if (excelFile && !fs.existsSync(excelFile)) {
+			log(`Metadata Excel file not found: ${excelFile}, searching for alternative...`);
+			excelFile = undefined;
+		}
+		
+		if (!excelFile) {
+			excelFile = await findExcelFile(mFile);
+		}
+		
 		if (!excelFile) {
 			vscode.window.showErrorMessage('Could not find corresponding Excel file. Please select one.');
 			const selected = await selectExcelFile();
@@ -562,9 +630,14 @@ async function syncToExcel(uri?: vscode.Uri): Promise<void> {
 		// Read the .m file content
 		const mContent = fs.readFileSync(mFile, 'utf8');
 		
-		// Extract just the M code (remove our comment headers)
-		const mCodeMatch = mContent.match(/(?:\/\/.*\n)*\n*([\s\S]+)/);
-		const cleanMCode = mCodeMatch ? mCodeMatch[1].trim() : mContent.trim();
+	// Extract just the M code (remove ALL our metadata headers)
+	// Remove ALL metadata header blocks that start with our signature
+	let cleanedContent = mContent;
+	const headerRegex = /\/\*\s*={10,}[\s\S]*?EXCEL POWER QUERY EDITOR - EXTRACTION METADATA[\s\S]*?={10,}\s*\*\/\s*/g;
+	cleanedContent = cleanedContent.replace(headerRegex, '');
+	
+	// Remove any leading/trailing whitespace and ensure we start with actual M code
+	const cleanMCode = cleanedContent.trim();
 		
 		if (!cleanMCode) {
 			vscode.window.showErrorMessage('No Power Query M code found in file.');
@@ -602,8 +675,88 @@ async function syncToExcel(uri?: vscode.Uri): Promise<void> {
 		const buffer = fs.readFileSync(excelFile);
 		const zip = await JSZip.loadAsync(buffer);
 		
-		// Find the DataMashup XML file
-		let dataMashupFile = zip.file('customXml/item1.xml');
+		// Find the DataMashup XML file by scanning all customXml files
+		const customXmlFiles = Object.keys(zip.files)
+			.filter(name => name.startsWith('customXml/') && name.endsWith('.xml'))
+			.filter(name => !name.includes('/_rels/')) // Exclude relationship files
+			.sort();
+		
+		// Find the DataMashup XML file 
+		// First try using metadata from the .m file header
+		let dataMashupFile = null;
+		let dataMashupLocation = metadata?.dataMashupLocation || '';
+		
+		if (dataMashupLocation) {		log(`Using DataMashup location from metadata: ${dataMashupLocation}`, 'syncToExcel');
+		const file = zip.file(dataMashupLocation);
+		if (file) {
+			try {
+				// Use same binary reading and BOM handling as extraction  
+				const binaryData = await file.async('nodebuffer');
+				let content: string;
+				
+				// Check for UTF-16 LE BOM (FF FE)
+				if (binaryData.length >= 2 && binaryData[0] === 0xFF && binaryData[1] === 0xFE) {
+					log(`Detected UTF-16 LE BOM in ${dataMashupLocation}`, 'syncToExcel');
+					content = binaryData.subarray(2).toString('utf16le');
+				} else if (binaryData.length >= 3 && binaryData[0] === 0xEF && binaryData[1] === 0xBB && binaryData[2] === 0xBF) {
+					log(`Detected UTF-8 BOM in ${dataMashupLocation}`, 'syncToExcel');
+					content = binaryData.subarray(3).toString('utf8');
+				} else {
+					content = binaryData.toString('utf8');
+				}
+				
+				if (content.includes('DataMashup')) {
+					dataMashupFile = file;
+					log(`✅ Found DataMashup at metadata location: ${dataMashupLocation}`, 'syncToExcel');
+				} else {
+					log(`❌ Metadata location ${dataMashupLocation} doesn't contain DataMashup, will scan...`, 'syncToExcel');
+					dataMashupLocation = '';
+				}
+			} catch (e) {
+				log(`❌ Could not read metadata location ${dataMashupLocation}: ${e}, will scan...`, 'syncToExcel');
+				dataMashupLocation = '';
+			}
+		} else {
+			log(`❌ Metadata location ${dataMashupLocation} not found in ZIP, will scan...`, 'syncToExcel');
+			dataMashupLocation = '';
+		}
+		}
+		
+		// If metadata location failed, scan all customXml files using same logic as extraction
+		if (!dataMashupFile) {
+			log('Scanning all customXml files for DataMashup content...', 'syncToExcel');
+			for (const location of customXmlFiles) {
+				const file = zip.file(location);
+				if (file) {
+					try {
+						// Use same binary reading and BOM handling as extraction
+						const binaryData = await file.async('nodebuffer');
+						let content: string;
+						
+						// Check for UTF-16 LE BOM (FF FE)
+						if (binaryData.length >= 2 && binaryData[0] === 0xFF && binaryData[1] === 0xFE) {
+							log(`Detected UTF-16 LE BOM in ${location}`, 'syncToExcel');
+							content = binaryData.subarray(2).toString('utf16le');
+						} else if (binaryData.length >= 3 && binaryData[0] === 0xEF && binaryData[1] === 0xBB && binaryData[2] === 0xBF) {
+							log(`Detected UTF-8 BOM in ${location}`, 'syncToExcel');
+							content = binaryData.subarray(3).toString('utf8');
+						} else {
+							content = binaryData.toString('utf8');
+						}
+						
+						if (content.includes('DataMashup')) {
+							dataMashupFile = file;
+							dataMashupLocation = location;
+							log(`✅ Found DataMashup for sync in: ${location}`, 'syncToExcel');
+							break;
+						}
+					} catch (e) {
+						log(`Could not check ${location}: ${e}`, 'syncToExcel');
+					}
+				}
+			}
+		}
+		
 		if (!dataMashupFile) {
 			vscode.window.showErrorMessage('No DataMashup found in Excel file. This file may not contain Power Query.');
 			return;
@@ -643,6 +796,7 @@ async function syncToExcel(uri?: vscode.Uri): Promise<void> {
 		
 		// Use excel-datamashup to correctly update the DataMashup binary content
 		try {
+			log('Attempting to parse existing DataMashup with excel-datamashup...');
 			// Parse the existing DataMashup to get structure
 			const parseResult = await excelDataMashup.ParseXml(dataMashupXml);
 			
@@ -650,21 +804,18 @@ async function syncToExcel(uri?: vscode.Uri): Promise<void> {
 				throw new Error(`Failed to parse existing DataMashup: ${parseResult}`);
 			}
 			
+			log('DataMashup parsed successfully, updating formula...');
 			// Use setFormula to update the M code (this also calls resetPermissions)
 			parseResult.setFormula(cleanMCode);
 			
+			log('Formula updated, generating new DataMashup content...');
 			// Use save to get the updated base64 binary content
 			const newBase64Content = await parseResult.save();
 			
-			// DEBUG: Save the result from excel-datamashup save()
-			fs.writeFileSync(
-				path.join(debugDir, 'excel_datamashup_save_result.txt'),
-				`Type: ${typeof newBase64Content}\nContent: ${String(newBase64Content).substring(0, 1000)}...`,
-				'utf8'
-			);
-			console.log(`Debug: excel-datamashup save() returned type: ${typeof newBase64Content}`);
+			log(`excel-datamashup save() returned type: ${typeof newBase64Content}, length: ${String(newBase64Content).length}`);
 			
 			if (typeof newBase64Content === 'string' && newBase64Content.length > 0) {
+				log('✅ excel-datamashup approach succeeded, updating Excel file...');
 				// Success! Now we need to reconstruct the full DataMashup XML with new base64 content
 				// Replace the base64 content inside the DataMashup tags
 				const dataMashupRegex = /<DataMashup[^>]*>(.*?)<\/DataMashup>/s;
@@ -687,8 +838,8 @@ async function syncToExcel(uri?: vscode.Uri): Promise<void> {
 					newBinaryData = Buffer.from(newDataMashupXml, 'utf8');
 				}
 				
-				// Update the ZIP with new DataMashup
-				zip.file('customXml/item1.xml', newBinaryData);
+				// Update the ZIP with new DataMashup at the correct location
+				zip.file(dataMashupLocation, newBinaryData);
 				
 				// Write the updated Excel file
 				const updatedBuffer = await zip.generateAsync({ type: 'nodebuffer' });
@@ -704,89 +855,24 @@ async function syncToExcel(uri?: vscode.Uri): Promise<void> {
 						await vscode.commands.executeCommand('vscode.open', vscode.Uri.file(excelFile));
 						log(`Opened Excel file after sync: ${path.basename(excelFile)}`);
 					} catch (openError) {
-						log(`Failed to open Excel file after sync: ${openError}`, true);
+						log(`Failed to open Excel file after sync: ${openError}`, "error");
 					}
 				}
 				return;
 				
 			} else {
-				throw new Error('excel-datamashup save() failed or returned empty content');
+				throw new Error(`excel-datamashup save() returned invalid content - Type: ${typeof newBase64Content}, Length: ${String(newBase64Content).length}`);
 			}
 			
 		} catch (dataMashupError) {
-			console.log('excel-datamashup approach failed, trying manual XML modification:', dataMashupError);
-			
-			// Fallback: Manual XML modification using xml2js
-			try {
-				const parser = new xml2js.Parser();
-				const builder = new xml2js.Builder({ 
-					renderOpts: { pretty: false },
-					xmldec: { version: '1.0', encoding: 'utf-16' }
-				});
-				
-				const parsedXml = await parser.parseStringPromise(dataMashupXml);
-				
-				// DEBUG: Save the parsed XML structure
-				fs.writeFileSync(
-					path.join(debugDir, 'parsed_xml_structure.json'),
-					JSON.stringify(parsedXml, null, 2),
-					'utf8'
-				);
-				console.log(`Debug: Saved parsed XML structure to ${debugDir}/parsed_xml_structure.json`);
-				
-				// Find and update the Formula section in the XML
-				// This is a simplified approach - the actual structure may be more complex
-				if (parsedXml.DataMashup && parsedXml.DataMashup.Formulas) {
-					// Replace the entire Formulas section with our new M code
-					// Note: This is a basic implementation and may need refinement
-					parsedXml.DataMashup.Formulas = [{ _: cleanMCode }];
-				} else {
-					throw new Error(`Could not find Formulas section in DataMashup XML. Available sections: ${Object.keys(parsedXml.DataMashup || {}).join(', ')}`);
-				}
-				
-				// Rebuild XML
-				let newDataMashupXml = builder.buildObject(parsedXml);
-				
-				// Convert back to appropriate encoding
-				let newBinaryData: Buffer;
-				if (binaryData[0] === 0xFF && binaryData[1] === 0xFE) {
-					const utf16Buffer = Buffer.from(newDataMashupXml, 'utf16le');
-					const bomBuffer = Buffer.from([0xFF, 0xFE]);
-					newBinaryData = Buffer.concat([bomBuffer, utf16Buffer]);
-				} else {
-					newBinaryData = Buffer.from(newDataMashupXml, 'utf8');
-				}
-				
-				// Update the ZIP
-				zip.file('customXml/item1.xml', newBinaryData);
-				
-				// Write the updated Excel file
-				const updatedBuffer = await zip.generateAsync({ type: 'nodebuffer' });
-				fs.writeFileSync(excelFile, updatedBuffer);
-				
-				vscode.window.showInformationMessage(`✅ Successfully synced Power Query to Excel (manual method): ${path.basename(excelFile)}`);
-				log(`Successfully synced Power Query to Excel (manual method): ${path.basename(excelFile)}`);
-				
-				// Open Excel after sync if enabled
-				const config = getConfig();
-				if (config.get<boolean>('sync.openExcelAfterWrite', false)) {
-					try {
-						await vscode.commands.executeCommand('vscode.open', vscode.Uri.file(excelFile));
-						log(`Opened Excel file after sync: ${path.basename(excelFile)}`);
-					} catch (openError) {
-						log(`Failed to open Excel file after sync: ${openError}`, true);
-					}
-				}
-				
-			} catch (manualError) {
-				throw new Error(`Both excel-datamashup and manual XML approaches failed. DataMashup error: ${dataMashupError}. Manual error: ${manualError}`);
-			}
+			log(`❌ excel-datamashup approach failed: ${dataMashupError}`, "error");
+			throw new Error(`DataMashup sync failed: ${dataMashupError}. The DataMashup format may have changed or be unsupported.`);
 		}
 		
 	} catch (error) {
 		const errorMsg = `Failed to sync to Excel: ${error}`;
 		vscode.window.showErrorMessage(errorMsg);
-		log(errorMsg, true);
+		log(errorMsg, "error");
 		console.error('Sync error:', error);
 		
 		// If we have a backup, offer to restore it
@@ -833,44 +919,110 @@ async function watchFile(uri?: vscode.Uri): Promise<void> {
 			}
 		}
 
-		const watcher = watch(mFile, { 
-			ignoreInitial: true,
-			awaitWriteFinish: {
-				stabilityThreshold: 300,
-				pollInterval: 100
-			}
-		});
+	// Debug logging for watcher setup
+	log(`Setting up file watcher for: ${mFile}`, 'watchFile');
+	log(`Remote environment: ${vscode.env.remoteName}`, 'watchFile');
+	log(`Is dev container: ${vscode.env.remoteName === 'dev-container'}`, 'watchFile');
+	
+	const isDevContainer = vscode.env.remoteName === 'dev-container';
+	
+	// PRIMARY WATCHER: Always use Chokidar as the main watcher
+	const watcher = watch(mFile, { 
+		ignoreInitial: true,
+		usePolling: isDevContainer, // Use polling in dev containers for better compatibility
+		interval: isDevContainer ? 1000 : undefined, // Poll every second in dev containers
+		awaitWriteFinish: {
+			stabilityThreshold: 300,
+			pollInterval: 100
+		}
+	});
+	
+	log(`Chokidar watcher created for ${path.basename(mFile)}, polling: ${isDevContainer}`, 'watchFile');
+	
+	// Add comprehensive event logging
+	watcher.on('change', async () => {
+		try {
+			log(`🔥 CHOKIDAR: File change detected: ${path.basename(mFile)}`, 'watchFile');
+			vscode.window.showInformationMessage(`📝 File changed, syncing: ${path.basename(mFile)}`);
+			log(`File changed, triggering debounced sync: ${path.basename(mFile)}`, 'watchFile');
+			debouncedSyncToExcel(mFile);
+		} catch (error) {
+			const errorMsg = `Auto-sync failed: ${error}`;
+			vscode.window.showErrorMessage(errorMsg);
+			log(errorMsg, "watchFile");
+		}
+	});
+	
+	watcher.on('add', (path) => {
+		log(`🆕 CHOKIDAR: File added: ${path}`, 'watchFile');
+		// DON'T trigger sync on file creation - only on user changes
+	});
+	
+	watcher.on('unlink', (path) => {
+		log(`🗑️ CHOKIDAR: File deleted: ${path}`, 'watchFile');
+	});
+	
+	watcher.on('error', (error) => {
+		log(`❌ CHOKIDAR: Watcher error: ${error}`, 'watchFile');
+	});
+	
+	watcher.on('ready', () => {
+		log(`✅ CHOKIDAR: Watcher ready for ${path.basename(mFile)}`, 'watchFile');
+	});
+
+	// BACKUP WATCHER: Only add VS Code FileSystemWatcher in dev containers as backup
+	let vscodeWatcher: vscode.FileSystemWatcher | undefined;
+	let documentWatcher: vscode.Disposable | undefined;
+	
+	if (isDevContainer) {
+		log(`Adding backup watchers for dev container environment`, 'watchFile');
 		
-		watcher.on('change', async () => {
+		vscodeWatcher = vscode.workspace.createFileSystemWatcher(mFile);
+		vscodeWatcher.onDidChange(async () => {
 			try {
-				vscode.window.showInformationMessage(`📝 File changed, syncing: ${path.basename(mFile)}`);
-				log(`File changed, triggering debounced sync: ${path.basename(mFile)}`);
+				log(`🔥 VSCODE: File change detected: ${path.basename(mFile)}`, 'watchFile');
+				vscode.window.showInformationMessage(`📝 File changed (VSCode watcher), syncing: ${path.basename(mFile)}`);
 				debouncedSyncToExcel(mFile);
 			} catch (error) {
-				const errorMsg = `Auto-sync failed: ${error}`;
-				vscode.window.showErrorMessage(errorMsg);
-				log(errorMsg, true);
+				log(`VS Code watcher sync failed: ${error}`, 'watchFile');
 			}
 		});
 		
-		watcher.on('unlink', () => {
-			const config = getConfig();
-			if (config.get<boolean>('watchOffOnDelete', true)) {
-				fileWatchers.delete(mFile);
-				log(`File deleted, stopped watching: ${path.basename(mFile)}`);
-				updateStatusBar();
-			}
+		vscodeWatcher.onDidCreate(() => {
+			log(`🆕 VSCODE: File created: ${path.basename(mFile)}`, 'watchFile');
 		});
 		
-		watcher.on('error', (error) => {
-			const errorMsg = `File watcher error: ${error}`;
-			vscode.window.showErrorMessage(errorMsg);
-			log(errorMsg, true);
-			fileWatchers.delete(mFile);
-			updateStatusBar();
+		vscodeWatcher.onDidDelete(() => {
+			log(`🗑️ VSCODE: File deleted: ${path.basename(mFile)}`, 'watchFile');
 		});
 
-		fileWatchers.set(mFile, watcher);
+		log(`VS Code FileSystemWatcher created for ${path.basename(mFile)}`, 'watchFile');
+
+		// EXPERIMENTAL: Document save events as additional trigger (dev container only)
+		documentWatcher = vscode.workspace.onDidSaveTextDocument(async (document) => {
+			if (document.fileName === mFile) {
+				try {
+					log(`💾 DOCUMENT: Save event detected: ${path.basename(mFile)}`, 'watchFile');
+					vscode.window.showInformationMessage(`📝 File saved (document event), syncing: ${path.basename(mFile)}`);
+					debouncedSyncToExcel(mFile);
+				} catch (error) {
+					log(`Document save event sync failed: ${error}`, 'watchFile');
+				}
+			}
+		});
+		
+		log(`VS Code document save watcher created for ${path.basename(mFile)}`, 'watchFile');
+	} else {
+		log(`Windows environment detected - using Chokidar only to avoid cascade events`, 'watchFile');
+	}
+
+	// Store watchers for cleanup (handle optional backup watchers)
+	const watcherSet = { 
+		chokidar: watcher, 
+		vscode: vscodeWatcher || null,
+		document: documentWatcher || null
+	};
+	fileWatchers.set(mFile, watcherSet);
 		
 		const excelFileName = excelFile ? path.basename(excelFile) : 'Excel file (when found)';
 		vscode.window.showInformationMessage(`👀 Now watching: ${path.basename(mFile)} → ${excelFileName}`);
@@ -880,7 +1032,7 @@ async function watchFile(uri?: vscode.Uri): Promise<void> {
 	} catch (error) {
 		const errorMsg = `Failed to watch file: ${error}`;
 		vscode.window.showErrorMessage(errorMsg);
-		log(errorMsg, true);
+		log(errorMsg, "error");
 		console.error('Watch error:', error);
 	}
 }
@@ -906,7 +1058,7 @@ async function toggleWatch(uri?: vscode.Uri): Promise<void> {
 	} catch (error) {
 		const errorMsg = `Failed to toggle watch: ${error}`;
 		vscode.window.showErrorMessage(errorMsg);
-		log(errorMsg, true);
+		log(errorMsg, "error");
 		console.error('Toggle watch error:', error);
 	}
 }
@@ -917,9 +1069,11 @@ async function stopWatching(uri?: vscode.Uri): Promise<void> {
 		return;
 	}
 
-	const watcher = fileWatchers.get(mFile);
-	if (watcher) {
-		await watcher.close();
+	const watchers = fileWatchers.get(mFile);
+	if (watchers) {
+		await watchers.chokidar.close();
+		watchers.vscode?.dispose();
+		watchers.document?.dispose();
 		fileWatchers.delete(mFile);
 		vscode.window.showInformationMessage(`Stopped watching: ${path.basename(mFile)}`);
 		log(`Stopped watching: ${path.basename(mFile)}`);
@@ -955,10 +1109,12 @@ async function syncAndDelete(uri?: vscode.Uri): Promise<void> {
 				await syncToExcel(uri);
 				
 				// Stop watching if enabled and if being watched
-				const watcher = fileWatchers.get(mFile);
-				if (watcher) {
+				const watchers = fileWatchers.get(mFile);
+				if (watchers) {
 					if (config.get<boolean>('syncDeleteTurnsWatchOff', true)) {
-						await watcher.close();
+						await watchers.chokidar.close();
+						watchers.vscode?.dispose();
+						watchers.document?.dispose();
 						fileWatchers.delete(mFile);
 						log(`Stopped watching due to sync & delete: ${path.basename(mFile)}`);
 						updateStatusBar();
@@ -982,107 +1138,257 @@ async function syncAndDelete(uri?: vscode.Uri): Promise<void> {
 			} catch (syncError) {
 				const errorMsg = `Sync failed, file not deleted: ${syncError}`;
 				vscode.window.showErrorMessage(errorMsg);
-				log(errorMsg, true);
+				log(errorMsg, "error");
 			}
 		}
 	} catch (error) {
 		const errorMsg = `Sync and delete failed: ${error}`;
 		vscode.window.showErrorMessage(errorMsg);
-		log(errorMsg, true);
+		log(errorMsg, "error");
 		console.error('Sync and delete error:', error);
 	}
 }
 
 async function rawExtraction(uri?: vscode.Uri): Promise<void> {
 	try {
+		// First, dump all extension settings for debugging
+		dumpAllExtensionSettings();
+		
 		const excelFile = uri?.fsPath || await selectExcelFile();
 		if (!excelFile) {
 			return;
 		}
 
-		// Create debug output directory
+		log(`Starting enhanced raw extraction for: ${path.basename(excelFile)}`);
+		
+		// Create debug output directory (delete if exists)
 		const baseName = path.basename(excelFile, path.extname(excelFile));
 		const outputDir = path.join(path.dirname(excelFile), `${baseName}_debug_extraction`);
 		
-		if (!fs.existsSync(outputDir)) {
-			fs.mkdirSync(outputDir);
+		// Clean up existing debug directory
+		if (fs.existsSync(outputDir)) {
+			log(`Cleaning up existing debug directory: ${outputDir}`);
+			fs.rmSync(outputDir, { recursive: true, force: true });
 		}
+		fs.mkdirSync(outputDir);
+		log(`Created fresh debug directory: ${outputDir}`);
+
+		// Get file stats
+		const fileStats = fs.statSync(excelFile);
+		const fileSizeMB = (fileStats.size / (1024 * 1024)).toFixed(2);
+		log(`File size: ${fileSizeMB} MB`);
 
 		// Use JSZip to extract and examine the Excel file structure
 		try {
 			const JSZip = (await import('jszip')).default;
+			log('Reading Excel file buffer...');
 			const buffer = fs.readFileSync(excelFile);
+			
+			log('Loading ZIP structure...');
+			const startTime = Date.now();
 			const zip = await JSZip.loadAsync(buffer);
+			const loadTime = Date.now() - startTime;
+			log(`ZIP loaded in ${loadTime}ms`);
 			
 			// List all files
 			const allFiles = Object.keys(zip.files).filter(name => !zip.files[name].dir);
+			log(`Found ${allFiles.length} files in ZIP structure`);
 			
-			// Look for potentially relevant files
+			// Categorize files
 			const customXmlFiles = allFiles.filter(f => f.startsWith('customXml/'));
 			const xlFiles = allFiles.filter(f => f.startsWith('xl/'));
 			const queryFiles = allFiles.filter(f => f.includes('quer') || f.includes('Query'));
 			const connectionFiles = allFiles.filter(f => f.includes('connection'));
 			
-			// Extract customXml files for examination
-			for (const fileName of customXmlFiles) {
-				const file = zip.file(fileName);
-				if (file) {
-					const content = await file.async('text');
-					const safeName = fileName.replace(/[\/\\]/g, '_');
-					fs.writeFileSync(
-						path.join(outputDir, `${safeName}.txt`),
-						content,
-						'utf8'
-					);
+			log(`Files breakdown: ${customXmlFiles.length} customXml, ${xlFiles.length} xl/, ${queryFiles.length} query-related, ${connectionFiles.length} connection-related`);
+
+			// Enhanced DataMashup detection - scan ALL XML files
+			const dataMashupResults: Array<{file: string, hasDataMashup: boolean, size: number, error?: string}> = [];
+			const xmlFiles = allFiles.filter(f => f.toLowerCase().endsWith('.xml'));
+			
+			log(`Scanning ${xmlFiles.length} XML files for DataMashup content...`);
+			
+			for (const fileName of xmlFiles) {
+				try {
+					const file = zip.file(fileName);
+					if (file) {
+						const content = await file.async('text');
+						const hasDataMashup = content.includes('<DataMashup') || content.includes('DataMashup');
+						const size = content.length;
+						
+						dataMashupResults.push({
+							file: fileName,
+							hasDataMashup,
+							size
+						});
+						
+						if (hasDataMashup) {
+							log(`✅ DataMashup found in: ${fileName} (${(size / 1024).toFixed(1)} KB)`);
+							
+							// Extract the DataMashup content to a separate file
+							const safeName = fileName.replace(/[\/\\]/g, '_');
+							const dataMashupPath = path.join(outputDir, `DATAMASHUP_${safeName}`);
+							fs.writeFileSync(dataMashupPath, content, 'utf8');
+							log(`📁 DataMashup extracted to: ${path.basename(dataMashupPath)}`);
+						}
+						
+						// Extract customXml files regardless for inspection
+						if (fileName.startsWith('customXml/')) {
+							const safeName = fileName.replace(/[\/\\]/g, '_');
+							fs.writeFileSync(
+								path.join(outputDir, `${safeName}.txt`),
+								content,
+								'utf8'
+							);
+						}
+					}
+				} catch (error) {
+					log(`❌ Error scanning ${fileName}: ${error}`);
+					dataMashupResults.push({
+						file: fileName,
+						hasDataMashup: false,
+						size: 0,
+						error: String(error)
+					});
 				}
 			}
 			
-			// Create a comprehensive debug report
+			// Count DataMashup findings
+			const dataMashupFiles = dataMashupResults.filter(r => r.hasDataMashup);
+			const totalDataMashupSize = dataMashupFiles.reduce((sum, r) => sum + r.size, 0);
+			
+			log(`DataMashup scan complete: Found ${dataMashupFiles.length} files containing DataMashup (${(totalDataMashupSize / 1024).toFixed(1)} KB total)`);
+
+			// Create comprehensive debug report
 			const debugInfo = {
-				file: excelFile,
-				extractedAt: new Date().toISOString(),
-				totalFiles: allFiles.length,
-				allFiles: allFiles,
-				customXmlFiles: customXmlFiles,
-				xlFiles: xlFiles,
-				queryFiles: queryFiles,
-				connectionFiles: connectionFiles,
-				potentialPowerQueryLocations: [
-					'customXml/item1.xml',
-					'customXml/item2.xml', 
-					'customXml/item3.xml',
+				extractionReport: {
+					file: excelFile,
+					fileSize: `${fileSizeMB} MB`,
+					extractedAt: new Date().toISOString(),
+					zipLoadTime: `${loadTime}ms`,
+					totalFiles: allFiles.length
+				},
+				fileStructure: {
+					allFiles: allFiles,
+					customXmlFiles: customXmlFiles,
+					xlFiles: xlFiles,
+					queryFiles: queryFiles,
+					connectionFiles: connectionFiles
+				},
+				dataMashupAnalysis: {
+					totalXmlFilesScanned: xmlFiles.length,
+					dataMashupFilesFound: dataMashupFiles.length,
+					totalDataMashupSize: `${(totalDataMashupSize / 1024).toFixed(1)} KB`,
+					results: dataMashupResults
+				},
+				potentialPowerQueryLocations: customXmlFiles.concat([
 					'xl/queryTables/queryTable1.xml',
 					'xl/connections.xml'
-				].filter(loc => allFiles.includes(loc))
+				]).filter(loc => allFiles.includes(loc)),
+				recommendations: dataMashupFiles.length === 0 ? 
+					['No DataMashup content found - file may not contain Power Query M code', 'Check if Excel file actually has Power Query connections'] :
+					[`Found DataMashup in: ${dataMashupFiles.map(f => f.file).join(', ')}`, 'Use extracted DataMashup files for further analysis']
 			};
 
-			fs.writeFileSync(
-				path.join(outputDir, 'debug_info.json'),
-				JSON.stringify(debugInfo, null, 2),
-				'utf8'
-			);
+			const reportPath = path.join(outputDir, 'EXTRACTION_REPORT.json');
+			fs.writeFileSync(reportPath, JSON.stringify(debugInfo, null, 2), 'utf8');
+			log(`📊 Comprehensive report saved: ${path.basename(reportPath)}`);
 
-			vscode.window.showInformationMessage(`Debug extraction completed: ${path.basename(outputDir)}\nFound ${customXmlFiles.length} customXml files, ${queryFiles.length} query-related files`);
+			// Show results
+			const message = dataMashupFiles.length > 0 ?
+				`✅ Enhanced extraction completed!\n🔍 Found ${dataMashupFiles.length} DataMashup source(s) in ${path.basename(excelFile)}\n📁 Results in: ${path.basename(outputDir)}` :
+				`⚠️ Enhanced extraction completed!\n❌ No DataMashup content found in ${path.basename(excelFile)}\n📁 Debug files in: ${path.basename(outputDir)}`;
+			
+			vscode.window.showInformationMessage(message);
+			log(message.replace(/\n/g, ' | '));
 			
 		} catch (error) {
+			log(`❌ ZIP extraction/analysis failed: ${error}`, "error");
+			
 			// Write error info
 			const debugInfo = {
-				file: excelFile,
-				extractedAt: new Date().toISOString(),
-				error: 'Failed to extract Excel file structure',
-				errorDetails: String(error)
+				extractionReport: {
+					file: excelFile,
+					fileSize: `${fileSizeMB} MB`,
+					extractedAt: new Date().toISOString(),
+					error: 'Failed to extract Excel file structure',
+					errorDetails: String(error)
+				}
 			};
 
 			fs.writeFileSync(
-				path.join(outputDir, 'debug_info.json'),
+				path.join(outputDir, 'ERROR_REPORT.json'),
 				JSON.stringify(debugInfo, null, 2),
 				'utf8'
 			);
 		}
 		
 	} catch (error) {
-		vscode.window.showErrorMessage(`Raw extraction failed: ${error}`);
+		const errorMsg = `Raw extraction failed: ${error}`;
+		vscode.window.showErrorMessage(errorMsg);
+		log(errorMsg, "error");
 		console.error('Raw extraction error:', error);
+	}
+}
+
+// New function to dump all extension settings for debugging
+function dumpAllExtensionSettings(): void {
+	try {
+		log('=== EXTENSION SETTINGS DUMP ===');
+		
+		const extensionId = 'excel-power-query-editor';
+		
+		// Get all configuration scopes
+		const userConfig = vscode.workspace.getConfiguration(extensionId, null);
+		const workspaceConfig = vscode.workspace.getConfiguration(extensionId, vscode.workspace.workspaceFolders?.[0]?.uri);
+		
+		// Define all known extension settings
+		const knownSettings = [
+			'watchAlways',
+			'watchOffOnDelete', 
+			'syncDeleteAlwaysConfirm',
+			'verboseMode',
+			'autoBackupBeforeSync',
+			'backupLocation',
+			'customBackupPath',
+			'backup.maxFiles',
+			'autoCleanupBackups',
+			'syncTimeout',
+			'debugMode',
+			'showStatusBarInfo',
+			'sync.openExcelAfterWrite',
+			'sync.debounceMs',
+			'watch.checkExcelWriteable'
+		];
+		
+		log('USER SETTINGS (Global):');
+		for (const setting of knownSettings) {
+			const value = userConfig.get(setting);
+			const hasValue = userConfig.has(setting);
+			log(`  ${setting}: ${hasValue ? JSON.stringify(value) : '<not set>'}`);
+		}
+		
+		log('WORKSPACE SETTINGS:');
+		for (const setting of knownSettings) {
+			const value = workspaceConfig.get(setting);
+			const hasValue = workspaceConfig.has(setting);
+			log(`  ${setting}: ${hasValue ? JSON.stringify(value) : '<not set>'}`);
+		}
+		
+		// Check environment info
+		log('ENVIRONMENT INFO:');
+		log(`  Remote Name: ${vscode.env.remoteName || '<not remote>'}`);
+		log(`  VS Code Version: ${vscode.version}`);
+		log(`  Workspace Folders: ${vscode.workspace.workspaceFolders?.length || 0}`);
+		
+		// Check if we're in a dev container
+		const isDevContainer = vscode.env.remoteName?.includes('dev-container');
+		log(`  Is Dev Container: ${isDevContainer}`);
+		
+		log('=== END SETTINGS DUMP ===');
+		
+	} catch (error) {
+		log(`Failed to dump settings: ${error}`, "error");
 	}
 }
 
@@ -1183,7 +1489,7 @@ async function cleanupBackupsCommand(uri?: vscode.Uri): Promise<void> {
 	} catch (error) {
 		const errorMsg = `Failed to cleanup backups: ${error}`;
 		vscode.window.showErrorMessage(errorMsg);
-		log(errorMsg, true);
+		log(errorMsg, "error");
 		console.error('Backup cleanup error:', error);
 	}
 }
@@ -1193,18 +1499,17 @@ async function applyRecommendedDefaults(): Promise<void> {
 	try {
 		const config = vscode.workspace.getConfiguration('excel-power-query-editor');
 		
-		// Recommended settings for v0.5.0
+		// Recommended settings for v0.5.0 (using new logLevel instead of legacy boolean flags)
 		const recommendedSettings = {
 			'watchAlways': false,
 			'watchOffOnDelete': true,
 			'syncDeleteAlwaysConfirm': true,
-			'verboseMode': false,
+			'logLevel': 'info', // New setting replaces verboseMode and debugMode
 			'autoBackupBeforeSync': true,
 			'backupLocation': 'sameFolder',
 			'backup.maxFiles': 5,
 			'autoCleanupBackups': true,
 			'syncTimeout': 30000,
-			'debugMode': false,
 			'showStatusBarInfo': true,
 			'sync.openExcelAfterWrite': false,
 			'sync.debounceMs': 500,
@@ -1214,20 +1519,42 @@ async function applyRecommendedDefaults(): Promise<void> {
 		let updatedCount = 0;
 		const changedSettings: string[] = [];
 		
+		// Detect if running in dev container for workspace vs global scope
+		const isDevContainer = vscode.env.remoteName?.includes("dev-container") || 
+							   vscode.env.remoteName?.includes("container") ||
+							   process.env.REMOTE_CONTAINERS === "true";
+		const configTarget = isDevContainer ? vscode.ConfigurationTarget.Workspace : vscode.ConfigurationTarget.Global;
+		
 		for (const [setting, value] of Object.entries(recommendedSettings)) {
 			const currentValue = config.get(setting);
 			if (currentValue !== value) {
-				await config.update(setting, value, vscode.ConfigurationTarget.Global);
+				await config.update(setting, value, configTarget);
 				changedSettings.push(`${setting}: ${currentValue} → ${value}`);
 				updatedCount++;
 			}
 		}
 		
+		// Clean up legacy settings if present (optional migration)
+		const legacySettings = ['verboseMode', 'debugMode'];
+		for (const legacySetting of legacySettings) {
+			const legacyValue = config.get(legacySetting);
+			if (legacyValue !== undefined) {
+				try {
+					await config.update(legacySetting, undefined, configTarget);
+					changedSettings.push(`${legacySetting}: ${legacyValue} → (removed - use logLevel instead)`);
+					updatedCount++;
+				} catch (cleanupError) {
+					log(`Could not remove legacy setting ${legacySetting}: ${cleanupError}`, 'warn');
+				}
+			}
+		}
+		
 		if (updatedCount > 0) {
+			const scope = isDevContainer ? 'workspace' : 'global';
 			vscode.window.showInformationMessage(
-				`✅ Applied recommended defaults for v0.5.0 (${updatedCount} settings updated)`
+				`✅ Applied recommended defaults for v0.5.0 (${updatedCount} settings updated in ${scope} scope)`
 			);
-			log(`Applied recommended defaults - Updated settings:\n${changedSettings.join('\n')}`);
+			log(`Applied recommended defaults (${scope} scope) - Updated settings:\n${changedSettings.join('\n')}`);
 		} else {
 			vscode.window.showInformationMessage(
 				'All settings already match recommended defaults for v0.5.0'
@@ -1238,14 +1565,29 @@ async function applyRecommendedDefaults(): Promise<void> {
 	} catch (error) {
 		const errorMsg = `Failed to apply recommended defaults: ${error}`;
 		vscode.window.showErrorMessage(errorMsg);
-		log(errorMsg, true);
+		log(errorMsg, "error");
 	}
 }
 
 // Debounced sync helper to prevent multiple syncs in rapid succession
 function debouncedSyncToExcel(mFile: string): void {
+	// Check if this file was recently extracted - if so, skip auto-sync
+	if (recentExtractions.has(mFile)) {
+		log(`⏭️ Skipping auto-sync for recently extracted file: ${path.basename(mFile)}`, 'debouncedSyncToExcel');
+		return;
+	}
+	
 	const config = getConfig();
 	const debounceMs = config.get<number>('sync.debounceMs', 500);
+	
+	// If debounce is 0 or minimal (100ms), execute immediately for debugging
+	if (debounceMs === 0 || (debounceMs && debounceMs <= 100)) {
+		log(`🚀 IMMEDIATE SYNC (debounce disabled: ${debounceMs}ms) for ${path.basename(mFile)}`, 'debouncedSyncToExcel');
+		syncToExcel(vscode.Uri.file(mFile)).catch(error => {
+			log(`Immediate sync failed for ${path.basename(mFile)}: ${error}`, "error");
+		});
+		return;
+	}
 	
 	// Clear existing timer for this file
 	const existingTimer = debounceTimers.get(mFile);
@@ -1260,7 +1602,7 @@ function debouncedSyncToExcel(mFile: string): void {
 			await syncToExcel(vscode.Uri.file(mFile));
 			debounceTimers.delete(mFile);
 		} catch (error) {
-			log(`Debounced sync failed for ${path.basename(mFile)}: ${error}`, true);
+			log(`Debounced sync failed for ${path.basename(mFile)}: ${error}`, "error");
 			debounceTimers.delete(mFile);
 		}
 	}, debounceMs);
@@ -1285,7 +1627,7 @@ async function isExcelFileWritable(excelFile: string): Promise<boolean> {
 		return true;
 	} catch (error: any) {
 		// File is likely locked by Excel or another process
-		log(`Excel file appears to be locked: ${error.message}`, true);
+		log(`Excel file appears to be locked: ${error.message}`, "error");
 		return false;
 	}
 }
@@ -1293,8 +1635,44 @@ async function isExcelFileWritable(excelFile: string): Promise<boolean> {
 // This method is called when your extension is deactivated
 export function deactivate() {
 	// Close all file watchers
-	for (const [, watcher] of fileWatchers) {
-		watcher.close();
+	for (const [, watchers] of fileWatchers) {
+		watchers.chokidar.close();
+		watchers.vscode?.dispose();
+		watchers.document?.dispose();
 	}
 	fileWatchers.clear();
+}
+
+// Parse structured metadata from .m file header
+function parseFileMetadata(mFile: string): { excelFile?: string; dataMashupLocation?: string; version?: string } | null {
+	try {
+		const content = fs.readFileSync(mFile, 'utf8');
+		
+		// Look for our structured metadata header
+		const metadataMatch = content.match(/\/\*\s*={10,}[\s\S]*?EXCEL POWER QUERY EDITOR - EXTRACTION METADATA[\s\S]*?={10,}([\s\S]*?)={10,}\s*\*\//);
+		
+		if (!metadataMatch) {
+			log(`No structured metadata found in ${path.basename(mFile)}, will scan Excel file for DataMashup location`);
+			return null;
+		}
+		
+		const metadataSection = metadataMatch[1];
+		const result: { excelFile?: string; dataMashupLocation?: string; version?: string } = {};
+		
+		// Parse each metadata field
+		const fullPathMatch = metadataSection.match(/Full Path:\s*(.+)/);
+		const locationMatch = metadataSection.match(/DataMashup Location:\s*(.+)/);
+		const versionMatch = metadataSection.match(/Version:\s*(.+)/);
+		
+		if (fullPathMatch) { result.excelFile = fullPathMatch[1].trim(); }
+		if (locationMatch) { result.dataMashupLocation = locationMatch[1].trim(); }
+		if (versionMatch) { result.version = versionMatch[1].trim(); }
+		
+		log(`Parsed metadata from ${path.basename(mFile)}: Excel=${result.excelFile ? path.basename(result.excelFile) : 'none'}, Location=${result.dataMashupLocation || 'none'}`);
+		return result;
+		
+	} catch (error) {
+		log(`Failed to parse metadata from ${path.basename(mFile)}: ${error}`, "error");
+		return null;
+	}
 }

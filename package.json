@@ -16,7 +16,7 @@
     "url": "https://www.buymeacoffee.com/ewc3labs"
   },
   "license": "MIT",
-  "icon": "images/excel-power-query-editor-logo-128x128.png",
+  "icon": "assets/excel-power-query-editor-logo-128x128.png",
   "engines": {
     "vscode": "^1.101.0"
   },
@@ -108,7 +108,7 @@
         "excel-power-query-editor.verboseMode": {
           "type": "boolean",
           "default": false,
-          "description": "Output detailed logs to the VS Code Output panel (recommended for troubleshooting)."
+          "description": "[DEPRECATED] Use logLevel instead. Output detailed logs to the VS Code Output panel (recommended for troubleshooting)."
         },
         "excel-power-query-editor.autoBackupBeforeSync": {
           "type": "boolean",
@@ -148,7 +148,13 @@
         "excel-power-query-editor.debugMode": {
           "type": "boolean",
           "default": false,
-          "description": "Enable debug-level logging and write internal debug files to disk."
+          "description": "[DEPRECATED] Use logLevel instead. Enable debug-level logging and write internal debug files to disk."
+        },
+        "excel-power-query-editor.logLevel": {
+          "type": "string",
+          "enum": ["none", "error", "warn", "info", "verbose", "debug"],
+          "default": "info",
+          "description": "Set the logging level for the Excel Power Query Editor extension. Replaces legacy verboseMode and debugMode settings."
         },
         "excel-power-query-editor.showStatusBarInfo": {
           "type": "boolean",
@@ -189,6 +195,26 @@
         {
           "command": "excel-power-query-editor.cleanupBackups",
           "when": "resourceExtname =~ /\\.(xlsx|xlsm|xlsb)$/",
+          "group": "powerquery@3"
+        },
+        {
+          "command": "excel-power-query-editor.syncToExcel",
+          "when": "resourceExtname == '.m'",
+          "group": "powerquery@1"
+        },
+        {
+          "command": "excel-power-query-editor.watchFile",
+          "when": "resourceExtname == '.m'",
+          "group": "powerquery@2"
+        },
+        {
+          "command": "excel-power-query-editor.toggleWatch",
+          "when": "resourceExtname == '.m'",
+          "group": "powerquery@2"
+        },
+        {
+          "command": "excel-power-query-editor.syncAndDelete",
+          "when": "resourceExtname == '.m'",
           "group": "powerquery@3"
         }
       ],
@@ -242,8 +268,8 @@
     "watch:tsc": "tsc --noEmit --watch --project tsconfig.json",
     "package": "npm run check-types && npm run lint && node esbuild.js --production",
     "package-vsix": "npm run package && vsce package",
-    "install-local": "npm run package-vsix && code --install-extension excel-power-query-editor-0.5.0.vsix",
-    "dev-install": "npm run package-vsix && code --install-extension excel-power-query-editor-0.5.0.vsix --force",
+    "install-local": "npm run package-vsix && node scripts/install-extension.js",
+    "dev-install": "npm run package-vsix && node scripts/install-extension.js --force",
     "compile-tests": "tsc -p . --outDir out",
     "watch-tests": "tsc -p . -w --outDir out",
     "pretest": "npm run compile-tests && npm run compile && npm run lint",

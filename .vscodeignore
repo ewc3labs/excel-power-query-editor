@@ -36,3 +36,5 @@ SUPPORT.md
 **/*.backup.*
 **/_bak/**
 **/.backup/**
+**/archive/**
+temp*/**

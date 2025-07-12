@@ -9,5 +9,14 @@
         "dist": true // set this to false to include "dist" folder in search results
     },
     // Turn off tsc task auto detection since we have the necessary tasks as npm scripts
-    "typescript.tsc.autoDetect": "off"
+    "typescript.tsc.autoDetect": "off",
+    
+    // Excel Power Query Editor settings for dev container
+    "excel-power-query-editor.verboseMode": true,
+    "excel-power-query-editor.watchAlways": true,
+    "excel-power-query-editor.backupLocation": "sameFolder",
+    "excel-power-query-editor.customBackupPath": "./VSCodeBackups",
+    "excel-power-query-editor.debugMode": true,
+    "excel-power-query-editor.watchOffOnDelete": true,
+    "excel-power-query-editor.sync.debounceMs": 100
 }
