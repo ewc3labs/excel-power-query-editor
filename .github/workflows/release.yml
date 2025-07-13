@@ -109,8 +109,12 @@ jobs:
           npm version ${{ needs.determine-release.outputs.version }} --no-git-tag-version
           echo "Updated version to: $(node -p "require('./package.json').version")"
 
-      - name: 🧪 Run tests
-        run: npm test
+      - name: 🧪 Run tests (fast check)
+        run: |
+          echo "ℹ️ Skipping full test suite in release build for speed"
+          echo "✅ Full tests already run in CI pipeline"
+          npm run lint
+          npm run check-types
 
       - name: 🏗️ Build VSIX
         id: build
