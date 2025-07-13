@@ -268,6 +268,7 @@
     "watch:tsc": "tsc --noEmit --watch --project tsconfig.json",
     "package": "npm run check-types && npm run lint && node esbuild.js --production",
     "package-vsix": "npm run package && vsce package",
+    "bump-version": "node scripts/bump-version.js",
     "install-local": "npm run package-vsix && node scripts/install-extension.js",
     "dev-install": "npm run package-vsix && node scripts/install-extension.js --force",
     "compile-tests": "tsc -p . --outDir out",
