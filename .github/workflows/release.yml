@@ -25,6 +25,10 @@ on:
           - release
           - hotfix
 
+permissions:
+  contents: write # Required for creating releases and uploading assets
+  packages: read # Required for downloading artifacts
+
 jobs:
   # 🔍 Determine release strategy
   determine-release:
