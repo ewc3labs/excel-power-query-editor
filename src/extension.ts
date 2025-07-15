@@ -242,7 +242,7 @@ async function initializeAutoWatch(): Promise<void> {
 		log(`Found ${mFiles.length} .m files in workspace, checking for corresponding Excel files...`, 'initializeAutoWatch', 'verbose');
 
 		let watchedCount = 0;
-		const maxAutoWatch = config.get<number>('watchAlways.maxFiles', 25) || 25; // Configurable limit for auto-watch
+		const maxAutoWatch = config.get<number>('watchAlwaysMaxFiles', 25) || 25; // Configurable limit for auto-watch
 		
 		if (mFiles.length > maxAutoWatch) {
 			log(`Found ${mFiles.length} .m files but limiting auto-watch to ${maxAutoWatch} files (configurable in settings)`, 'initializeAutoWatch', 'info');
@@ -1569,7 +1569,7 @@ function dumpAllExtensionSettings(): void {
 		// Define all known extension settings
 		const knownSettings = [
 			'watchAlways',
-			'watchAlways.maxFiles',
+			'watchAlwaysMaxFiles',
 			'watchOffOnDelete', 
 			'syncDeleteAlwaysConfirm',
 			'verboseMode',

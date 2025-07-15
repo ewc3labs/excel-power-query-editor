@@ -84,6 +84,11 @@ All notable changes to the "excel-power-query-editor" extension will be document
   - Cross-platform directory path handling
 
 #### Fixed
+- **Configuration System**
+  - Fixed `watchAlwaysMaxFiles` setting validation (was incorrectly named `watchAlways.maxFiles`)
+  - VS Code settings now properly accept numeric input for auto-watch file limits
+  - Resolved "Value must be a number" error in extension settings
+
 - **Logging System Consistency**
   - Fixed context naming inconsistencies (ExtractFromExcel → extractFromExcel)
   - Replaced generic contexts with specific function names

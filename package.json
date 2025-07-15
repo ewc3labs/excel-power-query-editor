@@ -95,11 +95,11 @@
           "default": false,
           "description": "Automatically start watching when extracting Power Query files"
         },
-        "excel-power-query-editor.watchAlways.maxFiles": {
+        "excel-power-query-editor.watchAlwaysMaxFiles": {
           "type": "number",
           "default": 25,
           "minimum": 1,
-          "maximum": 100,
+          "maximum": 500,
           "description": "Maximum number of .m files to auto-watch when watchAlways is enabled. Prevents performance issues with large workspaces."
         },
         "excel-power-query-editor.watchOffOnDelete": {
