@@ -4,6 +4,8 @@ A modern, reliable VS Code extension for editing Power Query M code directly fro
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)  
 [![VS Code](https://img.shields.io/badge/VS_Code-Marketplace-blue.svg)](https://marketplace.visualstudio.com/items?itemName=ewc3labs.excel-power-query-editor)  
+[![Latest Release](https://img.shields.io/github/v/release/ewc3labs/excel-power-query-editor)](https://github.com/ewc3labs/excel-power-query-editor/releases/latest)
+[![Latest Pre-release](https://img.shields.io/github/v/release/ewc3labs/excel-power-query-editor?include_prereleases&label=pre-release)](https://github.com/ewc3labs/excel-power-query-editor/releases)
 [![Buy Me a Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-yellow?logo=buy-me-a-coffee&logoColor=white)](https://www.buymeacoffee.com/ewc3labs)
 
 ---
@@ -22,9 +24,15 @@ A modern, reliable VS Code extension for editing Power Query M code directly fro
 
 ### 1. Install
 
+**Stable Release:**
 - Open VS Code → Extensions (`Ctrl+Shift+X`)
 - Search for **"Excel Power Query Editor"**
 - Click **Install**
+
+**Beta/Nightly Builds:**
+- Download the latest `.vsix` from [Releases](https://github.com/ewc3labs/excel-power-query-editor/releases)
+- Install via: `code --install-extension excel-power-query-editor-*.vsix`
+- Get early access to new features and fixes!
 
 ### 2. Extract & Edit
 
@@ -53,7 +61,10 @@ Power Query development in Excel is often slow, opaque, and painful. This extens
 
 ## 📚 Documentation & Support
 
-For complete documentation, source code, issue reporting, or to fork your own version, visit the [GitHub repo](https://github.com/ewc3labs/excel-power-query-editor).
+- 📖 **[Complete Documentation](https://github.com/ewc3labs/excel-power-query-editor)**
+- 🧪 **[Beta Downloads & Nightly Builds](docs/BETA_DOWNLOADS.md)** - Get early access!
+- 🐛 **[Report Issues](https://github.com/ewc3labs/excel-power-query-editor/issues)**
+- 💬 **[Discussions](https://github.com/ewc3labs/excel-power-query-editor/discussions)**
 
 ---
 

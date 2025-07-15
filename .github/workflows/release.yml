@@ -192,13 +192,27 @@ jobs:
             ${{ steps.changelog.outputs.changelog }}
 
             ### 📦 Installation:
-            Download the `.vsix` file and install via VS Code:
+
+            **Option 1: Download and Install**
+            1. Download the `.vsix` file below
+            2. Install via VS Code: `code --install-extension excel-power-query-editor-*.vsix`
+
+            **Option 2: Command Line**
             ```bash
-            code --install-extension excel-power-query-editor-*.vsix
+            # Download latest pre-release
+            curl -L -o excel-power-query-editor.vsix "https://github.com/ewc3labs/excel-power-query-editor/releases/latest/download/excel-power-query-editor-${{ needs.determine-release.outputs.version }}-${{ needs.determine-release.outputs.release_type }}.vsix"
+
+            # Install
+            code --install-extension excel-power-query-editor.vsix
             ```
 
             ### 🧪 Testing Status:
-            ✅ All 63 tests passing across Node 22/24 on Ubuntu/Windows/macOS
+            ✅ All 71 tests passing across Node 22/24 on Ubuntu/Windows/macOS
+
+            ### 🔄 What's Next?
+            - ⭐ **Feedback?** [Create an issue](https://github.com/ewc3labs/excel-power-query-editor/issues/new)
+            - 📚 **Documentation:** [User Guide](https://github.com/ewc3labs/excel-power-query-editor#readme)
+            - 🚀 **Stable Release:** Coming soon to VS Code Marketplace
 
             ---
             **Need help?** Check out our [documentation](https://github.com/ewc3labs/excel-power-query-editor#readme) or [report issues](https://github.com/ewc3labs/excel-power-query-editor/issues).
