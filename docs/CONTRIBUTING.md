@@ -359,36 +359,52 @@ gh pr list
 | `npm run test`         | Run test suite via `vscode-test`                |
 | `npm run watch`        | Watch build and test                            |
 | `npm run check-types`  | TypeScript compile check (no emit)              |
-| `npm run bump-version` | Smart semantic version bumping from git commits |
+| `npm run bump-version` | **EWC3 Custom:** Analyze git commits and suggest semantic version |
+| `npm version patch/minor/major` | **NPM Native:** Immediate version bump + git commit + git tag |
 
 <details>
 <summary><strong>🔢 Smart Version Management</strong> (click to expand)</summary>
 
-**Automatic Version Bumping:**
+**Automatic Version Analysis (EWC3 Labs Custom):**
 ```bash
-# Analyze commits and bump version automatically
+# Our smart script analyzes commit messages and suggests versions
 npm run bump-version
 
-# The script analyzes your git history for:
+# Analyzes your git history for conventional commit patterns:
 # - feat: → minor version bump (0.5.0 → 0.6.0)
 # - fix: → patch version bump (0.5.0 → 0.5.1) 
 # - BREAKING: → major version bump (0.5.0 → 1.0.0)
+
+# Manual override (updates package.json only, no git operations)
+npm run bump-version 0.6.0
 ```
 
-**Manual Version Control:**
+**When to Use Which:**
+
+- **`npm version`** - When you want to **immediately release** with git commit + tag
+- **`npm run bump-version`** - When you want to **preview/analyze** what the next version should be
+- **GitHub Actions** - Uses our script for **automated releases** from branch pushes
+
+**Manual Version Control (Native NPM):**
 ```bash
-# Bump specific version types
-npm version patch   # 0.5.0 → 0.5.1
-npm version minor   # 0.5.0 → 0.6.0  
-npm version major   # 0.5.0 → 1.0.0
+# Native NPM versioning commands (standard industry practice)
+npm version patch   # 0.5.0 → 0.5.1 + git commit + git tag
+npm version minor   # 0.5.0 → 0.6.0 + git commit + git tag  
+npm version major   # 0.5.0 → 1.0.0 + git commit + git tag
 
-# Pre-release versions
-npm version prerelease  # 0.5.0 → 0.5.1-0
-npm version prepatch    # 0.5.0 → 0.5.1-0
-npm version preminor    # 0.5.0 → 0.6.0-0
+# Pre-release versions  
+npm version prerelease  # 0.5.0 → 0.5.1-0 + git commit + git tag
+npm version prepatch    # 0.5.0 → 0.5.1-0 + git commit + git tag
+npm version preminor    # 0.5.0 → 0.6.0-0 + git commit + git tag
+
+# Dry run (see what would happen without doing it)
+npm version patch --dry-run
 ```
 
-> 🧠 **Smart Tip:** The release pipeline automatically handles version bumping, but you can use `npm run bump-version` locally to preview what version would be generated.
+> 🧠 **Smart Tip:** 
+> - **For preview:** Use `npm run bump-version` to see what version our script suggests
+> - **For immediate release:** Use `npm version patch/minor/major` to bump + commit + tag in one step  
+> - **For automation:** GitHub Actions uses our custom script for branch-based releases
 
 </details>
 

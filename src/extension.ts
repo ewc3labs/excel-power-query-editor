@@ -12,12 +12,12 @@ function isTestEnvironment(): boolean {
 	       typeof global.describe !== 'undefined'; // Jest/Mocha detection
 }
 
-// Helper to get test fixture path
+// Helper to get test fixture path  
 function getTestFixturePath(filename: string): string {
 	return path.join(__dirname, '..', 'test', 'fixtures', filename);
 }
 
-// File watchers storage
+// File watchers storage 
 const fileWatchers = new Map<string, { chokidar: FSWatcher; vscode: vscode.FileSystemWatcher | null; document: vscode.Disposable | null }>();
 const recentExtractions = new Set<string>(); // Track recently extracted files to prevent immediate auto-sync
 
@@ -161,7 +161,7 @@ function cleanupOldBackups(excelFile: string): void {
 	}
 }
 
-// Enhanced logging function with context and log levels
+// Enhanced logging function with context and log levels, smart emoji or text 'level' support, and respects user log level settings
 function log(message: string, context: string = '', level: string = 'info'): void {
 	const config = getConfig();
 	const userLogLevel = (config.get<string>('logLevel', 'info') || 'info').toLowerCase();
