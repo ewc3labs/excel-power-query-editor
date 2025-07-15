@@ -31,6 +31,9 @@ suite('Watch Tests', () => {
 
 	suite('Watch Command Registration', () => {
 		test('Watch commands are registered and callable', async () => {
+			// Add small delay to ensure extension activation is complete on all platforms
+			await new Promise(resolve => setTimeout(resolve, 100));
+			
 			const commands = await vscode.commands.getCommands(true);
 			
 			const watchCommands = [
