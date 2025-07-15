@@ -321,7 +321,7 @@ export async function activate(context: vscode.ExtensionContext) {
 			vscode.commands.registerCommand('excel-power-query-editor.syncAndDelete', syncAndDelete),
 			vscode.commands.registerCommand('excel-power-query-editor.rawExtraction', rawExtraction),
 			vscode.commands.registerCommand('excel-power-query-editor.cleanupBackups', cleanupBackupsCommand),
-			vscode.commands.registerCommand('excel-power-query-editor.applyRecommendedDefaults', applyRecommendedDefaults)
+			vscode.commands.registerCommand('excel-power-query-editor.installExcelSymbols', installExcelSymbols)
 		];
 
 		context.subscriptions.push(...commands);
@@ -334,6 +334,9 @@ export async function activate(context: vscode.ExtensionContext) {
 		
 		// Auto-watch existing .m files if setting is enabled
 		await initializeAutoWatch();
+		
+		// Auto-install Excel symbols if enabled
+		await autoInstallSymbolsIfEnabled();
 		
 		log('Extension activation completed successfully', 'activation');
 	} catch (error) {
@@ -351,7 +354,23 @@ async function extractFromExcel(uri?: vscode.Uri): Promise<void> {
 			dumpAllExtensionSettings();
 		}
 		
-		const excelFile = uri?.fsPath || await selectExcelFile();
+		// Validate URI parameter - don't show file dialog for invalid input
+		if (uri && (!uri.fsPath || typeof uri.fsPath !== 'string')) {
+			const errorMsg = 'Invalid URI parameter provided to extractFromExcel command';
+			vscode.window.showErrorMessage(errorMsg);
+			log(errorMsg, "error");
+			return;
+		}
+		
+		// NEVER show file dialogs - extension works only through VS Code UI
+		if (!uri?.fsPath) {
+			const errorMsg = 'No Excel file specified. Use right-click on an Excel file or Command Palette with file open.';
+			vscode.window.showErrorMessage(errorMsg);
+			log(errorMsg, "error");
+			return;
+		}
+		
+		const excelFile = uri.fsPath;
 		if (!excelFile) {
 			log('No Excel file selected for extraction');
 			return;
@@ -400,58 +419,33 @@ async function extractFromExcel(uri?: vscode.Uri): Promise<void> {
 			const allFiles = Object.keys(zip.files).filter(name => !zip.files[name].dir);
 			log(`Files in Excel archive: ${allFiles.length} total files`, 'extractPowerQuery');
 			
-			// Look for Power Query DataMashup (the only format with actual M code)
-			// Scan ALL customXml files instead of just hardcoded item1/2/3
-			const customXmlFiles = Object.keys(zip.files)
-				.filter(name => name.startsWith('customXml/') && name.endsWith('.xml'))
-				.filter(name => !name.includes('/_rels/')) // Exclude relationship files
-				.sort(); // Process in consistent order
+			// Look for Power Query DataMashup using unified detection function
+			const dataMashupResults = await scanForDataMashup(zip, allFiles, undefined, false);
+			const dataMashupFiles = dataMashupResults.filter(r => r.hasDataMashup);
 			
-			log(`Found ${customXmlFiles.length} customXml files to scan: ${customXmlFiles.join(', ')}`);
+			// Check for CRITICAL ISSUE: Files with <DataMashup tags but malformed structure
+			const malformedDataMashupFiles = dataMashupResults.filter(r => 
+				!r.hasDataMashup && 
+				r.error && 
+				r.error.includes('MALFORMED:')
+			);
 			
-			let xmlContent: string | null = null;
-			let foundLocation = '';
-			
-			for (const location of customXmlFiles) {
-				const xmlFile = zip.file(location);
-				if (xmlFile) {
-					try {
-						// Read as binary first, then decode properly
-						const binaryData = await xmlFile.async('nodebuffer');
-						let content: string;
-						
-						// Check for UTF-16 LE BOM (FF FE)
-						if (binaryData.length >= 2 && binaryData[0] === 0xFF && binaryData[1] === 0xFE) {
-							log(`Detected UTF-16 LE BOM in ${location}`);
-							// Decode UTF-16 LE (skip the 2-byte BOM)
-							content = binaryData.subarray(2).toString('utf16le');
-						} else if (binaryData.length >= 3 && binaryData[0] === 0xEF && binaryData[1] === 0xBB && binaryData[2] === 0xBF) {
-							log(`Detected UTF-8 BOM in ${location}`);
-							// Decode UTF-8 (skip the 3-byte BOM)
-							content = binaryData.subarray(3).toString('utf8');
-						} else {
-							// Try UTF-8 first (most common)
-							content = binaryData.toString('utf8');
-						}
-						
-						log(`Scanning ${location} for DataMashup content (${(content.length / 1024).toFixed(1)} KB)`);
-						
-						// Only accept DataMashup format - the only one with actual Power Query M code
-						if (content.includes('DataMashup')) {
-							xmlContent = content;
-							foundLocation = location;
-							log(`✅ Found DataMashup Power Query in: ${location}`);
-							break; // Found actual Power Query, stop searching
-						} else {
-							log(`❌ No DataMashup content in ${location}`);
-						}
-					} catch (e) {
-						log(`❌ Could not read ${location}: ${e}`);
-					}
-				}
+			if (malformedDataMashupFiles.length > 0) {
+				// HARD ERROR: Found DataMashup tags but they're malformed
+				const malformedFile = malformedDataMashupFiles[0];
+				const errorMsg = `❌ CRITICAL ERROR: Found malformed DataMashup in ${malformedFile.file}\n\n` +
+					`The file contains <DataMashup> tags but they are missing required xmlns namespace.\n` +
+					`This indicates corrupted or invalid Power Query data that cannot be extracted.\n\n` +
+					`Expected format: <DataMashup [sqmid="{optional-guid}"] xmlns="http://schemas.microsoft.com/DataMashup">\n` +
+					`Found format: Likely missing xmlns namespace or malformed structure\n\n` +
+					`Please check the Excel file's Power Query configuration.`;
+				
+				vscode.window.showErrorMessage(errorMsg);
+				log(errorMsg, "error");
+				return; // HARD STOP - don't create placeholder files for malformed DataMashup
 			}
 			
-			if (!xmlContent) {
+			if (dataMashupFiles.length === 0) {
 				// No DataMashup found - no actual Power Query in this file
 				const customXmlFiles = allFiles.filter(f => f.startsWith('customXml/'));
 				const xlFiles = allFiles.filter(f => f.startsWith('xl/') && f.includes('quer'));
@@ -464,6 +458,30 @@ async function extractFromExcel(uri?: vscode.Uri): Promise<void> {
 					`Total files: ${allFiles.length}`
 				);
 				return;
+			}
+			
+			// Use the first DataMashup found
+			const primaryDataMashup = dataMashupFiles[0];
+			const foundLocation = primaryDataMashup.file;
+			
+			// Re-read the content for parsing (we need the actual content)
+			const xmlFile = zip.file(foundLocation);
+			if (!xmlFile) {
+				throw new Error(`Could not re-read DataMashup file: ${foundLocation}`);
+			}
+			
+			// Read with proper encoding detection (same logic as unified function)
+			const binaryData = await xmlFile.async('nodebuffer');
+			let xmlContent: string;
+			
+			if (binaryData.length >= 2 && binaryData[0] === 0xFF && binaryData[1] === 0xFE) {
+				log(`Detected UTF-16 LE BOM in ${foundLocation}`);
+				xmlContent = binaryData.subarray(2).toString('utf16le');
+			} else if (binaryData.length >= 3 && binaryData[0] === 0xEF && binaryData[1] === 0xBB && binaryData[2] === 0xBF) {
+				log(`Detected UTF-8 BOM in ${foundLocation}`);
+				xmlContent = binaryData.subarray(3).toString('utf8');
+			} else {
+				xmlContent = binaryData.toString('utf8');
 			}
 			
 			log(`Attempting to parse DataMashup Power Query from: ${foundLocation}`);
@@ -484,8 +502,18 @@ async function extractFromExcel(uri?: vscode.Uri): Promise<void> {
 			log('ParseXml() succeeded. Extracting formula...');
 			let formula: string;
 			try {
-				// Extract the formula
-				formula = parseResult.getFormula();
+				// Extract the formula using robust API detection
+				if (typeof parseResult.getFormula === 'function') {
+					formula = parseResult.getFormula();
+				} else {
+					// Try the module-level function
+					if (typeof excelDataMashup.getFormula === 'function') {
+						formula = excelDataMashup.getFormula(parseResult);
+					} else {
+						// Check if parseResult directly contains the formula
+						formula = parseResult.formula || parseResult.code || parseResult.m;
+					}
+				}
 				log(`getFormula() completed. Formula length: ${formula ? formula.length : 'null'}`);
 			} catch (formulaError) {
 				const errorMsg = `Formula extraction failed: ${formulaError}`;
@@ -608,8 +636,9 @@ async function syncToExcel(uri?: vscode.Uri): Promise<void> {
 	try {
 		const mFile = uri?.fsPath || vscode.window.activeTextEditor?.document.fileName;
 		if (!mFile || !mFile.endsWith('.m')) {
-			vscode.window.showErrorMessage('Please select or open a .m file to sync.');
-			return;
+			const receivedUri = uri ? `URI: ${uri.toString()}` : 'no URI provided';
+			const activeFile = vscode.window.activeTextEditor?.document.fileName || 'no active file';
+			throw new Error(`syncToExcel requires .m file URI. Received: ${receivedUri}, Active file: ${activeFile}`);
 		}
 
 		// Find corresponding Excel file from filename
@@ -732,8 +761,7 @@ async function syncToExcel(uri?: vscode.Uri): Promise<void> {
 		let dataMashupFile = null;
 		let dataMashupLocation = '';
 		
-		// Scan all customXml files for DataMashup content using same logic as extraction
-		log('Scanning all customXml files for DataMashup content...', 'syncToExcel');
+		// Scan customXml files for DataMashup content using efficient detection
 		for (const location of customXmlFiles) {
 			const file = zip.file(location);
 			if (file) {
@@ -744,21 +772,30 @@ async function syncToExcel(uri?: vscode.Uri): Promise<void> {
 					
 					// Check for UTF-16 LE BOM (FF FE)
 					if (binaryData.length >= 2 && binaryData[0] === 0xFF && binaryData[1] === 0xFE) {
-						log(`Detected UTF-16 LE BOM in ${location}`, 'syncToExcel');
 						content = binaryData.subarray(2).toString('utf16le');
 					} else if (binaryData.length >= 3 && binaryData[0] === 0xEF && binaryData[1] === 0xBB && binaryData[2] === 0xBF) {
-						log(`Detected UTF-8 BOM in ${location}`, 'syncToExcel');
 						content = binaryData.subarray(3).toString('utf8');
 					} else {
 						content = binaryData.toString('utf8');
 					}
 					
-					if (content.includes('DataMashup')) {
+					// Quick pre-filter: only check files that contain DataMashup opening tag
+					if (!content.includes('<DataMashup')) {
+						continue; // Skip silently
+					}
+					
+					// IMPROVED DataMashup detection - look for actual DataMashup XML structure
+					const hasDataMashupOpenTag = /<DataMashup(\s+sqmid=".+?")?\s+xmlns="http:\/\/schemas\.microsoft\.com\/DataMashup">/.test(content);
+					const hasDataMashupCloseTag = content.includes('</DataMashup>');
+					const isSchemaRefOnly = content.includes('ds:schemaRef') && content.includes('http://schemas.microsoft.com/DataMashup');
+					
+					if (hasDataMashupOpenTag && hasDataMashupCloseTag && !isSchemaRefOnly) {
 						dataMashupFile = file;
 						dataMashupLocation = location;
-						log(`✅ Found DataMashup for sync in: ${location}`, 'syncToExcel');
-						break;
+						log(`Found DataMashup content for sync in: ${location}`, 'syncToExcel');
+						break; // Found it!
 					}
+					// All other cases: skip silently (no logging for schema refs or malformed content)
 				} catch (e) {
 					log(`Could not check ${location}: ${e}`, 'syncToExcel');
 				}
@@ -790,17 +827,21 @@ async function syncToExcel(uri?: vscode.Uri): Promise<void> {
 			return;
 		}
 		
-		// DEBUG: Save the original DataMashup XML for inspection
-		const debugDir = path.join(path.dirname(excelFile), 'debug_sync');
-		if (!fs.existsSync(debugDir)) {
-			fs.mkdirSync(debugDir);
+		// DEBUG: Save the original DataMashup XML for inspection (debug mode only)
+		const logLevel = getEffectiveLogLevel();
+		if (logLevel === 'debug') {
+			const baseName = path.basename(excelFile, path.extname(excelFile));
+			const debugDir = path.join(path.dirname(excelFile), `${baseName}_sync_debug`);
+			if (!fs.existsSync(debugDir)) {
+				fs.mkdirSync(debugDir, { recursive: true });
+			}
+			fs.writeFileSync(
+				path.join(debugDir, 'original_datamashup.xml'),
+				dataMashupXml,
+				'utf8'
+			);
+			log(`Debug: Saved original DataMashup XML to ${path.basename(debugDir)}/original_datamashup.xml`, 'debug');
 		}
-		fs.writeFileSync(
-			path.join(debugDir, 'original_datamashup.xml'),
-			dataMashupXml,
-			'utf8'
-		);
-		log(`Debug: Saved original DataMashup XML to ${debugDir}/original_datamashup.xml`, 'debug');
 		
 		// Use excel-datamashup to correctly update the DataMashup binary content
 		try {
@@ -906,8 +947,9 @@ async function watchFile(uri?: vscode.Uri): Promise<void> {
 	try {
 		const mFile = uri?.fsPath || vscode.window.activeTextEditor?.document.fileName;
 		if (!mFile || !mFile.endsWith('.m')) {
-			vscode.window.showErrorMessage('Please select or open a .m file to watch.');
-			return;
+			const receivedUri = uri ? `URI: ${uri.toString()}` : 'no URI provided';
+			const activeFile = vscode.window.activeTextEditor?.document.fileName || 'no active file';
+			throw new Error(`watchFile requires .m file URI. Received: ${receivedUri}, Active file: ${activeFile}`);
 		}
 
 		if (fileWatchers.has(mFile)) {
@@ -958,7 +1000,11 @@ async function watchFile(uri?: vscode.Uri): Promise<void> {
 			log(`🔥 CHOKIDAR: File change detected: ${path.basename(mFile)}`, 'watchFile');
 			vscode.window.showInformationMessage(`📝 File changed, syncing: ${path.basename(mFile)}`);
 			log(`File changed, triggering debounced sync: ${path.basename(mFile)}`, 'watchFile');
-			debouncedSyncToExcel(mFile);
+			debouncedSyncToExcel(mFile).catch(error => {
+				const errorMsg = `Auto-sync failed: ${error}`;
+				vscode.window.showErrorMessage(errorMsg);
+				log(errorMsg, "watchFile");
+			});
 		} catch (error) {
 			const errorMsg = `Auto-sync failed: ${error}`;
 			vscode.window.showErrorMessage(errorMsg);
@@ -995,7 +1041,9 @@ async function watchFile(uri?: vscode.Uri): Promise<void> {
 			try {
 				log(`🔥 VSCODE: File change detected: ${path.basename(mFile)}`, 'watchFile');
 				vscode.window.showInformationMessage(`📝 File changed (VSCode watcher), syncing: ${path.basename(mFile)}`);
-				debouncedSyncToExcel(mFile);
+				debouncedSyncToExcel(mFile).catch(error => {
+					log(`VS Code watcher sync failed: ${error}`, 'watchFile');
+				});
 			} catch (error) {
 				log(`VS Code watcher sync failed: ${error}`, 'watchFile');
 			}
@@ -1017,7 +1065,9 @@ async function watchFile(uri?: vscode.Uri): Promise<void> {
 				try {
 					log(`💾 DOCUMENT: Save event detected: ${path.basename(mFile)}`, 'watchFile');
 					vscode.window.showInformationMessage(`📝 File saved (document event), syncing: ${path.basename(mFile)}`);
-					debouncedSyncToExcel(mFile);
+					debouncedSyncToExcel(mFile).catch(error => {
+						log(`Document save event sync failed: ${error}`, 'watchFile');
+					});
 				} catch (error) {
 					log(`Document save event sync failed: ${error}`, 'watchFile');
 				}
@@ -1055,8 +1105,9 @@ async function toggleWatch(uri?: vscode.Uri): Promise<void> {
 	try {
 		const mFile = uri?.fsPath || vscode.window.activeTextEditor?.document.fileName;
 		if (!mFile || !mFile.endsWith('.m')) {
-			vscode.window.showErrorMessage('Please select or open a .m file to toggle watch.');
-			return;
+			const receivedUri = uri ? `URI: ${uri.toString()}` : 'no URI provided';
+			const activeFile = vscode.window.activeTextEditor?.document.fileName || 'no active file';
+			throw new Error(`toggleWatch requires .m file URI. Received: ${receivedUri}, Active file: ${activeFile}`);
 		}
 
 		const isWatching = fileWatchers.has(mFile);
@@ -1101,8 +1152,9 @@ async function syncAndDelete(uri?: vscode.Uri): Promise<void> {
 	try {
 		const mFile = uri?.fsPath || vscode.window.activeTextEditor?.document.fileName;
 		if (!mFile || !mFile.endsWith('.m')) {
-			vscode.window.showErrorMessage('Please select or open a .m file to sync and delete.');
-			return;
+			const receivedUri = uri ? `URI: ${uri.toString()}` : 'no URI provided';
+			const activeFile = vscode.window.activeTextEditor?.document.fileName || 'no active file';
+			throw new Error(`syncAndDelete requires .m file URI. Received: ${receivedUri}, Active file: ${activeFile}`);
 		}
 
 		const config = getConfig();
@@ -1163,6 +1215,194 @@ async function syncAndDelete(uri?: vscode.Uri): Promise<void> {
 	}
 }
 
+// Unified DataMashup detection function used by both main extraction and debug extraction
+interface DataMashupScanResult {
+	file: string;
+	hasDataMashup: boolean;
+	size: number;
+	error?: string;
+	extractedFormula?: string;
+}
+
+async function scanForDataMashup(
+	zip: any, 
+	allFiles: string[], 
+	outputDir?: string, 
+	isDebugMode: boolean = false
+): Promise<DataMashupScanResult[]> {
+	const results: DataMashupScanResult[] = [];
+	
+	// Focus on customXml files first (where DataMashup actually lives)
+	const customXmlFiles = allFiles
+		.filter(name => name.startsWith('customXml/') && name.endsWith('.xml'))
+		.filter(name => !name.includes('/_rels/')) // Exclude relationship files
+		.sort(); // Process in consistent order
+	
+	// Only in debug mode, also scan other XML files for comparison
+	const xmlFilesToScan = isDebugMode ? 
+		allFiles.filter(f => f.toLowerCase().endsWith('.xml')) : 
+		customXmlFiles;
+	
+	log(`Scanning ${xmlFilesToScan.length} XML files for DataMashup content...`);
+	
+	for (const fileName of xmlFilesToScan) {
+		try {
+			const file = zip.file(fileName);
+			if (file) {
+				// Read as binary first, then decode properly (same as main extraction)
+				const binaryData = await file.async('nodebuffer');
+				let content: string;
+				
+				// Check for UTF-16 LE BOM (FF FE)
+				if (binaryData.length >= 2 && binaryData[0] === 0xFF && binaryData[1] === 0xFE) {
+					log(`Detected UTF-16 LE BOM in ${fileName}`);
+					// Decode UTF-16 LE (skip the 2-byte BOM)
+					content = binaryData.subarray(2).toString('utf16le');
+				} else if (binaryData.length >= 3 && binaryData[0] === 0xEF && binaryData[1] === 0xBB && binaryData[2] === 0xBF) {
+					log(`Detected UTF-8 BOM in ${fileName}`);
+					// Decode UTF-8 (skip the 3-byte BOM)
+					content = binaryData.subarray(3).toString('utf8');
+				} else {
+					// Try UTF-8 first (most common)
+					content = binaryData.toString('utf8');
+				}
+				
+				// Quick pre-filter: only process files that actually contain DataMashup opening tag
+				if (!content.includes('<DataMashup')) {
+					// Skip silently - no DataMashup content at all
+					results.push({
+						file: fileName,
+						hasDataMashup: false,
+						size: content.length
+					});
+					continue;
+				}
+				
+				// Found <DataMashup tag - this is a legitimate candidate, so start logging
+				log(`Found <DataMashup tag in ${fileName} (${(content.length / 1024).toFixed(1)} KB) - validating structure...`);
+				
+				// IMPROVED DataMashup detection - look for actual DataMashup XML structure
+				let hasDataMashup = false;
+				let parseResult: any = null;
+				let parseError: string | undefined;
+				
+				// Smart detection: look for proper DataMashup XML structure
+				// Real DataMashup: <DataMashup [sqmid="{guid}"] xmlns="http://schemas.microsoft.com/DataMashup">{encoded-content}</DataMashup>
+				// Schema ref only: <ds:schemaRef ds:uri="http://schemas.microsoft.com/DataMashup"/>
+				const hasDataMashupOpenTag = /<DataMashup(\s+sqmid=".+?")?\s+xmlns="http:\/\/schemas\.microsoft\.com\/DataMashup">/.test(content);
+				const hasDataMashupCloseTag = content.includes('</DataMashup>');
+				const isSchemaRefOnly = content.includes('ds:schemaRef') && content.includes('http://schemas.microsoft.com/DataMashup');
+				
+				if (hasDataMashupOpenTag && hasDataMashupCloseTag && !isSchemaRefOnly) {
+					log(`✅ Valid DataMashup XML structure detected - attempting to parse...`);
+					// This looks like actual DataMashup content - try to parse it
+					try {
+						const excelDataMashup = require('excel-datamashup');
+						parseResult = await excelDataMashup.ParseXml(content);
+						
+						if (typeof parseResult === 'object' && parseResult !== null) {
+							hasDataMashup = true;
+							log(`✅ Successfully parsed DataMashup content`);
+						} else {
+							log(`❌ ParseXml() failed: ${parseResult}`);
+							parseError = `Parse failed: ${parseResult}`;
+						}
+					} catch (error) {
+						log(`❌ Error parsing DataMashup: ${error}`);
+						parseError = `Parse error: ${error}`;
+					}
+				} else if (isSchemaRefOnly) {
+					log(`⏭️ Contains only DataMashup schema reference, not actual content`);
+				} else if (!hasDataMashupOpenTag) {
+					log(`⚠️ Contains <DataMashup but missing required xmlns namespace or malformed structure`);
+					parseError = 'MALFORMED: missing xmlns namespace or malformed structure';
+				} else if (!hasDataMashupCloseTag) {
+					log(`⚠️ Contains <DataMashup opening but missing closing </DataMashup> tag`);
+					parseError = 'MALFORMED: missing closing </DataMashup> tag';
+				} else {
+					log(`⚠️ Contains <DataMashup but structure validation failed`);
+					parseError = 'MALFORMED: structure validation failed';
+				}
+				
+				const result: DataMashupScanResult = {
+					file: fileName,
+					hasDataMashup,
+					size: content.length,
+					...(parseError && { error: parseError })
+				};
+				
+				if (hasDataMashup && parseResult) {
+					// In debug mode, extract files and the M code
+					if (isDebugMode && outputDir) {
+						// Extract the DataMashup content to a separate file
+						const safeName = fileName.replace(/[\/\\]/g, '_');
+						const dataMashupPath = path.join(outputDir, `DATAMASHUP_${safeName}`);
+						fs.writeFileSync(dataMashupPath, content, 'utf8');
+						log(`📁 DataMashup extracted to: ${path.basename(dataMashupPath)}`);
+						
+						// Extract the M code using the correct API
+						try {
+							// Try both possible API patterns
+							let formula: string | undefined;
+							
+							if (typeof parseResult.getFormula === 'function') {
+								formula = parseResult.getFormula();
+							} else {
+								const excelDataMashup = require('excel-datamashup');
+								if (typeof excelDataMashup.getFormula === 'function') {
+									formula = excelDataMashup.getFormula(parseResult);
+								} else {
+									// Check if parseResult directly contains the formula
+									formula = parseResult.formula || parseResult.code || parseResult.m;
+								}
+							}
+							
+							if (formula && typeof formula === 'string') {
+								result.extractedFormula = formula;
+								
+								// Save the extracted M code
+								const baseName = path.basename(fileName, '.xml');
+								const mCodePath = path.join(outputDir, `${baseName}_PowerQuery.m`);
+								const header = `// Power Query from: ${fileName}\n// Extracted: ${new Date().toISOString()}\n\n`;
+								fs.writeFileSync(mCodePath, header + formula, 'utf8');
+								log(`📁 Extracted M code to: ${path.basename(mCodePath)} (${(formula.length / 1024).toFixed(1)} KB)`);
+							} else {
+								log(`❌ Could not extract formula from parseResult for ${fileName}`);
+								result.error = (result.error || '') + ' | Formula extraction failed';
+							}
+						} catch (formulaError) {
+							log(`❌ Error extracting formula from ${fileName}: ${formulaError}`);
+							result.error = (result.error || '') + ` | Formula error: ${formulaError}`;
+						}
+					}
+				}
+				
+				results.push(result);
+				
+				// In debug mode, extract customXml files regardless for inspection
+				if (isDebugMode && outputDir && fileName.startsWith('customXml/')) {
+					const safeName = fileName.replace(/[\/\\]/g, '_');
+					fs.writeFileSync(
+						path.join(outputDir, `${safeName}.txt`),
+						content,
+						'utf8'
+					);
+				}
+			}
+		} catch (error) {
+			log(`❌ Error scanning ${fileName}: ${error}`);
+			results.push({
+				file: fileName,
+				hasDataMashup: false,
+				size: 0,
+				error: String(error)
+			});
+		}
+	}
+	
+	return results;
+}
+
 async function rawExtraction(uri?: vscode.Uri): Promise<void> {
 	try {
 		// Dump extension settings for debugging (debug level only)
@@ -1171,7 +1411,23 @@ async function rawExtraction(uri?: vscode.Uri): Promise<void> {
 			dumpAllExtensionSettings();
 		}
 		
-		const excelFile = uri?.fsPath || await selectExcelFile();
+		// Validate URI parameter - don't show file dialog for invalid input
+		if (uri && (!uri.fsPath || typeof uri.fsPath !== 'string')) {
+			const errorMsg = 'Invalid URI parameter provided to rawExtraction command';
+			vscode.window.showErrorMessage(errorMsg);
+			log(errorMsg, "error");
+			return;
+		}
+		
+		// NEVER show file dialogs - extension works only through VS Code UI
+		if (!uri?.fsPath) {
+			const errorMsg = 'No Excel file specified. Use right-click on an Excel file or Command Palette with file open.';
+			vscode.window.showErrorMessage(errorMsg);
+			log(errorMsg, "error");
+			return;
+		}
+		
+		const excelFile = uri.fsPath;
 		if (!excelFile) {
 			return;
 		}
@@ -1219,56 +1475,12 @@ async function rawExtraction(uri?: vscode.Uri): Promise<void> {
 			
 			log(`Files breakdown: ${customXmlFiles.length} customXml, ${xlFiles.length} xl/, ${queryFiles.length} query-related, ${connectionFiles.length} connection-related`);
 
-			// Enhanced DataMashup detection - scan ALL XML files
-			const dataMashupResults: Array<{file: string, hasDataMashup: boolean, size: number, error?: string}> = [];
+			// Enhanced DataMashup detection - use the same logic as main extraction
 			const xmlFiles = allFiles.filter(f => f.toLowerCase().endsWith('.xml'));
-			
 			log(`Scanning ${xmlFiles.length} XML files for DataMashup content...`);
 			
-			for (const fileName of xmlFiles) {
-				try {
-					const file = zip.file(fileName);
-					if (file) {
-						const content = await file.async('text');
-						const hasDataMashup = content.includes('<DataMashup') || content.includes('DataMashup');
-						const size = content.length;
-						
-						dataMashupResults.push({
-							file: fileName,
-							hasDataMashup,
-							size
-						});
-						
-						if (hasDataMashup) {
-							log(`✅ DataMashup found in: ${fileName} (${(size / 1024).toFixed(1)} KB)`);
-							
-							// Extract the DataMashup content to a separate file
-							const safeName = fileName.replace(/[\/\\]/g, '_');
-							const dataMashupPath = path.join(outputDir, `DATAMASHUP_${safeName}`);
-							fs.writeFileSync(dataMashupPath, content, 'utf8');
-							log(`📁 DataMashup extracted to: ${path.basename(dataMashupPath)}`);
-						}
-						
-						// Extract customXml files regardless for inspection
-						if (fileName.startsWith('customXml/')) {
-							const safeName = fileName.replace(/[\/\\]/g, '_');
-							fs.writeFileSync(
-								path.join(outputDir, `${safeName}.txt`),
-								content,
-								'utf8'
-							);
-						}
-					}
-				} catch (error) {
-					log(`❌ Error scanning ${fileName}: ${error}`);
-					dataMashupResults.push({
-						file: fileName,
-						hasDataMashup: false,
-						size: 0,
-						error: String(error)
-					});
-				}
-			}
+			// Use the unified DataMashup detection function
+			const dataMashupResults = await scanForDataMashup(zip, allFiles, outputDir, true);
 			
 			// Count DataMashup findings
 			const dataMashupFiles = dataMashupResults.filter(r => r.hasDataMashup);
@@ -1293,10 +1505,19 @@ async function rawExtraction(uri?: vscode.Uri): Promise<void> {
 					connectionFiles: connectionFiles
 				},
 				dataMashupAnalysis: {
-					totalXmlFilesScanned: xmlFiles.length,
+					totalXmlFilesScanned: dataMashupResults.length,
 					dataMashupFilesFound: dataMashupFiles.length,
 					totalDataMashupSize: `${(totalDataMashupSize / 1024).toFixed(1)} KB`,
-					results: dataMashupResults
+					results: dataMashupResults.map(r => ({
+						file: r.file,
+						hasDataMashup: r.hasDataMashup,
+						size: r.size,
+						...(r.error && { error: r.error }),
+						...(r.extractedFormula && { 
+							extractedFormulaSize: `${(r.extractedFormula.length / 1024).toFixed(1)} KB`,
+							formulaPreview: r.extractedFormula.substring(0, 200) + '...'
+						})
+					}))
 				},
 				potentialPowerQueryLocations: customXmlFiles.concat([
 					'xl/queryTables/queryTable1.xml',
@@ -1304,7 +1525,11 @@ async function rawExtraction(uri?: vscode.Uri): Promise<void> {
 				]).filter(loc => allFiles.includes(loc)),
 				recommendations: dataMashupFiles.length === 0 ? 
 					['No DataMashup content found - file may not contain Power Query M code', 'Check if Excel file actually has Power Query connections'] :
-					[`Found DataMashup in: ${dataMashupFiles.map(f => f.file).join(', ')}`, 'Use extracted DataMashup files for further analysis']
+					[
+						`Found DataMashup in: ${dataMashupFiles.map((f: DataMashupScanResult) => f.file).join(', ')}`, 
+						'Use extracted DataMashup files for further analysis',
+						...(dataMashupFiles.some((f: DataMashupScanResult) => f.extractedFormula) ? ['Successfully extracted M code - check _PowerQuery.m files'] : [])
+					]
 			};
 
 			const reportPath = path.join(outputDir, 'EXTRACTION_REPORT.json');
@@ -1312,8 +1537,9 @@ async function rawExtraction(uri?: vscode.Uri): Promise<void> {
 			log(`📊 Comprehensive report saved: ${path.basename(reportPath)}`);
 
 			// Show results
+			const extractedCodeFiles = dataMashupFiles.filter((f: DataMashupScanResult) => f.extractedFormula).length;
 			const message = dataMashupFiles.length > 0 ?
-				`✅ Enhanced extraction completed!\n🔍 Found ${dataMashupFiles.length} DataMashup source(s) in ${path.basename(excelFile)}\n📁 Results in: ${path.basename(outputDir)}` :
+				`✅ Enhanced extraction completed!\n🔍 Found ${dataMashupFiles.length} DataMashup source(s) in ${path.basename(excelFile)}\n📁 Extracted ${extractedCodeFiles} M code file(s)\n📁 Results in: ${path.basename(outputDir)}` :
 				`⚠️ Enhanced extraction completed!\n❌ No DataMashup content found in ${path.basename(excelFile)}\n📁 Debug files in: ${path.basename(outputDir)}`;
 			
 			vscode.window.showInformationMessage(message);
@@ -1409,34 +1635,6 @@ function dumpAllExtensionSettings(): void {
 	}
 }
 
-async function selectExcelFile(): Promise<string | undefined> {
-	// In test environment, return a test fixture instead of showing dialog
-	if (isTestEnvironment()) {
-		const testFixtures = ['simple.xlsx', 'complex.xlsm', 'binary.xlsb'];
-		for (const fixture of testFixtures) {
-			const fixturePath = getTestFixturePath(fixture);
-			if (fs.existsSync(fixturePath)) {
-				log(`Test environment: Using fixture ${fixture}`, 'selectExcelFile');
-				return fixturePath;
-			}
-		}
-		log('Test environment: No fixtures found, returning undefined', 'selectExcelFile');
-		return undefined;
-	}
-	
-	// Normal user interaction for production
-	const result = await vscode.window.showOpenDialog({
-		canSelectFiles: true,
-		canSelectFolders: false,
-		canSelectMany: false,
-		filters: {
-			'Excel Files': ['xlsx', 'xlsm', 'xlsb']
-		}
-	});
-	
-	return result?.[0]?.fsPath;
-}
-
 async function findExcelFile(mFilePath: string): Promise<string | undefined> {
 	const dir = path.dirname(mFilePath);
 	const mFileName = path.basename(mFilePath, '.m');
@@ -1456,10 +1654,23 @@ async function findExcelFile(mFilePath: string): Promise<string | undefined> {
 
 async function cleanupBackupsCommand(uri?: vscode.Uri): Promise<void> {
 	try {
-		const excelFile = uri?.fsPath || await selectExcelFile();
-		if (!excelFile) {
+		// Validate URI parameter - don't show file dialog for invalid input
+		if (uri && (!uri.fsPath || typeof uri.fsPath !== 'string')) {
+			const errorMsg = 'Invalid URI parameter provided to cleanupBackups command';
+			vscode.window.showErrorMessage(errorMsg);
+			log(errorMsg, "error");
 			return;
 		}
+		
+		// NEVER show file dialogs - extension works only through VS Code UI
+		if (!uri?.fsPath) {
+			const errorMsg = 'No Excel file specified. Use right-click on an Excel file or Command Palette with file open.';
+			vscode.window.showErrorMessage(errorMsg);
+			log(errorMsg, "error");
+			return;
+		}
+		
+		const excelFile = uri.fsPath;
 
 		const config = getConfig();
 		const maxBackups = config.get<number>('backup.maxFiles', 5) || 5;
@@ -1526,83 +1737,159 @@ async function cleanupBackupsCommand(uri?: vscode.Uri): Promise<void> {
 	}
 }
 
-// Apply recommended default settings for v0.5.0
-async function applyRecommendedDefaults(): Promise<void> {
+// Install Excel Power Query symbols for IntelliSense
+async function installExcelSymbols(): Promise<void> {
 	try {
-		const config = vscode.workspace.getConfiguration('excel-power-query-editor');
+		const config = getConfig();
+		const installLevel = config.get<string>('symbols.installLevel', 'workspace');
 		
-		// Recommended settings for v0.5.0 (using new logLevel instead of legacy boolean flags)
-		const recommendedSettings = {
-			'watchAlways': false,
-			'watchOffOnDelete': true,
-			'syncDeleteAlwaysConfirm': true,
-			'logLevel': 'info', // New setting replaces verboseMode and debugMode
-			'autoBackupBeforeSync': true,
-			'backupLocation': 'sameFolder',
-			'backup.maxFiles': 5,
-			'autoCleanupBackups': true,
-			'syncTimeout': 30000,
-			'showStatusBarInfo': true,
-			'sync.openExcelAfterWrite': false,
-			'sync.debounceMs': 500,
-			'watch.checkExcelWriteable': true
-		};
-		
-		let updatedCount = 0;
-		const changedSettings: string[] = [];
-		
-		// Detect if running in dev container for workspace vs global scope
-		const isDevContainer = vscode.env.remoteName?.includes("dev-container") || 
-							   vscode.env.remoteName?.includes("container") ||
-							   process.env.REMOTE_CONTAINERS === "true";
-		const configTarget = isDevContainer ? vscode.ConfigurationTarget.Workspace : vscode.ConfigurationTarget.Global;
-		
-		for (const [setting, value] of Object.entries(recommendedSettings)) {
-			const currentValue = config.get(setting);
-			if (currentValue !== value) {
-				await config.update(setting, value, configTarget);
-				changedSettings.push(`${setting}: ${currentValue} → ${value}`);
-				updatedCount++;
-			}
+		if (installLevel === 'off') {
+			vscode.window.showInformationMessage('Excel symbols installation is disabled in settings.');
+			return;
 		}
 		
-		// Clean up legacy settings if present (optional migration)
-		const legacySettings = ['verboseMode', 'debugMode'];
-		for (const legacySetting of legacySettings) {
-			const legacyValue = config.get(legacySetting);
-			if (legacyValue !== undefined) {
-				try {
-					await config.update(legacySetting, undefined, configTarget);
-					changedSettings.push(`${legacySetting}: ${legacyValue} → (removed - use logLevel instead)`);
-					updatedCount++;
-				} catch (cleanupError) {
-					log(`Could not remove legacy setting ${legacySetting}: ${cleanupError}`, 'warn');
+		// Get the symbols file path from extension resources
+		const extensionPath = vscode.extensions.getExtension('ewc3labs.excel-power-query-editor')?.extensionPath;
+		if (!extensionPath) {
+			throw new Error('Could not determine extension path');
+		}
+		
+		const sourceSymbolsPath = path.join(extensionPath, 'resources', 'symbols', 'excel-pq-symbols.json');
+		
+		if (!fs.existsSync(sourceSymbolsPath)) {
+			throw new Error(`Excel symbols file not found at: ${sourceSymbolsPath}`);
+		}
+		
+		// Determine target paths based on install level
+		let targetScope: vscode.ConfigurationTarget;
+		let targetDir: string;
+		let scopeName: string;
+		
+		switch (installLevel) {
+			case 'user':
+				targetScope = vscode.ConfigurationTarget.Global;
+				// For user level, put in VS Code user directory
+				const userDataPath = process.env.APPDATA || process.env.HOME;
+				if (!userDataPath) {
+					throw new Error('Could not determine user data directory');
 				}
-			}
+				targetDir = path.join(userDataPath, 'Code', 'User', 'excel-pq-symbols');
+				scopeName = 'user (global)';
+				break;
+				
+			case 'folder':
+				targetScope = vscode.ConfigurationTarget.WorkspaceFolder;
+				const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+				if (!workspaceFolder) {
+					throw new Error('No workspace folder is open');
+				}
+				targetDir = path.join(workspaceFolder.uri.fsPath, '.vscode', 'excel-pq-symbols');
+				scopeName = 'workspace folder';
+				break;
+				
+			case 'workspace':
+			default:
+				targetScope = vscode.ConfigurationTarget.Workspace;
+				if (!vscode.workspace.workspaceFolders?.length) {
+					throw new Error('No workspace is open. Open a folder or workspace first.');
+				}
+				targetDir = path.join(vscode.workspace.workspaceFolders[0].uri.fsPath, '.vscode', 'excel-pq-symbols');
+				scopeName = 'workspace';
+				break;
 		}
 		
-		if (updatedCount > 0) {
-			const scope = isDevContainer ? 'workspace' : 'global';
-			vscode.window.showInformationMessage(
-				`✅ Applied recommended defaults for v0.5.0 (${updatedCount} settings updated in ${scope} scope)`
-			);
-			log(`Applied recommended defaults (${scope} scope) - Updated settings:\n${changedSettings.join('\n')}`);
-		} else {
-			vscode.window.showInformationMessage(
-				'All settings already match recommended defaults for v0.5.0'
-			);
-			log('All settings already match recommended defaults');
+		// Create target directory if it doesn't exist
+		if (!fs.existsSync(targetDir)) {
+			fs.mkdirSync(targetDir, { recursive: true });
+			log(`Created symbols directory: ${targetDir}`);
 		}
+		
+		// Copy symbols file FIRST and ensure it's completely written
+		const targetSymbolsPath = path.join(targetDir, 'excel-pq-symbols.json');
+		fs.copyFileSync(sourceSymbolsPath, targetSymbolsPath);
+		
+		// Verify the file was written correctly by reading it back
+		try {
+			const copiedContent = fs.readFileSync(targetSymbolsPath, 'utf8');
+			const parsed = JSON.parse(copiedContent);
+			if (!Array.isArray(parsed) || parsed.length === 0) {
+				throw new Error('Copied symbols file is invalid or empty');
+			}
+			log(`✅ Verified Excel symbols file copied successfully: ${parsed.length} symbols`);
+		} catch (verifyError) {
+			throw new Error(`Failed to verify copied symbols file: ${verifyError}`);
+		}
+		
+		// CRITICAL: Only update Power Query settings AFTER file is verified
+		// The Language Server immediately tries to load the file when setting is added
+		const powerQueryConfig = vscode.workspace.getConfiguration('powerquery');
+		const existingDirs = powerQueryConfig.get<string[]>('client.additionalSymbolsDirectories', []);
+		
+		// Use forward slashes for cross-platform compatibility
+		const absoluteTargetDir = path.resolve(targetDir).replace(/\\/g, '/');
+		
+		if (!existingDirs.includes(absoluteTargetDir)) {
+			const updatedDirs = [...existingDirs, absoluteTargetDir];
+			await powerQueryConfig.update('client.additionalSymbolsDirectories', updatedDirs, targetScope);
+			log(`Updated Power Query settings with symbols directory: ${absoluteTargetDir}`);
+		} else {
+			log(`Symbols directory already configured in Power Query settings: ${absoluteTargetDir}`);
+		}
+		
+		// Show success message
+		vscode.window.showInformationMessage(
+			`✅ Excel Power Query symbols installed successfully!\n` +
+			`📁 Location: ${scopeName}\n` +
+			`🔧 IntelliSense for Excel.CurrentWorkbook() and other Excel-specific functions should now work in .m files.`
+		);
+		
+		log(`Excel symbols installation completed successfully in ${scopeName} scope`);
 		
 	} catch (error) {
-		const errorMsg = `Failed to apply recommended defaults: ${error}`;
+		const errorMsg = `Failed to install Excel symbols: ${error}`;
 		vscode.window.showErrorMessage(errorMsg);
 		log(errorMsg, "error");
 	}
 }
 
+// Auto-install symbols on activation if enabled
+async function autoInstallSymbolsIfEnabled(): Promise<void> {
+	try {
+		const config = getConfig();
+		const autoInstall = config.get<boolean>('symbols.autoInstall', true);
+		const installLevel = config.get<string>('symbols.installLevel', 'workspace');
+		
+		if (!autoInstall || installLevel === 'off') {
+			log('Auto-install of Excel symbols is disabled');
+			return;
+		}
+		
+		// Check if symbols are already installed
+		const powerQueryConfig = vscode.workspace.getConfiguration('powerquery');
+		const existingDirs = powerQueryConfig.get<string[]>('client.additionalSymbolsDirectories', []);
+		
+		// Check if any directory contains excel-pq-symbols.json
+		const hasExcelSymbols = existingDirs.some(dir => {
+			const symbolsPath = path.join(dir, 'excel-pq-symbols.json');
+			return fs.existsSync(symbolsPath);
+		});
+		
+		if (hasExcelSymbols) {
+			log('Excel symbols already installed, skipping auto-install');
+			return;
+		}
+		
+		log('Auto-installing Excel symbols...');
+		await installExcelSymbols();
+		
+	} catch (error) {
+		log(`Auto-install of Excel symbols failed: ${error}`, 'warn');
+		// Don't show error to user for auto-install failures
+	}
+}
+
 // Debounced sync helper to prevent multiple syncs in rapid succession
-function debouncedSyncToExcel(mFile: string): void {
+async function debouncedSyncToExcel(mFile: string): Promise<void> {
 	// Check if this file was recently extracted - if so, skip auto-sync
 	if (recentExtractions.has(mFile)) {
 		log(`⏭️ Skipping auto-sync for recently extracted file: ${path.basename(mFile)}`, 'debouncedSyncToExcel');
@@ -1610,11 +1897,39 @@ function debouncedSyncToExcel(mFile: string): void {
 	}
 	
 	const config = getConfig();
-	const debounceMs = config.get<number>('sync.debounceMs', 500);
+	let debounceMs = config.get<number>('sync.debounceMs', 500) || 500;
 	
-	// If debounce is 0 or minimal (100ms), execute immediately for debugging
-	if (debounceMs === 0 || (debounceMs && debounceMs <= 100)) {
-		log(`🚀 IMMEDIATE SYNC (debounce disabled: ${debounceMs}ms) for ${path.basename(mFile)}`, 'debouncedSyncToExcel');
+	// Get Excel file size to determine appropriate debounce timing
+	let fileSize = 0;
+	try {
+		// Find the corresponding Excel file to check its size
+		const excelFile = await findExcelFile(mFile);
+		if (excelFile && fs.existsSync(excelFile)) {
+			const stats = fs.statSync(excelFile);
+			fileSize = stats.size;
+		}
+	} catch (error) {
+		// If we can't get Excel file size, use default debounce
+	}
+	
+	// Apply intelligent debouncing based on Excel file size
+	const fileSizeMB = fileSize / (1024 * 1024);
+	const largeFileMinDebounce = config.get<number>('sync.largefile.minDebounceMs', 5000) || 5000;
+	
+	if (fileSizeMB > 50) {
+		// For files over 50MB, use configurable minimum debounce (default 5 seconds)
+		debounceMs = Math.max(debounceMs, largeFileMinDebounce);
+		log(`📁 Large file detected (${fileSizeMB.toFixed(1)}MB), using extended debounce: ${debounceMs}ms`, 'debouncedSyncToExcel');
+	} else if (fileSizeMB > 10) {
+		// For files over 10MB, use half the large file debounce
+		const mediumFileDebounce = Math.max(2000, largeFileMinDebounce / 2);
+		debounceMs = Math.max(debounceMs, mediumFileDebounce);
+		log(`📁 Medium file detected (${fileSizeMB.toFixed(1)}MB), using extended debounce: ${debounceMs}ms`, 'debouncedSyncToExcel');
+	}
+	
+	// Only execute immediately if debounce is explicitly set to 0 (not just small)
+	if (debounceMs === 0) {
+		log(`🚀 IMMEDIATE SYNC (debounce explicitly disabled) for ${path.basename(mFile)}`, 'debouncedSyncToExcel');
 		syncToExcel(vscode.Uri.file(mFile)).catch(error => {
 			log(`Immediate sync failed for ${path.basename(mFile)}: ${error}`, "error");
 		});

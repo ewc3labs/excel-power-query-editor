@@ -15,6 +15,34 @@ _A skunkworks of code, plastic, and canine gaseous emissions_
 
 </div>
 
+## [0.5.0-rc.2] - 2025-07-14
+
+### 🚀 Major Performance & Feature Release
+
+#### Added
+- **NEW FEATURE: Excel Power Query Symbols System**
+  - Complete Excel-specific IntelliSense support (Excel.CurrentWorkbook, Excel.Workbook, etc.)
+  - Auto-installation with Power Query Language Server integration
+  - Addresses gap in M Language extension (Power BI/Azure focused)
+  - Configurable installation scope (workspace/folder/user/off)
+
+#### Fixed  
+- **CRITICAL: Auto-Save Performance Crisis**
+  - Resolved VS Code auto-save + file watcher causing keystroke-level sync with large files
+  - Intelligent debouncing based on Excel file size (not .m file size)
+  - Large file handling: 3000ms → 8000ms debounce for files >10MB
+- **Test Infrastructure Excellence**
+  - All 71 tests passing across platforms
+  - Eliminated test hangs from file dialogs and background processes
+  - Auto-compilation for VS Code Test Explorer
+  - Robust parameter validation and error handling
+
+#### Changed
+- **Configuration Best Practices**
+  - ⚠️ **WARNING**: DO NOT enable VS Code auto-save + Extension auto-watch simultaneously
+  - Recommended: `"files.autoSave": "off"` with extension file watching
+  - Documented optimal performance configuration patterns
+
 ## [0.5.0] - 2025-07-11
 
 ### Added

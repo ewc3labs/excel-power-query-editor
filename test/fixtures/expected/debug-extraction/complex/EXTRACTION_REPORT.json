@@ -1,0 +1,44 @@
+{
+    "timestamp": "2025-07-14T19:28:14.121Z",
+    "file": {
+        "name": "complex.xlsm",
+        "size_mb": 0.06,
+        "total_files": 22
+    },
+    "scan_summary": {
+        "xml_files_scanned": 15,
+        "datamashup_files_found": 1,
+        "total_datamashup_size_kb": 9.1
+    },
+    "file_breakdown": {
+        "customXml": 3,
+        "xl": 15,
+        "query_related": 2,
+        "connection_related": 1
+    },
+    "datamashup_sources": [
+        {
+            "source_file": "customXml/item1.xml",
+            "size_kb": 9.1,
+            "extracted_to": "DATAMASHUP_customXml_item1.xml",
+            "m_code_file": "item1_PowerQuery.m",
+            "m_code_size_kb": 0.6
+        }
+    ],
+    "file_categories": {
+        "power_query_m_files": 1,
+        "report_files": 1,
+        "datamashup_files": 1,
+        "xml_files": 3,
+        "customxml_files": 2
+    },
+    "validation": {
+        "m_code_valid": true,
+        "extraction_successful": true
+    },
+    "recommendations": [
+        "Found DataMashup in: customXml/item1.xml",
+        "Use extracted DataMashup files for further analysis",
+        "Successfully extracted M code - check _PowerQuery.m files"
+    ]
+}

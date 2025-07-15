@@ -2,7 +2,7 @@
   "name": "excel-power-query-editor",
   "displayName": "Excel Power Query Editor",
   "description": "Extract and sync Power Query M code from Excel files",
-  "version": "0.5.0",
+  "version": "0.5.0-rc.2",
   "publisher": "ewc3labs",
   "repository": {
     "type": "git",
@@ -82,8 +82,8 @@
         "category": "Excel PQ"
       },
       {
-        "command": "excel-power-query-editor.applyRecommendedDefaults",
-        "title": "Apply Recommended Defaults",
+        "command": "excel-power-query-editor.installExcelSymbols",
+        "title": "Install Excel Symbol Definitions",
         "category": "Excel PQ"
       }
     ],
@@ -177,6 +177,17 @@
           "type": "boolean",
           "default": true,
           "description": "Before syncing, check if Excel file is writable. Warn or retry if locked."
+        },
+        "excel-power-query-editor.symbols.installLevel": {
+          "type": "string",
+          "default": "workspace",
+          "enum": ["workspace", "folder", "user", "off"],
+          "description": "Where to install excel-pq-symbols.json and update Power Query language settings. 'workspace' = .vscode/settings.json, 'folder' = workspace folder, 'user' = global settings, 'off' = disabled."
+        },
+        "excel-power-query-editor.symbols.autoInstall": {
+          "type": "boolean",
+          "default": true,
+          "description": "Automatically install Excel Power Query symbols on activation to enable Excel.CurrentWorkbook() IntelliSense in the M Language extension."
         }
       }
     },

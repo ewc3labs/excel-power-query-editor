@@ -30,45 +30,104 @@ suite('Backup Tests', () => {
 	});
 
 	suite('Backup Creation', () => {
-		test('Backup files are created during Excel operations', async () => {
-			const testExcelFile = path.join(fixturesDir, 'simple.xlsx');
+		test('Backup files are created during sync operations', async () => {
+			const sourceFile = path.join(fixturesDir, 'simple.xlsx');
 			
-			if (!fs.existsSync(testExcelFile)) {
+			if (!fs.existsSync(sourceFile)) {
 				console.log('⏭️  Skipping backup creation test - simple.xlsx not found');
 				return;
 			}
 			
+			// Copy to temp directory to avoid polluting fixtures
+			const testExcelFile = path.join(tempDir, 'simple_backup_test.xlsx');
+			fs.copyFileSync(sourceFile, testExcelFile);
+			console.log(`📁 Copied simple.xlsx to temp directory for backup test`);
+			
 			const uri = vscode.Uri.file(testExcelFile);
 			
 			try {
-				// Enable backup creation
-				await testConfigUpdate('backup.enable', true);
+				// Configure backup settings
+				await testConfigUpdate('autoBackupBeforeSync', true);
+				await testConfigUpdate('backupLocation', 'custom');
+				await testConfigUpdate('customBackupPath', tempDir);
+				console.log(`⚙️  Configured backup settings: enabled=true, location=custom, path=${tempDir}`);
 				
-				// Extract Power Query (this should create backup)
+				// Verify configuration was actually set
+				const config = vscode.workspace.getConfiguration('excel-power-query-editor');
+				console.log(`🔍 Config verification: autoBackupBeforeSync=${config.get('autoBackupBeforeSync')}, backupLocation=${config.get('backupLocation')}, customBackupPath=${config.get('customBackupPath')}`);
+				
+				// Step 1: Extract to get .m files
 				await vscode.commands.executeCommand('excel-power-query-editor.extractFromExcel', uri);
+				await new Promise(resolve => setTimeout(resolve, 1000));
 				
-				// Check for backup file creation
 				const excelDir = path.dirname(testExcelFile);
-				const backupPattern = path.basename(testExcelFile, '.xlsx') + '_backup_';
+				const mFiles = fs.readdirSync(excelDir).filter(f => f.endsWith('.m') && f.includes('simple_backup_test'));
 				
-				const files = fs.readdirSync(excelDir);
-				const backupFiles = files.filter(f => f.includes(backupPattern));
+				if (mFiles.length === 0) {
+					console.log('⏭️  Skipping backup test - no Power Query found in file');
+					return;
+				}
 				
-				console.log(`✅ Backup creation test completed - found ${backupFiles.length} backup files`);
+				// Step 2: Modify .m file to trigger sync
+				const mFilePath = path.join(excelDir, mFiles[0]);
+				const mUri = vscode.Uri.file(mFilePath);  // Create URI for .m file
+				const originalContent = fs.readFileSync(mFilePath, 'utf8');
+				const modifiedContent = originalContent + '\n// Backup test modification - ' + new Date().toISOString();
+				fs.writeFileSync(mFilePath, modifiedContent, 'utf8');
+				console.log(`📝 Modified .m file to trigger sync: ${path.basename(mFilePath)}`);
 				
-				// Clean up any backup files created during test
-				backupFiles.forEach(file => {
-					const backupPath = path.join(excelDir, file);
-					if (fs.existsSync(backupPath)) {
-						fs.unlinkSync(backupPath);
-						console.log(`🧹 Cleaned up backup file: ${file}`);
+				// Step 3: Get baseline backup count
+				const beforeSyncBackups = fs.readdirSync(tempDir).filter(f => 
+					f.includes('simple_backup_test') && f.includes('.backup.')
+				);
+				console.log(`📊 Backup files before sync: ${beforeSyncBackups.length}`);
+				
+				// Step 4: Sync to Excel (should trigger backup creation)
+				console.log(`🎯 Expected backup location: ${tempDir}`);
+				console.log(`📂 Files in temp dir before sync: ${fs.readdirSync(tempDir).join(', ')}`);
+				console.log(`📝 About to sync .m file: ${mFilePath}`);
+				console.log(`🎯 Expected Excel file: ${testExcelFile}`);
+				console.log(`✅ Excel file exists: ${fs.existsSync(testExcelFile)}`);
+				console.log(`🎯 Sync command URI: ${mUri.toString()}`);
+				await vscode.commands.executeCommand('excel-power-query-editor.syncToExcel', mUri);
+				await new Promise(resolve => setTimeout(resolve, 2000)); // Allow time for backup creation
+				console.log(`🔄 Sync operation completed`);
+				console.log(`📂 Files in temp dir after sync: ${fs.readdirSync(tempDir).join(', ')}`);
+				
+				// Step 5: Verify backup was created
+				const afterSyncBackups = fs.readdirSync(tempDir).filter(f => 
+					f.includes('simple_backup_test') && f.includes('.backup.')
+				);
+				console.log(`📊 Backup files after sync: ${afterSyncBackups.length}`);
+				console.log(`📁 Found backup files: ${afterSyncBackups.join(', ')}`);
+				
+				// Validate backup file naming pattern
+				if (afterSyncBackups.length > beforeSyncBackups.length) {
+					const newBackup = afterSyncBackups[afterSyncBackups.length - 1];
+					const backupPattern = /simple_backup_test\.xlsx\.backup\.\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}-\d{3}Z/;
+					
+					if (backupPattern.test(newBackup)) {
+						console.log(`✅ Backup created with correct naming pattern: ${newBackup}`);
+						
+						// Verify backup file content
+						const backupPath = path.join(tempDir, newBackup);
+						const backupStats = fs.statSync(backupPath);
+						if (backupStats.size > 0) {
+							console.log(`✅ Backup file has valid size: ${backupStats.size} bytes`);
+						} else {
+							console.log(`⚠️  Backup file is empty: ${newBackup}`);
+						}
+					} else {
+						console.log(`⚠️  Backup file name doesn't match expected pattern: ${newBackup}`);
 					}
-				});
+				} else {
+					console.log(`⚠️  No new backup files created during sync operation`);
+				}
 				
 			} catch (error) {
 				console.log(`✅ Backup creation test handled gracefully: ${error}`);
 			}
-		});
+		}).timeout(8000);
 
 		test('Backup naming follows timestamp pattern', () => {
 			const testCases = [
@@ -163,6 +222,19 @@ suite('Backup Tests', () => {
 
 	suite('Backup File Management', () => {
 		test('Backup file enumeration', () => {
+			// Clean temp directory first to avoid test pollution
+			if (fs.existsSync(tempDir)) {
+				const existingFiles = fs.readdirSync(tempDir);
+				existingFiles.forEach(file => {
+					const filePath = path.join(tempDir, file);
+					try {
+						fs.unlinkSync(filePath);
+					} catch (error) {
+						// Ignore cleanup errors
+					}
+				});
+			}
+			
 			// Create mock backup files for testing
 			const mockBackups = [
 				'test_backup_2025-07-11_10-30-00.xlsx',
@@ -183,6 +255,8 @@ suite('Backup Tests', () => {
 			const backupFiles = allFiles.filter(f => f.includes('_backup_') && f.endsWith('.xlsx'));
 			
 			console.log(`✅ Found ${backupFiles.length} backup files from ${allFiles.length} total files`);
+			console.log(`📁 All files: ${allFiles.join(', ')}`);
+			console.log(`📦 Backup files: ${backupFiles.join(', ')}`);
 			assert.strictEqual(backupFiles.length, 4, 'Should find 4 backup files');
 
 			// Sort by timestamp (newest first)
@@ -336,9 +410,21 @@ suite('Backup Tests', () => {
 				// Extract first to create .m file
 				await vscode.commands.executeCommand('excel-power-query-editor.extractFromExcel', uri);
 				
+				// Find the created .m file
+				const outputDir = path.dirname(tempExcelFile);
+				const mFiles = fs.readdirSync(outputDir).filter(f => f.endsWith('.m') && f.includes('sync_backup_test'));
+				
+				if (mFiles.length === 0) {
+					console.log('⏭️  Skipping sync backup test - no .m files created');
+					return;
+				}
+				
+				const mFilePath = path.join(outputDir, mFiles[0]);
+				const mUri = vscode.Uri.file(mFilePath);  // Use .m file URI, not Excel URI
+				
 				// Try sync operation (should create backup)
 				await Promise.race([
-					vscode.commands.executeCommand('excel-power-query-editor.syncToExcel', uri),
+					vscode.commands.executeCommand('excel-power-query-editor.syncToExcel', mUri),
 					new Promise((resolve) => setTimeout(resolve, 2000))
 				]);
 

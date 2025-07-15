@@ -74,6 +74,13 @@ Open VS Code → Extensions (`Ctrl+Shift+X`) → Search **"Excel Power Query Edi
 - **💡 Full IntelliSense**: Complete M language support with syntax highlighting
 - **⚙️ Highly Configurable**: Customize backup locations, watch behavior, sync timing
 
+## 📖 Documentation & Support
+
+**→ [Complete Documentation Hub](docs/README_docs.md)** - All guides, references, and resources  
+**→ [Contributing Guide](docs/CONTRIBUTING.md)** - Development setup, testing, and automation  
+**→ [User Guide](docs/USER_GUIDE.md)** - Feature documentation and workflows  
+**→ [Configuration Reference](docs/CONFIGURATION.md)** - All settings and customization options
+
 ## Why This Extension?
 
 Excel's Power Query editor is **painful to use**. This extension brings the **power of VS Code** to Power Query development:

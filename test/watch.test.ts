@@ -239,9 +239,14 @@ in
 
 	suite('Integration with Extension Features', () => {
 		test('Watch functionality integrates with Excel operations', async () => {
-			const testExcelFile = path.join(fixturesDir, 'simple.xlsx');
+			const sourceFile = path.join(fixturesDir, 'simple.xlsx');
 			
-			if (fs.existsSync(testExcelFile)) {
+			if (fs.existsSync(sourceFile)) {
+				// Copy to temp directory to avoid polluting fixtures
+				const testExcelFile = path.join(tempDir, 'simple_watch_test.xlsx');
+				fs.copyFileSync(sourceFile, testExcelFile);
+				console.log(`📁 Copied simple.xlsx to temp directory for watch integration test`);
+				
 				const uri = vscode.Uri.file(testExcelFile);
 				
 				try {
@@ -253,7 +258,7 @@ in
 					
 					console.log(`✅ Watch integration with extraction works`);
 					
-					// Test watch command on extracted files
+					// Test watch command on extracted files (in temp dir)
 					const extractedDir = path.dirname(testExcelFile);
 					const mFiles = fs.readdirSync(extractedDir).filter(f => f.endsWith('.m'));
 					
