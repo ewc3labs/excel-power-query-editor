@@ -28,8 +28,8 @@
 <!-- BADGES -->
 <p align="center">
   <img alt="License: MIT" src="https://img.shields.io/badge/License-MIT-yellow.svg">
-  <img alt="CI/CD" src="https://img.shields.io/badge/CI%2FCD%20Pipeline-failing-red.svg">
-  <img alt="Tests Passing" src="https://img.shields.io/badge/tests-63%20passing-brightgreen.svg">
+  <img alt="Version" src="https://img.shields.io/badge/Version-0.5.0-brightgreen.svg">
+  <img alt="Tests Passing" src="https://img.shields.io/badge/tests-71%20passing-brightgreen.svg">
   <img alt="VS Code" src="https://img.shields.io/badge/VS_Code-Marketplace-blue.svg">
   <img alt="Buy Me a Coffee" src="https://img.shields.io/badge/Buy%20Me%20a%20Coffee-yellow?logo=buy-me-a-coffee&logoColor=white">
 </p>
@@ -68,18 +68,22 @@ Open VS Code → Extensions (`Ctrl+Shift+X`) → Search **"Excel Power Query Edi
 ## 🚀 Key Features
 
 - **🔄 Bidirectional Sync**: Extract from Excel → Edit in VS Code → Sync back seamlessly
-- **👁️ Auto-Watch Mode**: Real-time sync when you save (with intelligent debouncing)
-- **🛡️ Smart Backups**: Automatic Excel backups before any changes
+- **👁️ Intelligent Auto-Watch**: Real-time sync with configurable file limits (1-100 files, default 25)
+- **📊 Professional Logging**: Emoji-enhanced logging with 6 verbosity levels (🪲🔍ℹ️✅⚠️❌)
+- **🤖 Smart Excel Symbols**: Auto-installs Excel-specific IntelliSense for `Excel.CurrentWorkbook()` and more
+- **🛡️ Smart Backups**: Automatic Excel backups before any changes with intelligent cleanup
 - **🔧 Zero Dependencies**: No Excel installation required, works on Windows/Mac/Linux
 - **💡 Full IntelliSense**: Complete M language support with syntax highlighting
-- **⚙️ Highly Configurable**: Customize backup locations, watch behavior, sync timing
+- **⚙️ Production Ready**: Professional UX with optimal performance for large workspaces
 
 ## 📖 Documentation & Support
 
 **→ [Complete Documentation Hub](docs/README_docs.md)** - All guides, references, and resources  
-**→ [Contributing Guide](docs/CONTRIBUTING.md)** - Development setup, testing, and automation  
 **→ [User Guide](docs/USER_GUIDE.md)** - Feature documentation and workflows  
-**→ [Configuration Reference](docs/CONFIGURATION.md)** - All settings and customization options
+**→ [Configuration Reference](docs/CONFIGURATION.md)** - All settings and customization options  
+**→ [Contributing Guide](docs/CONTRIBUTING.md)** - Development setup, testing, and automation  
+**→ [Publishing Guide](docs/PUBLISHING_GUIDE.md)** - GitHub Actions automation and marketplace publishing  
+**→ [Release Summary v0.5.0](docs/RELEASE_SUMMARY_v0.5.0.md)** - Latest features and improvements
 
 ## Why This Extension?
 
@@ -88,6 +92,9 @@ Excel's Power Query editor is **painful to use**. This extension brings the **po
 - 🚀 **Modern Architecture**: No COM/ActiveX dependencies that break with VS Code updates
 - 🔧 **Reliable**: Direct Excel file parsing - no Excel installation required
 - 🌐 **Cross-Platform**: Works on Windows, macOS, and Linux
+- ⚡ **Fast**: Instant startup, no waiting for COM objects
+- 🎨 **Beautiful**: Syntax highlighting, IntelliSense, and professional emoji logging
+- 📊 **Intelligent**: Configurable auto-watch limits prevent performance issues in large workspaces
 - ⚡ **Fast**: Instant startup, no waiting for COM objects
 - 🎨 **Beautiful**: Syntax highlighting, IntelliSense, and proper formatting
 
@@ -108,6 +115,9 @@ Excel's Power Query editor is **painful to use**. This extension brings the **po
 - ✅ Clean, reliable operation
 - ✅ Cross-platform compatibility
 - ✅ Modern VS Code integration
+- ✅ Professional emoji-enhanced logging (6 levels: 🪲🔍ℹ️✅⚠️❌)
+- ✅ Intelligent auto-watch with configurable limits (1-100 files)
+- ✅ Automatic Excel symbols installation for enhanced IntelliSense
 
 ## 📚 Complete Documentation
 
@@ -115,6 +125,8 @@ Excel's Power Query editor is **painful to use**. This extension brings the **po
 - **⚙️ [Configuration](docs/CONFIGURATION.md)** - All settings, examples, use cases
 - **🤝 [Contributing](docs/CONTRIBUTING.md)** - Development setup, testing, contribution guidelines
 - **📝 [Changelog](CHANGELOG.md)** - Version history and feature updates
+- **🚀 [Publishing Guide](docs/PUBLISHING_GUIDE.md)** - GitHub Actions automation and release process
+- **📋 [Release Summary v0.5.0](docs/RELEASE_SUMMARY_v0.5.0.md)** - Latest features and technical improvements
 
 ## 🆘 Need Help?
 

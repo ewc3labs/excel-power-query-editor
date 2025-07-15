@@ -6,9 +6,6 @@ Get early access to the latest features and fixes before they hit the VS Code Ma
 
 [![Latest Pre-release](https://img.shields.io/github/v/release/ewc3labs/excel-power-query-editor?include_prereleases&label=latest%20beta)](https://github.com/ewc3labs/excel-power-query-editor/releases)
 
-**One-click download:**
-- [📦 Latest Beta VSIX](https://github.com/ewc3labs/excel-power-query-editor/releases/latest/download/excel-power-query-editor-prerelease.vsix) *(may not work due to GitHub's naming)*
-
 **Reliable method:**
 1. Go to [Releases](https://github.com/ewc3labs/excel-power-query-editor/releases)
 2. Download the latest `.vsix` file from a "Pre-release" entry

@@ -2,7 +2,7 @@
   "name": "excel-power-query-editor",
   "displayName": "Excel Power Query Editor",
   "description": "Extract and sync Power Query M code from Excel files",
-  "version": "0.5.0-rc.2",
+  "version": "0.5.0",
   "publisher": "ewc3labs",
   "repository": {
     "type": "git",
@@ -95,6 +95,13 @@
           "default": false,
           "description": "Automatically start watching when extracting Power Query files"
         },
+        "excel-power-query-editor.watchAlways.maxFiles": {
+          "type": "number",
+          "default": 25,
+          "minimum": 1,
+          "maximum": 100,
+          "description": "Maximum number of .m files to auto-watch when watchAlways is enabled. Prevents performance issues with large workspaces."
+        },
         "excel-power-query-editor.watchOffOnDelete": {
           "type": "boolean",
           "default": true,
@@ -117,7 +124,11 @@
         },
         "excel-power-query-editor.backupLocation": {
           "type": "string",
-          "enum": ["sameFolder", "tempFolder", "custom"],
+          "enum": [
+            "sameFolder",
+            "tempFolder",
+            "custom"
+          ],
           "default": "sameFolder",
           "description": "Folder to store backup files: same as Excel file, system temp folder, or a custom path."
         },
@@ -152,7 +163,14 @@
         },
         "excel-power-query-editor.logLevel": {
           "type": "string",
-          "enum": ["none", "error", "warn", "info", "verbose", "debug"],
+          "enum": [
+            "none",
+            "error",
+            "warn",
+            "info",
+            "verbose",
+            "debug"
+          ],
           "default": "info",
           "description": "Set the logging level for the Excel Power Query Editor extension. Replaces legacy verboseMode and debugMode settings."
         },
@@ -181,7 +199,12 @@
         "excel-power-query-editor.symbols.installLevel": {
           "type": "string",
           "default": "workspace",
-          "enum": ["workspace", "folder", "user", "off"],
+          "enum": [
+            "workspace",
+            "folder",
+            "user",
+            "off"
+          ],
           "description": "Where to install excel-pq-symbols.json and update Power Query language settings. 'workspace' = .vscode/settings.json, 'folder' = workspace folder, 'user' = global settings, 'off' = disabled."
         },
         "excel-power-query-editor.symbols.autoInstall": {
@@ -270,15 +293,16 @@
     "powerquery.vscode-powerquery"
   ],
   "scripts": {
-    "vscode:prepublish": "node scripts/set-readme-vsce.js && npm run package",
-    "prepublishOnly": "node scripts/set-readme-gh.js && npm run lint && npm test",
+    "vscode:prepublish": "npm run package",
+    "publish-marketplace": "node scripts/set-readme-vsce.js && vsce publish && node scripts/set-readme-gh.js",
+    "prepublishOnly": "npm run lint && npm test",
     "postpublish": "node scripts/set-readme-gh.js",
     "compile": "npm run check-types && npm run lint && node esbuild.js",
     "watch": "npm-run-all -p watch:*",
     "watch:esbuild": "node esbuild.js --watch",
     "watch:tsc": "tsc --noEmit --watch --project tsconfig.json",
     "package": "npm run check-types && npm run lint && node esbuild.js --production",
-    "package-vsix": "npm run package && vsce package",
+    "package-vsix": "node scripts/set-readme-vsce.js && npm run package && vsce package && node scripts/set-readme-gh.js",
     "bump-version": "node scripts/bump-version.js",
     "install-local": "npm run package-vsix && node scripts/install-extension.js",
     "dev-install": "npm run package-vsix && node scripts/install-extension.js --force",
@@ -309,6 +333,7 @@
     "chokidar": "^4.0.3",
     "excel-datamashup": "^1.0.6",
     "jszip": "^3.10.1",
+    "ts-morph": "^26.0.0",
     "xml2js": "^0.6.2"
   }
 }

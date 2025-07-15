@@ -30,6 +30,44 @@ let outputChannel: vscode.OutputChannel;
 // Status bar item for watch status
 let statusBarItem: vscode.StatusBarItem;
 
+// Log level constants (external so they're not recreated every call)
+const LOG_LEVEL_PRIORITY: { [key: string]: number } = {
+	'none': 0, 'debug': 1, 'verbose': 2, 'info': 3, 'success': 3, 'warn': 4, 'error': 5
+};
+
+const LOG_LEVEL_EMOJIS: { [key: string]: string } = {
+	'debug': '🪲',      // bug
+	'verbose': '🔍',    // magnifying glass
+	'info': 'ℹ️',       // info icon
+	'success': '✅',    // checkmark
+	'warn': '⚠️',       // warning triangle
+	'error': '❌',      // X mark
+	'none': '🚫'        // prohibition
+};
+
+const LOG_LEVEL_LABELS: { [key: string]: string } = {
+	'debug': '[DEBUG]',
+	'verbose': '[VERBOSE]',
+	'info': '[INFO]',
+	'success': '[SUCCESS]',
+	'warn': '[WARN]',
+	'error': '[ERROR]',
+	'none': '[NONE]'
+};
+
+function supportsEmoji(): boolean {
+	// VS Code output panel always supports emoji
+	// Check if we're running in VS Code environment
+	if (typeof vscode !== 'undefined') {
+		return true;
+	}
+	
+	// Fallback for other environments
+	const platform = process.platform;
+	// Modern terminals generally support emojis
+	return platform !== 'win32' || !!process.env.TERM_PROGRAM || !!process.env.WT_SESSION;
+}
+
 // Backup path helper
 function getBackupPath(excelFile: string, timestamp: string): string {
 	const config = getConfig();
@@ -107,110 +145,54 @@ function cleanupOldBackups(excelFile: string): void {
 				try {
 					fs.unlinkSync(backup.path);
 					deletedCount++;
-					log(`Deleted old backup: ${backup.filename}`);
+					log(`Deleted old backup: ${backup.filename}`, 'cleanupOldBackups', 'debug');
 				} catch (deleteError) {
-					log(`Failed to delete backup ${backup.filename}: ${deleteError}`, 'cleanupBackups');
+					log(`Failed to delete backup ${backup.filename}: ${deleteError}`, 'cleanupOldBackups', 'error');
 				}
 			}
 			
 			if (deletedCount > 0) {
-				log(`Cleaned up ${deletedCount} old backup files (keeping ${maxBackups} most recent)`);
+				log(`Cleaned up ${deletedCount} old backup files (keeping ${maxBackups} most recent)`, 'cleanupOldBackups', 'info');
 			}
 		}
 		
 	} catch (error) {
-		log(`Backup cleanup failed: ${error}`, 'cleanupBackups');
+		log(`Backup cleanup failed: ${error}`, 'cleanupOldBackups', 'error');
 	}
 }
 
 // Enhanced logging function with context and log levels
-function log(message: string, context?: string): void {
+function log(message: string, context: string = '', level: string = 'info'): void {
 	const config = getConfig();
-	const logLevel = getEffectiveLogLevel();
-	
-	// Determine message level based on context or content
-	let messageLevel = 'info';
-	if (context === 'error' || message.includes('❌') || message.toLowerCase().includes('error')) {
-		messageLevel = 'error';
-	} else if (message.includes('⚠️') || message.toLowerCase().includes('warning')) {
-		messageLevel = 'warn';
-	} else if (context === 'debug' || context === 'extractPowerQuery' || context === 'syncToExcel' || context === 'watchFile') {
-		messageLevel = 'verbose';
+	const userLogLevel = (config.get<string>('logLevel', 'info') || 'info').toLowerCase();
+	const messageLevel = level.toLowerCase();
+
+	const userPriority = LOG_LEVEL_PRIORITY[userLogLevel] ?? 3;
+	const messagePriority = LOG_LEVEL_PRIORITY[messageLevel] ?? 3;
+
+	// If user set 'none', suppress all logging, or if message is below threshold
+	if (userLogLevel === 'none' || messagePriority < userPriority) {
+		return;
 	}
-	
-	// Check if message should be logged at current level
-	const levelOrder = ['none', 'error', 'warn', 'info', 'verbose', 'debug'];
-	const currentLevelIndex = levelOrder.indexOf(logLevel);
-	const messageLevelIndex = levelOrder.indexOf(messageLevel);
-	
-	if (currentLevelIndex < messageLevelIndex) {
-		return; // Don't log this message at current level
-	}
-	
+
 	const timestamp = new Date().toISOString();
-	const contextInfo = context ? `[${context}] ` : '';
-	const fullMessage = `[${timestamp}] ${contextInfo}${message}`;
+	const emojiMode = supportsEmoji();
+	const levelSymbol = emojiMode
+		? LOG_LEVEL_EMOJIS[messageLevel] || 'ℹ️'
+		: LOG_LEVEL_LABELS[messageLevel] || '[INFO]';
+
+	let logPrefix = `[${timestamp}] ${levelSymbol}`;
+	if (context) {
+		logPrefix += ` [${context}]`;
+	}
+
+	const fullMessage = `${logPrefix} ${message}`;
 	console.log(fullMessage);
 	
 	// Only append to output channel if it's initialized
 	if (outputChannel) {
 		outputChannel.appendLine(fullMessage);
 	}
-}
-
-// Get effective log level with automatic migration from legacy settings
-function getEffectiveLogLevel(): string {
-	const config = getConfig();
-	
-	// Check if new setting exists
-	const logLevel = config.get<string>('logLevel');
-	if (logLevel) {
-		return logLevel;
-	}
-	
-	// Check legacy settings and migrate
-	const verboseMode = config.get<boolean>('verboseMode');
-	const debugMode = config.get<boolean>('debugMode');
-	
-	let migratedLevel = 'info'; // Default
-	
-	if (debugMode) {
-		migratedLevel = 'debug';
-	} else if (verboseMode) {
-		migratedLevel = 'verbose';
-	}
-	
-	// Perform one-time migration if legacy settings exist
-	if (verboseMode !== undefined || debugMode !== undefined) {
-		// Use unified config system for migration
-		const unifiedConfig = getConfig();
-		if (unifiedConfig.update) {
-			// Use Promise for async operation
-			Promise.resolve(unifiedConfig.update('logLevel', migratedLevel, vscode.ConfigurationTarget.Global))
-				.then(() => {
-					vscode.window.showInformationMessage(
-						`Excel Power Query Editor: Updated logging settings. ` +
-						`Your previous settings (verbose: ${verboseMode}, debug: ${debugMode}) ` +
-						`have been migrated to logLevel: "${migratedLevel}". ` +
-						`Legacy settings can be safely removed from your configuration.`,
-						'OK', 'Open Settings'
-					).then(choice => {
-						if (choice === 'Open Settings') {
-							vscode.commands.executeCommand('workbench.action.openSettings', 'excel-power-query-editor');
-						}
-					});
-					log(`Migrated legacy logging settings to logLevel: ${migratedLevel}`, 'migration');
-				})
-				.catch((error: any) => {
-					log(`Failed to migrate legacy settings: ${error}`, 'error');
-				});
-		} else {
-			// Test environment - just log the migration intent
-			log(`Test environment: Would migrate legacy logging settings to logLevel: ${migratedLevel}`, 'migration');
-		}
-	}
-	
-	return migratedLevel;
 }
 
 // Update status bar
@@ -241,26 +223,30 @@ async function initializeAutoWatch(): Promise<void> {
 	const watchAlways = config.get<boolean>('watchAlways', false);
 	
 	if (!watchAlways) {
-		log('Extension activated - auto-watch disabled, staying dormant until manual command');
+		log('Extension activated - auto-watch disabled, staying dormant until manual command', 'initializeAutoWatch', 'info');
 		return; // Auto-watch is disabled - minimal initialization
 	}
 
-	log('Extension activated - auto-watch enabled, scanning workspace for .m files...');
+	log('Extension activated - auto-watch enabled, scanning workspace for .m files...', 'initializeAutoWatch', 'info');
 
 	try {
 		// Find all .m files in the workspace
 		const mFiles = await vscode.workspace.findFiles('**/*.m', '**/node_modules/**');
 		
 		if (mFiles.length === 0) {
-			log('Auto-watch enabled but no .m files found in workspace');
+			log('Auto-watch enabled but no .m files found in workspace', 'initializeAutoWatch', 'info');
 			vscode.window.showInformationMessage('🔍 Auto-watch enabled but no .m files found in workspace');
 			return;
 		}
 
-		log(`Found ${mFiles.length} .m files in workspace, checking for corresponding Excel files...`);
+		log(`Found ${mFiles.length} .m files in workspace, checking for corresponding Excel files...`, 'initializeAutoWatch', 'verbose');
 
 		let watchedCount = 0;
-		const maxAutoWatch = 20; // Prevent watching too many files automatically
+		const maxAutoWatch = config.get<number>('watchAlways.maxFiles', 25) || 25; // Configurable limit for auto-watch
+		
+		if (mFiles.length > maxAutoWatch) {
+			log(`Found ${mFiles.length} .m files but limiting auto-watch to ${maxAutoWatch} files (configurable in settings)`, 'initializeAutoWatch', 'info');
+		}
 		
 		for (const mFileUri of mFiles.slice(0, maxAutoWatch)) {
 			const mFile = mFileUri.fsPath;
@@ -271,12 +257,12 @@ async function initializeAutoWatch(): Promise<void> {
 				try {
 					await watchFile(mFileUri);
 					watchedCount++;
-					log(`Auto-watch initialized: ${path.basename(mFile)} → ${path.basename(excelFile)}`);
+					log(`Auto-watch initialized: ${path.basename(mFile)} → ${path.basename(excelFile)}`, 'initializeAutoWatch', 'debug');
 				} catch (error) {
-					log(`Failed to auto-watch ${path.basename(mFile)}: ${error}`, 'autoWatchInit');
+					log(`Failed to auto-watch ${path.basename(mFile)}: ${error}`, 'initializeAutoWatch', 'error');
 				}
 			} else {
-				log(`Skipping ${path.basename(mFile)} - no corresponding Excel file found`);
+				log(`Skipping ${path.basename(mFile)} - no corresponding Excel file found`, 'initializeAutoWatch', 'debug');
 			}
 		}
 
@@ -284,9 +270,9 @@ async function initializeAutoWatch(): Promise<void> {
 			vscode.window.showInformationMessage(
 				`🚀 Auto-watch enabled: Now watching ${watchedCount} Power Query file${watchedCount > 1 ? 's' : ''}`
 			);
-			log(`Auto-watch initialization complete: ${watchedCount} files being watched`);
+			log(`Auto-watch initialization complete: ${watchedCount} files being watched`, 'initializeAutoWatch', 'info');
 		} else {
-			log('Auto-watch enabled but no .m files with corresponding Excel files found');
+			log('Auto-watch enabled but no .m files with corresponding Excel files found', 'initializeAutoWatch', 'info');
 			vscode.window.showInformationMessage('⚠️ Auto-watch enabled but no .m files with corresponding Excel files found');
 		}
 
@@ -294,11 +280,11 @@ async function initializeAutoWatch(): Promise<void> {
 			vscode.window.showWarningMessage(
 				`Found ${mFiles.length} .m files but only auto-watching first ${maxAutoWatch}. Use "Watch File" command for others.`
 			);
-			log(`Limited auto-watch to ${maxAutoWatch} files (found ${mFiles.length} total)`);
+			log(`Limited auto-watch to ${maxAutoWatch} files (found ${mFiles.length} total)`, 'initializeAutoWatch', 'warn');
 		}
 
 	} catch (error) {
-		log(`Auto-watch initialization failed: ${error}`, 'autoWatchInit');
+		log(`Auto-watch initialization failed: ${error}`, 'initializeAutoWatch', 'error');
 		vscode.window.showErrorMessage(`Auto-watch initialization failed: ${error}`);
 	}
 }
@@ -309,7 +295,7 @@ export async function activate(context: vscode.ExtensionContext) {
 		// Initialize output channel first (before any logging)
 		outputChannel = vscode.window.createOutputChannel('Excel Power Query Editor');
 		
-		log('Excel Power Query Editor extension is now active!', 'activation');
+		log('Excel Power Query Editor extension is now active!', 'activate', 'info');
 
 		// Register all commands
 		const commands = [
@@ -325,12 +311,12 @@ export async function activate(context: vscode.ExtensionContext) {
 		];
 
 		context.subscriptions.push(...commands);
-		log(`Registered ${commands.length} commands successfully`, 'activation');
+		log(`Registered ${commands.length} commands successfully`, 'activate', 'success');
 
 		// Initialize status bar
 		updateStatusBar();
-		
-		log('Excel Power Query Editor extension activated');
+
+		log('Excel Power Query Editor extension activated', 'activate', 'info');
 		
 		// Auto-watch existing .m files if setting is enabled
 		await initializeAutoWatch();
@@ -338,9 +324,9 @@ export async function activate(context: vscode.ExtensionContext) {
 		// Auto-install Excel symbols if enabled
 		await autoInstallSymbolsIfEnabled();
 		
-		log('Extension activation completed successfully', 'activation');
+		log('Extension activation completed successfully', 'activate', 'success');
 	} catch (error) {
-		console.error('Extension activation failed:', error);
+		log(`Extension activation failed: ${error}`, 'activate', 'error');
 		// Re-throw to ensure VS Code knows about the failure
 		throw error;
 	}
@@ -349,7 +335,7 @@ export async function activate(context: vscode.ExtensionContext) {
 async function extractFromExcel(uri?: vscode.Uri): Promise<void> {
 	try {
 		// Dump extension settings for debugging (debug level only)
-		const logLevel = getEffectiveLogLevel();
+		const logLevel = getConfig().get<string>('logLevel', 'info');
 		if (logLevel === 'debug') {
 			dumpAllExtensionSettings();
 		}
@@ -358,7 +344,7 @@ async function extractFromExcel(uri?: vscode.Uri): Promise<void> {
 		if (uri && (!uri.fsPath || typeof uri.fsPath !== 'string')) {
 			const errorMsg = 'Invalid URI parameter provided to extractFromExcel command';
 			vscode.window.showErrorMessage(errorMsg);
-			log(errorMsg, "error");
+			log(errorMsg, 'extractFromExcel', 'error');
 			return;
 		}
 		
@@ -366,59 +352,59 @@ async function extractFromExcel(uri?: vscode.Uri): Promise<void> {
 		if (!uri?.fsPath) {
 			const errorMsg = 'No Excel file specified. Use right-click on an Excel file or Command Palette with file open.';
 			vscode.window.showErrorMessage(errorMsg);
-			log(errorMsg, "error");
+			log(errorMsg, 'extractFromExcel', 'error');
 			return;
 		}
 		
 		const excelFile = uri.fsPath;
 		if (!excelFile) {
-			log('No Excel file selected for extraction');
+			log('No Excel file selected for extraction', 'extractFromExcel', 'warn');
 			return;
 		}
 
-		log(`Starting Power Query extraction from: ${path.basename(excelFile)}`, 'extractPowerQuery');
+		log(`Starting Power Query extraction from: ${path.basename(excelFile)}`, 'extractFromExcel', 'info');
 		vscode.window.showInformationMessage(`Extracting Power Query from: ${path.basename(excelFile)}`);
 		
 		// Try to use excel-datamashup for extraction
 		try {
-			log('Loading required modules...', 'extractPowerQuery');
+			log('Loading required modules...', 'extractFromExcel', 'debug');
 			// First, we need to extract the DataMashup XML from the Excel file (scanning all customXml files)
 			const JSZip = (await import('jszip')).default;
 			
 			// Use require for excel-datamashup to avoid ES module issues
 			const excelDataMashup = require('excel-datamashup');
-			log('Modules loaded successfully', 'extractPowerQuery');
-					log('Reading Excel file buffer...', 'extractPowerQuery');
+			log('Modules loaded successfully', 'extractFromExcel', 'debug');
+			log('Reading Excel file buffer...', 'extractFromExcel', 'debug');
 		let buffer: Buffer;
 		try {
 			buffer = fs.readFileSync(excelFile);
 			const fileSizeMB = (buffer.length / (1024 * 1024)).toFixed(2);
-			log(`Excel file read: ${fileSizeMB} MB`);
+			log(`Excel file read: ${fileSizeMB} MB`, 'extractFromExcel', 'info');
 		} catch (error) {
 			const errorMsg = `Failed to read Excel file: ${error}`;
 			vscode.window.showErrorMessage(errorMsg);
-			log(errorMsg, "error");
+			log(errorMsg, 'extractFromExcel', 'error');
 			return;
 		}
 
-		log('Loading ZIP structure...');
+		log('Loading ZIP structure...', 'extractFromExcel', 'debug');
 		let zip: any;
 		try {
 			zip = await JSZip.loadAsync(buffer, {
 				checkCRC32: false // Skip CRC check for better performance on large files
 			});
-			log('ZIP structure loaded successfully');
+			log('ZIP structure loaded successfully', 'extractFromExcel', 'debug');
 		} catch (error) {
 			const errorMsg = `Failed to load Excel file as ZIP: ${error}`;
 			vscode.window.showErrorMessage(errorMsg);
-			log(errorMsg, "error");
+			log(errorMsg, 'extractFromExcel', 'error');
 			return;
 		}
 			
 			// Debug: List all files in the Excel zip
 			const allFiles = Object.keys(zip.files).filter(name => !zip.files[name].dir);
-			log(`Files in Excel archive: ${allFiles.length} total files`, 'extractPowerQuery');
-			
+			log(`Files in Excel archive: ${allFiles.length} total files`, 'extractFromExcel', 'info');
+
 			// Look for Power Query DataMashup using unified detection function
 			const dataMashupResults = await scanForDataMashup(zip, allFiles, undefined, false);
 			const dataMashupFiles = dataMashupResults.filter(r => r.hasDataMashup);
@@ -441,7 +427,7 @@ async function extractFromExcel(uri?: vscode.Uri): Promise<void> {
 					`Please check the Excel file's Power Query configuration.`;
 				
 				vscode.window.showErrorMessage(errorMsg);
-				log(errorMsg, "error");
+				log(errorMsg, 'extractFromExcel', 'error');
 				return; // HARD STOP - don't create placeholder files for malformed DataMashup
 			}
 			
@@ -475,31 +461,31 @@ async function extractFromExcel(uri?: vscode.Uri): Promise<void> {
 			let xmlContent: string;
 			
 			if (binaryData.length >= 2 && binaryData[0] === 0xFF && binaryData[1] === 0xFE) {
-				log(`Detected UTF-16 LE BOM in ${foundLocation}`);
+				log(`Detected UTF-16 LE BOM in ${foundLocation}`, 'extractFromExcel', 'debug');
 				xmlContent = binaryData.subarray(2).toString('utf16le');
 			} else if (binaryData.length >= 3 && binaryData[0] === 0xEF && binaryData[1] === 0xBB && binaryData[2] === 0xBF) {
-				log(`Detected UTF-8 BOM in ${foundLocation}`);
+				log(`Detected UTF-8 BOM in ${foundLocation}`, 'extractFromExcel', 'debug');
 				xmlContent = binaryData.subarray(3).toString('utf8');
 			} else {
 				xmlContent = binaryData.toString('utf8');
 			}
 			
-			log(`Attempting to parse DataMashup Power Query from: ${foundLocation}`);
-			log(`DataMashup XML content size: ${(xmlContent.length / 1024).toFixed(2)} KB`);
+			log(`Attempting to parse DataMashup Power Query from: ${foundLocation}`, 'extractFromExcel', 'debug');
+			log(`DataMashup XML content size: ${(xmlContent.length / 1024).toFixed(2)} KB`, 'extractFromExcel', 'debug');
 			
 			// Use excel-datamashup for DataMashup format
-			log('Calling excelDataMashup.ParseXml()...');
+			log('Calling excelDataMashup.ParseXml()...', 'extractFromExcel', 'debug');
 			const parseResult = await excelDataMashup.ParseXml(xmlContent);
-			log(`ParseXml() completed. Result type: ${typeof parseResult}`);
+			log(`ParseXml() completed. Result type: ${typeof parseResult}`, 'extractFromExcel', 'debug');
 			
 			if (typeof parseResult === 'string') {
 				const errorMsg = `Power Query parsing failed: ${parseResult}\nLocation: ${foundLocation}\nXML preview: ${xmlContent.substring(0, 200)}...`;
-				log(errorMsg, 'extraction');
+				log(errorMsg, 'extractFromExcel', 'error');
 				vscode.window.showErrorMessage(errorMsg);
 				return;
 			}
 			
-			log('ParseXml() succeeded. Extracting formula...');
+			log('ParseXml() succeeded. Extracting formula...', 'extractFromExcel', 'debug');
 			let formula: string;
 			try {
 				// Extract the formula using robust API detection
@@ -514,22 +500,22 @@ async function extractFromExcel(uri?: vscode.Uri): Promise<void> {
 						formula = parseResult.formula || parseResult.code || parseResult.m;
 					}
 				}
-				log(`getFormula() completed. Formula length: ${formula ? formula.length : 'null'}`);
+				log(`getFormula() completed. Formula length: ${formula ? formula.length : 'null'}`, 'extractPowerQuery', 'debug');
 			} catch (formulaError) {
 				const errorMsg = `Formula extraction failed: ${formulaError}`;
-				log(errorMsg, "error");
+				log(errorMsg, 'extractFromExcel', 'error');
 				vscode.window.showErrorMessage(errorMsg);
 				return;
 			}
 			
 			if (!formula) {
 				const warningMsg = `No Power Query formula found in ${foundLocation}. ParseResult keys: ${Object.keys(parseResult).join(', ')}`;
-				log(warningMsg, "error");
+				log(warningMsg, 'extractFromExcel', 'warn');
 				vscode.window.showWarningMessage(warningMsg);
 				return;
 			}
 			
-			log('Formula extracted successfully. Creating output file...');
+			log('Formula extracted successfully. Creating output file...', 'extractPowerQuery', 'debug');
 			// Create output file with the actual formula
 			const baseName = path.basename(excelFile);
 			const outputPath = path.join(path.dirname(excelFile), `${baseName}_PowerQuery.m`);
@@ -549,27 +535,27 @@ async function extractFromExcel(uri?: vscode.Uri): Promise<void> {
 			const document = await vscode.workspace.openTextDocument(outputPath);
 			await vscode.window.showTextDocument(document);
 			
-			vscode.window.showInformationMessage(`Power Query extracted to: ${path.basename(outputPath)}`);		log(`Successfully extracted Power Query from ${path.basename(excelFile)} to ${path.basename(outputPath)}`);
+			vscode.window.showInformationMessage(`Power Query extracted to: ${path.basename(outputPath)}`);
+			log(`Successfully extracted Power Query from ${path.basename(excelFile)} to ${path.basename(outputPath)}`, 'extractFromExcel', 'success');
 		
 		// Track this file as recently extracted to prevent immediate auto-sync
 		recentExtractions.add(outputPath);
 		setTimeout(() => {
 			recentExtractions.delete(outputPath);
-			log(`Cleared recent extraction flag for ${path.basename(outputPath)}`, 'extractPowerQuery');
+			log(`Cleared recent extraction flag for ${path.basename(outputPath)}`, 'extractFromExcel', 'debug');
 		}, 2000); // Prevent auto-sync for 2 seconds after extraction
 		
 		// Auto-watch if enabled
 		const config = getConfig();
 		if (config.get<boolean>('watchAlways', false)) {
 			await watchFile(vscode.Uri.file(outputPath));
-			log(`Auto-watch enabled for ${path.basename(outputPath)}`);
+			log(`Auto-watch enabled for ${path.basename(outputPath)}`, 'extractPowerQuery', 'debug');
 		}
 
 		} catch (moduleError) {
 			// Fallback: create a placeholder file
 			const errorMsg = `Excel DataMashup parsing failed: ${moduleError}`;
-			log(errorMsg, "error");
-			log(`Error stack: ${moduleError instanceof Error ? moduleError.stack : 'No stack trace'}`);
+			log(errorMsg, 'extractFromExcel', 'error');
 			vscode.window.showWarningMessage(`${errorMsg}. Creating placeholder file for testing.`);
 			
 			const baseName = path.basename(excelFile); // Keep full filename including extension
@@ -605,28 +591,27 @@ in
 			const document = await vscode.workspace.openTextDocument(outputPath);
 			await vscode.window.showTextDocument(document);
 					vscode.window.showInformationMessage(`Placeholder file created: ${path.basename(outputPath)}`);
-		log(`Created placeholder file: ${path.basename(outputPath)}`);
+		log(`Created placeholder file: ${path.basename(outputPath)}`, 'extractPowerQuery', 'info');
 		
 		// Track this file as recently extracted to prevent immediate auto-sync
 		recentExtractions.add(outputPath);
 		setTimeout(() => {
 			recentExtractions.delete(outputPath);
-			log(`Cleared recent extraction flag for placeholder ${path.basename(outputPath)}`, 'extractPowerQuery');
+			log(`Cleared recent extraction flag for placeholder ${path.basename(outputPath)}`, 'extractFromExcel', 'debug');
 		}, 2000); // Prevent auto-sync for 2 seconds after extraction
 		
 		// Auto-watch if enabled
 		const config = getConfig();
 		if (config.get<boolean>('watchAlways', false)) {
 			await watchFile(vscode.Uri.file(outputPath));
-			log(`Auto-watch enabled for placeholder ${path.basename(outputPath)}`);
+			log(`Auto-watch enabled for placeholder ${path.basename(outputPath)}`, 'extractPowerQuery', 'debug');
 		}
 		}
 		
 	} catch (error) {
 		const errorMsg = `Failed to extract Power Query: ${error}`;
 		vscode.window.showErrorMessage(errorMsg);
-		log(errorMsg, "error");
-		console.error('Extract error:', error);
+		log(errorMsg, 'extractFromExcel', 'error');
 	}
 }
 
@@ -652,12 +637,12 @@ async function syncToExcel(uri?: vscode.Uri): Promise<void> {
 					const fixturePath = getTestFixturePath(fixture);
 					if (fs.existsSync(fixturePath)) {
 						excelFile = fixturePath;
-						log(`Test environment: Using fixture ${fixture} for sync`, 'syncToExcel');
+						log(`Test environment: Using fixture ${fixture} for sync`, 'syncToExcel', 'debug');
 						break;
 					}
 				}
 				if (!excelFile) {
-					log('Test environment: No Excel fixtures found, skipping sync', 'syncToExcel');
+					log('Test environment: No Excel fixtures found, skipping sync', 'syncToExcel', 'info');
 					return;
 				}
 			} else {
@@ -675,7 +660,7 @@ async function syncToExcel(uri?: vscode.Uri): Promise<void> {
 					`3. Do not rename files after extraction\n\n` +
 					`Extension will NOT offer to select a different file to protect your data.`
 				);
-				log(`SAFETY STOP: Refusing to sync ${mFileName} - corresponding Excel file not found`, 'syncToExcel');
+				log(`SAFETY STOP: Refusing to sync ${mFileName} - corresponding Excel file not found`, 'syncToExcel', 'error');
 				return; // HARD STOP - no file picker
 			}
 		}
@@ -707,11 +692,11 @@ async function syncToExcel(uri?: vscode.Uri): Promise<void> {
 		// Found section declaration - use everything from section onwards
 		cleanMCode = sectionMatch[2].trim();
 		const headerLength = sectionMatch[1].length;
-		log(`Header stripping - Found section at position ${headerLength}, removed ${headerLength} header characters`, 'syncToExcel');
+		log(`Header stripping - Found section at position ${headerLength}, removed ${headerLength} header characters`, 'syncToExcel', 'verbose');
 	} else {
 		// No section found - use original content (might be a different format)
 		cleanMCode = mContent.trim();
-		log(`Header stripping - No section declaration found, using original content`, 'syncToExcel');
+		log(`Header stripping - No section declaration found, using original content`, 'syncToExcel', 'debug');
 	}
 		
 		if (!cleanMCode) {
@@ -734,7 +719,7 @@ async function syncToExcel(uri?: vscode.Uri): Promise<void> {
 			
 			fs.copyFileSync(excelFile, backupPath);
 			vscode.window.showInformationMessage(`Syncing to Excel... (Backup created: ${path.basename(backupPath)})`);
-			log(`Backup created: ${backupPath}`);
+			log(`Backup created: ${backupPath}`, 'syncToExcel', 'verbose');
 			
 			// Clean up old backups
 			cleanupOldBackups(excelFile);
@@ -792,12 +777,12 @@ async function syncToExcel(uri?: vscode.Uri): Promise<void> {
 					if (hasDataMashupOpenTag && hasDataMashupCloseTag && !isSchemaRefOnly) {
 						dataMashupFile = file;
 						dataMashupLocation = location;
-						log(`Found DataMashup content for sync in: ${location}`, 'syncToExcel');
+						log(`Found DataMashup content for sync in: ${location}`, 'syncToExcel', 'debug');
 						break; // Found it!
 					}
 					// All other cases: skip silently (no logging for schema refs or malformed content)
 				} catch (e) {
-					log(`Could not check ${location}: ${e}`, 'syncToExcel');
+					log(`Could not check ${location}: ${e}`, 'syncToExcel', 'warn');
 				}
 			}
 		}
@@ -813,10 +798,10 @@ async function syncToExcel(uri?: vscode.Uri): Promise<void> {
 		
 		// Handle UTF-16 LE BOM like in extraction
 		if (binaryData.length >= 2 && binaryData[0] === 0xFF && binaryData[1] === 0xFE) {
-			log('Detected UTF-16 LE BOM in DataMashup', 'syncToExcel');
+			log('Detected UTF-16 LE BOM in DataMashup', 'syncToExcel', 'debug');
 			dataMashupXml = binaryData.subarray(2).toString('utf16le');
 		} else if (binaryData.length >= 3 && binaryData[0] === 0xEF && binaryData[1] === 0xBB && binaryData[2] === 0xBF) {
-			log('Detected UTF-8 BOM in DataMashup', 'syncToExcel');
+			log('Detected UTF-8 BOM in DataMashup', 'syncToExcel', 'debug');
 			dataMashupXml = binaryData.subarray(3).toString('utf8');
 		} else {
 			dataMashupXml = binaryData.toString('utf8');
@@ -828,7 +813,7 @@ async function syncToExcel(uri?: vscode.Uri): Promise<void> {
 		}
 		
 		// DEBUG: Save the original DataMashup XML for inspection (debug mode only)
-		const logLevel = getEffectiveLogLevel();
+		const logLevel = getConfig().get<string>('logLevel', 'info');
 		if (logLevel === 'debug') {
 			const baseName = path.basename(excelFile, path.extname(excelFile));
 			const debugDir = path.join(path.dirname(excelFile), `${baseName}_sync_debug`);
@@ -840,12 +825,12 @@ async function syncToExcel(uri?: vscode.Uri): Promise<void> {
 				dataMashupXml,
 				'utf8'
 			);
-			log(`Debug: Saved original DataMashup XML to ${path.basename(debugDir)}/original_datamashup.xml`, 'debug');
+			log(`Debug: Saved original DataMashup XML to ${path.basename(debugDir)}/original_datamashup.xml`, 'syncToExcel', 'debug');
 		}
 		
 		// Use excel-datamashup to correctly update the DataMashup binary content
 		try {
-			log('Attempting to parse existing DataMashup with excel-datamashup...');
+			log('Attempting to parse existing DataMashup with excel-datamashup...', 'syncToExcel', 'debug');
 			// Parse the existing DataMashup to get structure
 			const parseResult = await excelDataMashup.ParseXml(dataMashupXml);
 			
@@ -853,18 +838,18 @@ async function syncToExcel(uri?: vscode.Uri): Promise<void> {
 				throw new Error(`Failed to parse existing DataMashup: ${parseResult}`);
 			}
 			
-			log('DataMashup parsed successfully, updating formula...');
+			log('DataMashup parsed successfully, updating formula...', 'syncToExcel', 'debug');
 			// Use setFormula to update the M code (this also calls resetPermissions)
 			parseResult.setFormula(cleanMCode);
 			
-			log('Formula updated, generating new DataMashup content...');
+			log('Formula updated, generating new DataMashup content...', 'syncToExcel', 'debug');
 			// Use save to get the updated base64 binary content
 			const newBase64Content = await parseResult.save();
 			
-			log(`excel-datamashup save() returned type: ${typeof newBase64Content}, length: ${String(newBase64Content).length}`);
+			log(`excel-datamashup save() returned type: ${typeof newBase64Content}, length: ${String(newBase64Content).length}`, 'syncToExcel', 'debug');
 			
 			if (typeof newBase64Content === 'string' && newBase64Content.length > 0) {
-				log('✅ excel-datamashup approach succeeded, updating Excel file...');
+				log('✅ excel-datamashup approach succeeded, updating Excel file...', 'syncToExcel', 'debug');
 				// Success! Now we need to reconstruct the full DataMashup XML with new base64 content
 				// Replace the base64 content inside the DataMashup tags
 				const dataMashupRegex = /<DataMashup[^>]*>(.*?)<\/DataMashup>/s;
@@ -895,16 +880,16 @@ async function syncToExcel(uri?: vscode.Uri): Promise<void> {
 				fs.writeFileSync(excelFile, updatedBuffer);
 				
 				vscode.window.showInformationMessage(`✅ Successfully synced Power Query to Excel: ${path.basename(excelFile)}`);
-				log(`Successfully synced Power Query to Excel: ${path.basename(excelFile)}`);
+				log(`Successfully synced Power Query to Excel: ${path.basename(excelFile)}`, 'syncToExcel', 'success');
 				
 				// Open Excel after sync if enabled
 				const config = getConfig();
 				if (config.get<boolean>('sync.openExcelAfterWrite', false)) {
 					try {
 						await vscode.commands.executeCommand('vscode.open', vscode.Uri.file(excelFile));
-						log(`Opened Excel file after sync: ${path.basename(excelFile)}`);
+						log(`Opened Excel file after sync: ${path.basename(excelFile)}`, 'syncToExcel', 'verbose');
 					} catch (openError) {
-						log(`Failed to open Excel file after sync: ${openError}`, "error");
+						log(`Failed to open Excel file after sync: ${openError}`, 'syncToExcel', 'error');
 					}
 				}
 				return;
@@ -914,15 +899,14 @@ async function syncToExcel(uri?: vscode.Uri): Promise<void> {
 			}
 			
 		} catch (dataMashupError) {
-			log(`❌ excel-datamashup approach failed: ${dataMashupError}`, "error");
+			log(`excel-datamashup approach failed: ${dataMashupError}`, 'syncToExcel', 'error');
 			throw new Error(`DataMashup sync failed: ${dataMashupError}. The DataMashup format may have changed or be unsupported.`);
 		}
 		
 	} catch (error) {
 		const errorMsg = `Failed to sync to Excel: ${error}`;
 		vscode.window.showErrorMessage(errorMsg);
-		log(errorMsg, "error");
-		console.error('Sync error:', error);
+		log(`Sync error: ${error}`, 'syncToExcel', 'error');
 		
 		// If we have a backup, offer to restore it
 		const mFile = uri?.fsPath || vscode.window.activeTextEditor?.document.fileName;
@@ -936,7 +920,7 @@ async function syncToExcel(uri?: vscode.Uri): Promise<void> {
 				if (excelFile) {
 					fs.copyFileSync(backupPath, excelFile);
 					vscode.window.showInformationMessage('Excel file restored from backup.');
-					log(`Restored from backup: ${backupPath}`);
+					log(`Restored from backup: ${backupPath}`, 'syncToExcel', 'info');
 				}
 			}
 		}
@@ -962,7 +946,7 @@ async function watchFile(uri?: vscode.Uri): Promise<void> {
 		if (!excelFile) {
 			// In test environment, proceed without user interaction
 			if (isTestEnvironment()) {
-				log('Test environment: Missing Excel file, proceeding with watch anyway', 'watchFile');
+				log('Test environment: Missing Excel file, proceeding with watch anyway', 'watchFile', 'info');
 			} else {
 				const selection = await vscode.window.showWarningMessage(
 					`Cannot find corresponding Excel file for ${path.basename(mFile)}. Watch anyway?`,
@@ -975,9 +959,9 @@ async function watchFile(uri?: vscode.Uri): Promise<void> {
 		}
 
 	// Debug logging for watcher setup
-	log(`Setting up file watcher for: ${mFile}`, 'watchFile');
-	log(`Remote environment: ${vscode.env.remoteName}`, 'watchFile');
-	log(`Is dev container: ${vscode.env.remoteName === 'dev-container'}`, 'watchFile');
+	log(`Setting up file watcher for: ${mFile}`, 'watchFile', 'info');
+	log(`Remote environment: ${vscode.env.remoteName}`, 'watchFile', 'verbose');
+	log(`Is dev container: ${vscode.env.remoteName === 'dev-container'}`, 'watchFile', 'verbose');
 	
 	const isDevContainer = vscode.env.remoteName === 'dev-container';
 	
@@ -992,41 +976,40 @@ async function watchFile(uri?: vscode.Uri): Promise<void> {
 		}
 	});
 	
-	log(`Chokidar watcher created for ${path.basename(mFile)}, polling: ${isDevContainer}`, 'watchFile');
+	log(`CHOKIDAR watcher created for ${path.basename(mFile)}, polling: ${isDevContainer}`, 'watchFile', 'verbose');
 	
 	// Add comprehensive event logging
-	watcher.on('change', async () => {
-		try {
-			log(`🔥 CHOKIDAR: File change detected: ${path.basename(mFile)}`, 'watchFile');
-			vscode.window.showInformationMessage(`📝 File changed, syncing: ${path.basename(mFile)}`);
-			log(`File changed, triggering debounced sync: ${path.basename(mFile)}`, 'watchFile');
-			debouncedSyncToExcel(mFile).catch(error => {
+	watcher.on('change', async () => {			try {
+				log(`CHOKIDAR: File change detected: ${path.basename(mFile)}`, 'watchFile', 'verbose');
+				vscode.window.showInformationMessage(`📝 File changed, syncing: ${path.basename(mFile)}`);
+				log(`File changed, triggering debounced sync: ${path.basename(mFile)}`, 'watchFile', 'verbose');
+				debouncedSyncToExcel(mFile).catch(error => {
+					const errorMsg = `Auto-sync failed: ${error}`;
+					vscode.window.showErrorMessage(errorMsg);
+					log(errorMsg, 'watchFile', 'error');
+				});
+			} catch (error) {
 				const errorMsg = `Auto-sync failed: ${error}`;
 				vscode.window.showErrorMessage(errorMsg);
-				log(errorMsg, "watchFile");
-			});
-		} catch (error) {
-			const errorMsg = `Auto-sync failed: ${error}`;
-			vscode.window.showErrorMessage(errorMsg);
-			log(errorMsg, "watchFile");
-		}
+				log(errorMsg, 'watchFile', 'error');
+			}
 	});
 	
 	watcher.on('add', (path) => {
-		log(`🆕 CHOKIDAR: File added: ${path}`, 'watchFile');
+		log(`CHOKIDAR: File added: ${path}`, 'watchFile', 'info');
 		// DON'T trigger sync on file creation - only on user changes
 	});
 	
 	watcher.on('unlink', (path) => {
-		log(`🗑️ CHOKIDAR: File deleted: ${path}`, 'watchFile');
+		log(`CHOKIDAR: File deleted: ${path}`, 'watchFile', 'info');
 	});
 	
 	watcher.on('error', (error) => {
-		log(`❌ CHOKIDAR: Watcher error: ${error}`, 'watchFile');
+		log(`CHOKIDAR: Watcher error: ${error}`, 'watchFile', 'error');
 	});
 	
 	watcher.on('ready', () => {
-		log(`✅ CHOKIDAR: Watcher ready for ${path.basename(mFile)}`, 'watchFile');
+		log(`CHOKIDAR: Watcher ready for ${path.basename(mFile)}`, 'watchFile', 'info');
 	});
 
 	// BACKUP WATCHER: Only add VS Code FileSystemWatcher in dev containers as backup
@@ -1034,49 +1017,49 @@ async function watchFile(uri?: vscode.Uri): Promise<void> {
 	let documentWatcher: vscode.Disposable | undefined;
 	
 	if (isDevContainer) {
-		log(`Adding backup watchers for dev container environment`, 'watchFile');
+		log(`Adding backup watchers for dev container environment`, 'watchFile', 'verbose');
 		
 		vscodeWatcher = vscode.workspace.createFileSystemWatcher(mFile);
 		vscodeWatcher.onDidChange(async () => {
 			try {
-				log(`🔥 VSCODE: File change detected: ${path.basename(mFile)}`, 'watchFile');
+				log(`VSCODE: File change detected: ${path.basename(mFile)}`, 'watchFile', 'info');
 				vscode.window.showInformationMessage(`📝 File changed (VSCode watcher), syncing: ${path.basename(mFile)}`);
 				debouncedSyncToExcel(mFile).catch(error => {
-					log(`VS Code watcher sync failed: ${error}`, 'watchFile');
+					log(`VS Code watcher sync failed: ${error}`, 'watchFile', 'info');
 				});
 			} catch (error) {
-				log(`VS Code watcher sync failed: ${error}`, 'watchFile');
+				log(`VS Code watcher sync failed: ${error}`, 'watchFile', 'info');
 			}
 		});
 		
 		vscodeWatcher.onDidCreate(() => {
-			log(`🆕 VSCODE: File created: ${path.basename(mFile)}`, 'watchFile');
+			log(`VSCODE: File created: ${path.basename(mFile)}`, 'watchFile', 'info');
 		});
 		
 		vscodeWatcher.onDidDelete(() => {
-			log(`🗑️ VSCODE: File deleted: ${path.basename(mFile)}`, 'watchFile');
+			log(`VSCODE: File deleted: ${path.basename(mFile)}`, 'watchFile', 'info');
 		});
 
-		log(`VS Code FileSystemWatcher created for ${path.basename(mFile)}`, 'watchFile');
+		log(`VS Code FileSystemWatcher created for ${path.basename(mFile)}`, 'watchFile', 'info');
 
 		// EXPERIMENTAL: Document save events as additional trigger (dev container only)
 		documentWatcher = vscode.workspace.onDidSaveTextDocument(async (document) => {
 			if (document.fileName === mFile) {
 				try {
-					log(`💾 DOCUMENT: Save event detected: ${path.basename(mFile)}`, 'watchFile');
+					log(`documentWatcher: Save event detected: ${path.basename(mFile)}`, 'watchFile', 'verbose');
 					vscode.window.showInformationMessage(`📝 File saved (document event), syncing: ${path.basename(mFile)}`);
 					debouncedSyncToExcel(mFile).catch(error => {
-						log(`Document save event sync failed: ${error}`, 'watchFile');
+						log(`documentWatcher: Save event sync failed: ${error}`, 'watchFile', 'error');
 					});
 				} catch (error) {
-					log(`Document save event sync failed: ${error}`, 'watchFile');
+					log(`documentWatcher: Save event sync failed: ${error}`, 'watchFile', 'error');
 				}
 			}
 		});
 		
-		log(`VS Code document save watcher created for ${path.basename(mFile)}`, 'watchFile');
+		log(`VS Code document save watcher created for ${path.basename(mFile)}`, 'watchFile', 'info');
 	} else {
-		log(`Windows environment detected - using Chokidar only to avoid cascade events`, 'watchFile');
+		log(`Windows environment detected - using Chokidar only to avoid cascade events`, 'watchFile', 'verbose');
 	}		// Store watchers for cleanup (handle optional backup watchers)
 		const watcherSet = { 
 			chokidar: watcher, 
@@ -1087,7 +1070,7 @@ async function watchFile(uri?: vscode.Uri): Promise<void> {
 		
 		const excelFileName = excelFile ? path.basename(excelFile) : 'Excel file (when found)';
 		vscode.window.showInformationMessage(`👀 Now watching: ${path.basename(mFile)} → ${excelFileName}`);
-		log(`Started watching: ${path.basename(mFile)}`);
+		log(`Started watching: ${path.basename(mFile)}`, 'watch', 'info');
 		updateStatusBar();
 		
 		// Ensure the Promise resolves after watchers are set up
@@ -1096,8 +1079,7 @@ async function watchFile(uri?: vscode.Uri): Promise<void> {
 	} catch (error) {
 		const errorMsg = `Failed to watch file: ${error}`;
 		vscode.window.showErrorMessage(errorMsg);
-		log(errorMsg, "error");
-		console.error('Watch error:', error);
+		log(`Watch error: ${error}`, 'watchFile', 'error');
 	}
 }
 
@@ -1123,8 +1105,8 @@ async function toggleWatch(uri?: vscode.Uri): Promise<void> {
 	} catch (error) {
 		const errorMsg = `Failed to toggle watch: ${error}`;
 		vscode.window.showErrorMessage(errorMsg);
-		log(errorMsg, "error");
-		console.error('Toggle watch error:', error);
+		log(errorMsg, 'toggleWatch', 'verbose');
+		log(`Toggle watch error: ${error}`, 'toggleWatch', 'error');
 	}
 }
 
@@ -1141,7 +1123,7 @@ async function stopWatching(uri?: vscode.Uri): Promise<void> {
 		watchers.document?.dispose();
 		fileWatchers.delete(mFile);
 		vscode.window.showInformationMessage(`Stopped watching: ${path.basename(mFile)}`);
-		log(`Stopped watching: ${path.basename(mFile)}`);
+		log(`Stopped watching: ${path.basename(mFile)}`, 'stopWatching', 'verbose');
 		updateStatusBar();
 	} else {
 		vscode.window.showInformationMessage(`File was not being watched: ${path.basename(mFile)}`);
@@ -1182,7 +1164,7 @@ async function syncAndDelete(uri?: vscode.Uri): Promise<void> {
 						watchers.vscode?.dispose();
 						watchers.document?.dispose();
 						fileWatchers.delete(mFile);
-						log(`Stopped watching due to sync & delete: ${path.basename(mFile)}`);
+						log(`Stopped watching due to sync & delete: ${path.basename(mFile)}`, 'syncAndDelete', 'verbose');
 						updateStatusBar();
 					}
 				}
@@ -1199,19 +1181,18 @@ async function syncAndDelete(uri?: vscode.Uri): Promise<void> {
 				// Delete the file
 				fs.unlinkSync(mFile);
 				vscode.window.showInformationMessage(`✅ Synced and deleted: ${path.basename(mFile)}`);
-				log(`Successfully synced and deleted: ${path.basename(mFile)}`);
+				log(`Successfully synced and deleted: ${path.basename(mFile)}`, 'syncAndDelete', 'success');
 				
 			} catch (syncError) {
 				const errorMsg = `Sync failed, file not deleted: ${syncError}`;
 				vscode.window.showErrorMessage(errorMsg);
-				log(errorMsg, "error");
+				log(errorMsg, 'syncAndDelete', 'error');
 			}
 		}
 	} catch (error) {
 		const errorMsg = `Sync and delete failed: ${error}`;
 		vscode.window.showErrorMessage(errorMsg);
-		log(errorMsg, "error");
-		console.error('Sync and delete error:', error);
+		log(`Sync and delete error: ${error}`, 'syncAndDelete', 'error');
 	}
 }
 
@@ -1243,7 +1224,7 @@ async function scanForDataMashup(
 		allFiles.filter(f => f.toLowerCase().endsWith('.xml')) : 
 		customXmlFiles;
 	
-	log(`Scanning ${xmlFilesToScan.length} XML files for DataMashup content...`);
+	log(`Scanning ${xmlFilesToScan.length} XML files for DataMashup content...`, 'scanForDataMashup', 'verbose');
 	
 	for (const fileName of xmlFilesToScan) {
 		try {
@@ -1255,11 +1236,11 @@ async function scanForDataMashup(
 				
 				// Check for UTF-16 LE BOM (FF FE)
 				if (binaryData.length >= 2 && binaryData[0] === 0xFF && binaryData[1] === 0xFE) {
-					log(`Detected UTF-16 LE BOM in ${fileName}`);
+					log(`Detected UTF-16 LE BOM in ${fileName}`, 'scanForDataMashup', 'verbose');
 					// Decode UTF-16 LE (skip the 2-byte BOM)
 					content = binaryData.subarray(2).toString('utf16le');
 				} else if (binaryData.length >= 3 && binaryData[0] === 0xEF && binaryData[1] === 0xBB && binaryData[2] === 0xBF) {
-					log(`Detected UTF-8 BOM in ${fileName}`);
+					log(`Detected UTF-8 BOM in ${fileName}`, 'scanForDataMashup', 'verbose');
 					// Decode UTF-8 (skip the 3-byte BOM)
 					content = binaryData.subarray(3).toString('utf8');
 				} else {
@@ -1279,8 +1260,8 @@ async function scanForDataMashup(
 				}
 				
 				// Found <DataMashup tag - this is a legitimate candidate, so start logging
-				log(`Found <DataMashup tag in ${fileName} (${(content.length / 1024).toFixed(1)} KB) - validating structure...`);
-				
+				log(`Found <DataMashup tag in ${fileName} (${(content.length / 1024).toFixed(1)} KB) - validating structure...`, 'scanForDataMashup', 'verbose');
+
 				// IMPROVED DataMashup detection - look for actual DataMashup XML structure
 				let hasDataMashup = false;
 				let parseResult: any = null;
@@ -1294,7 +1275,7 @@ async function scanForDataMashup(
 				const isSchemaRefOnly = content.includes('ds:schemaRef') && content.includes('http://schemas.microsoft.com/DataMashup');
 				
 				if (hasDataMashupOpenTag && hasDataMashupCloseTag && !isSchemaRefOnly) {
-					log(`✅ Valid DataMashup XML structure detected - attempting to parse...`);
+					log(`Valid DataMashup XML structure detected - attempting to parse...`, 'scanForDataMashup', 'verbose');
 					// This looks like actual DataMashup content - try to parse it
 					try {
 						const excelDataMashup = require('excel-datamashup');
@@ -1302,25 +1283,25 @@ async function scanForDataMashup(
 						
 						if (typeof parseResult === 'object' && parseResult !== null) {
 							hasDataMashup = true;
-							log(`✅ Successfully parsed DataMashup content`);
+							log(`Successfully parsed DataMashup content`, 'scanForDataMashup', 'success');
 						} else {
-							log(`❌ ParseXml() failed: ${parseResult}`);
+							log(`ParseXml() failed: ${parseResult}`, 'scanForDataMashup', 'error');
 							parseError = `Parse failed: ${parseResult}`;
 						}
 					} catch (error) {
-						log(`❌ Error parsing DataMashup: ${error}`);
+						log(`Error parsing DataMashup: ${error}`, 'scanForDataMashup', 'error');
 						parseError = `Parse error: ${error}`;
 					}
 				} else if (isSchemaRefOnly) {
-					log(`⏭️ Contains only DataMashup schema reference, not actual content`);
+					log(`Contains only DataMashup schema reference, not actual content`, 'scanForDataMashup', 'debug');
 				} else if (!hasDataMashupOpenTag) {
-					log(`⚠️ Contains <DataMashup but missing required xmlns namespace or malformed structure`);
+					log(`Contains <DataMashup but missing required xmlns namespace or malformed structure`, 'scanForDataMashup', 'debug');
 					parseError = 'MALFORMED: missing xmlns namespace or malformed structure';
 				} else if (!hasDataMashupCloseTag) {
-					log(`⚠️ Contains <DataMashup opening but missing closing </DataMashup> tag`);
+					log(`Contains <DataMashup opening but missing closing </DataMashup> tag`, 'scanForDataMashup', 'debug');
 					parseError = 'MALFORMED: missing closing </DataMashup> tag';
 				} else {
-					log(`⚠️ Contains <DataMashup but structure validation failed`);
+					log(`Contains <DataMashup but structure validation failed`, 'scanForDataMashup', 'debug');
 					parseError = 'MALFORMED: structure validation failed';
 				}
 				
@@ -1338,7 +1319,7 @@ async function scanForDataMashup(
 						const safeName = fileName.replace(/[\/\\]/g, '_');
 						const dataMashupPath = path.join(outputDir, `DATAMASHUP_${safeName}`);
 						fs.writeFileSync(dataMashupPath, content, 'utf8');
-						log(`📁 DataMashup extracted to: ${path.basename(dataMashupPath)}`);
+						log(`DataMashup extracted to: ${path.basename(dataMashupPath)}`, 'scanForDataMashup', 'success');
 						
 						// Extract the M code using the correct API
 						try {
@@ -1365,13 +1346,13 @@ async function scanForDataMashup(
 								const mCodePath = path.join(outputDir, `${baseName}_PowerQuery.m`);
 								const header = `// Power Query from: ${fileName}\n// Extracted: ${new Date().toISOString()}\n\n`;
 								fs.writeFileSync(mCodePath, header + formula, 'utf8');
-								log(`📁 Extracted M code to: ${path.basename(mCodePath)} (${(formula.length / 1024).toFixed(1)} KB)`);
+								log(`Extracted M code to: ${path.basename(mCodePath)} (${(formula.length / 1024).toFixed(1)} KB)`, 'scanForDataMashup', 'success');
 							} else {
-								log(`❌ Could not extract formula from parseResult for ${fileName}`);
+								log(`Could not extract formula from parseResult for ${fileName}`, 'scanForDataMashup', 'error');
 								result.error = (result.error || '') + ' | Formula extraction failed';
 							}
 						} catch (formulaError) {
-							log(`❌ Error extracting formula from ${fileName}: ${formulaError}`);
+							log(`Error extracting formula from ${fileName}: ${formulaError}`, 'scanForDataMashup', 'error');
 							result.error = (result.error || '') + ` | Formula error: ${formulaError}`;
 						}
 					}
@@ -1390,7 +1371,7 @@ async function scanForDataMashup(
 				}
 			}
 		} catch (error) {
-			log(`❌ Error scanning ${fileName}: ${error}`);
+			log(`Error scanning ${fileName}: ${error}`, 'scanForDataMashup', 'error');
 			results.push({
 				file: fileName,
 				hasDataMashup: false,
@@ -1406,7 +1387,7 @@ async function scanForDataMashup(
 async function rawExtraction(uri?: vscode.Uri): Promise<void> {
 	try {
 		// Dump extension settings for debugging (debug level only)
-		const logLevel = getEffectiveLogLevel();
+		const logLevel = getConfig().get<string>('logLevel', 'info');
 		if (logLevel === 'debug') {
 			dumpAllExtensionSettings();
 		}
@@ -1415,7 +1396,7 @@ async function rawExtraction(uri?: vscode.Uri): Promise<void> {
 		if (uri && (!uri.fsPath || typeof uri.fsPath !== 'string')) {
 			const errorMsg = 'Invalid URI parameter provided to rawExtraction command';
 			vscode.window.showErrorMessage(errorMsg);
-			log(errorMsg, "error");
+			log(errorMsg, 'rawExtraction', 'error');
 			return;
 		}
 		
@@ -1423,7 +1404,7 @@ async function rawExtraction(uri?: vscode.Uri): Promise<void> {
 		if (!uri?.fsPath) {
 			const errorMsg = 'No Excel file specified. Use right-click on an Excel file or Command Palette with file open.';
 			vscode.window.showErrorMessage(errorMsg);
-			log(errorMsg, "error");
+			log(errorMsg, 'rawExtraction', 'error');
 			return;
 		}
 		
@@ -1432,40 +1413,40 @@ async function rawExtraction(uri?: vscode.Uri): Promise<void> {
 			return;
 		}
 
-		log(`Starting enhanced raw extraction for: ${path.basename(excelFile)}`);
-		
+		log(`Starting enhanced raw extraction for: ${path.basename(excelFile)}`, 'rawExtraction', 'info');
+
 		// Create debug output directory (delete if exists)
 		const baseName = path.basename(excelFile, path.extname(excelFile));
 		const outputDir = path.join(path.dirname(excelFile), `${baseName}_debug_extraction`);
 		
 		// Clean up existing debug directory
 		if (fs.existsSync(outputDir)) {
-			log(`Cleaning up existing debug directory: ${outputDir}`);
+			log(`Cleaning up existing debug directory: ${outputDir}`, 'rawExtraction', 'info');
 			fs.rmSync(outputDir, { recursive: true, force: true });
 		}
 		fs.mkdirSync(outputDir);
-		log(`Created fresh debug directory: ${outputDir}`);
+		log(`Created fresh debug directory: ${outputDir}`, 'rawExtraction', 'info');
 
 		// Get file stats
 		const fileStats = fs.statSync(excelFile);
 		const fileSizeMB = (fileStats.size / (1024 * 1024)).toFixed(2);
-		log(`File size: ${fileSizeMB} MB`);
+		log(`File size: ${fileSizeMB} MB`, 'rawExtraction', 'debug');
 
 		// Use JSZip to extract and examine the Excel file structure
 		try {
 			const JSZip = (await import('jszip')).default;
-			log('Reading Excel file buffer...');
+			log('Reading Excel file buffer...', 'rawExtraction', 'debug');
 			const buffer = fs.readFileSync(excelFile);
 			
-			log('Loading ZIP structure...');
+			log('Loading ZIP structure...', 'rawExtraction', 'debug');
 			const startTime = Date.now();
 			const zip = await JSZip.loadAsync(buffer);
 			const loadTime = Date.now() - startTime;
-			log(`ZIP loaded in ${loadTime}ms`);
+			log(`ZIP loaded in ${loadTime}ms`, 'rawExtraction', 'info');
 			
 			// List all files
 			const allFiles = Object.keys(zip.files).filter(name => !zip.files[name].dir);
-			log(`Found ${allFiles.length} files in ZIP structure`);
+			log(`Found ${allFiles.length} files in ZIP structure`, 'rawExtraction', 'info');
 			
 			// Categorize files
 			const customXmlFiles = allFiles.filter(f => f.startsWith('customXml/'));
@@ -1473,11 +1454,11 @@ async function rawExtraction(uri?: vscode.Uri): Promise<void> {
 			const queryFiles = allFiles.filter(f => f.includes('quer') || f.includes('Query'));
 			const connectionFiles = allFiles.filter(f => f.includes('connection'));
 			
-			log(`Files breakdown: ${customXmlFiles.length} customXml, ${xlFiles.length} xl/, ${queryFiles.length} query-related, ${connectionFiles.length} connection-related`);
+			log(`Files breakdown: ${customXmlFiles.length} customXml, ${xlFiles.length} xl/, ${queryFiles.length} query-related, ${connectionFiles.length} connection-related`, 'rawExtraction', 'info');
 
 			// Enhanced DataMashup detection - use the same logic as main extraction
 			const xmlFiles = allFiles.filter(f => f.toLowerCase().endsWith('.xml'));
-			log(`Scanning ${xmlFiles.length} XML files for DataMashup content...`);
+			log(`Scanning ${xmlFiles.length} XML files for DataMashup content...`, 'rawExtraction', 'info');
 			
 			// Use the unified DataMashup detection function
 			const dataMashupResults = await scanForDataMashup(zip, allFiles, outputDir, true);
@@ -1486,7 +1467,7 @@ async function rawExtraction(uri?: vscode.Uri): Promise<void> {
 			const dataMashupFiles = dataMashupResults.filter(r => r.hasDataMashup);
 			const totalDataMashupSize = dataMashupFiles.reduce((sum, r) => sum + r.size, 0);
 			
-			log(`DataMashup scan complete: Found ${dataMashupFiles.length} files containing DataMashup (${(totalDataMashupSize / 1024).toFixed(1)} KB total)`);
+			log(`DataMashup scan complete: Found ${dataMashupFiles.length} files containing DataMashup (${(totalDataMashupSize / 1024).toFixed(1)} KB total)`, 'rawExtraction', 'info');
 
 			// Create comprehensive debug report
 			const debugInfo = {
@@ -1534,7 +1515,7 @@ async function rawExtraction(uri?: vscode.Uri): Promise<void> {
 
 			const reportPath = path.join(outputDir, 'EXTRACTION_REPORT.json');
 			fs.writeFileSync(reportPath, JSON.stringify(debugInfo, null, 2), 'utf8');
-			log(`📊 Comprehensive report saved: ${path.basename(reportPath)}`);
+			log(`Comprehensive report saved: ${path.basename(reportPath)}`, 'rawExtraction', 'info');
 
 			// Show results
 			const extractedCodeFiles = dataMashupFiles.filter((f: DataMashupScanResult) => f.extractedFormula).length;
@@ -1543,11 +1524,11 @@ async function rawExtraction(uri?: vscode.Uri): Promise<void> {
 				`⚠️ Enhanced extraction completed!\n❌ No DataMashup content found in ${path.basename(excelFile)}\n📁 Debug files in: ${path.basename(outputDir)}`;
 			
 			vscode.window.showInformationMessage(message);
-			log(message.replace(/\n/g, ' | '));
+			log(message.replace(/\n/g, ' | '), 'rawExtraction', 'info');
 			
 		} catch (error) {
-			log(`❌ ZIP extraction/analysis failed: ${error}`, "error");
-			
+			log(`ZIP extraction/analysis failed: ${error}`, 'rawExtraction', 'info');
+
 			// Write error info
 			const debugInfo = {
 				extractionReport: {
@@ -1569,15 +1550,15 @@ async function rawExtraction(uri?: vscode.Uri): Promise<void> {
 	} catch (error) {
 		const errorMsg = `Raw extraction failed: ${error}`;
 		vscode.window.showErrorMessage(errorMsg);
-		log(errorMsg, "error");
-		console.error('Raw extraction error:', error);
+		log(errorMsg, 'rawExtraction', 'debug');
+		log(`Raw extraction error: ${error}`, 'rawExtraction', 'error');
 	}
 }
 
 // New function to dump all extension settings for debugging
 function dumpAllExtensionSettings(): void {
 	try {
-		log('=== EXTENSION SETTINGS DUMP ===');
+		log('=== EXTENSION SETTINGS DUMP ===', 'dumpAllExtensionSettings', 'debug');
 		
 		const extensionId = 'excel-power-query-editor';
 		
@@ -1588,6 +1569,7 @@ function dumpAllExtensionSettings(): void {
 		// Define all known extension settings
 		const knownSettings = [
 			'watchAlways',
+			'watchAlways.maxFiles',
 			'watchOffOnDelete', 
 			'syncDeleteAlwaysConfirm',
 			'verboseMode',
@@ -1604,34 +1586,34 @@ function dumpAllExtensionSettings(): void {
 			'watch.checkExcelWriteable'
 		];
 		
-		log('USER SETTINGS (Global):');
+		log('USER SETTINGS (Global):', 'dumpAllExtensionSettings', 'debug');
 		for (const setting of knownSettings) {
 			const value = userConfig.get(setting);
 			const hasValue = userConfig.has(setting);
-			log(`  ${setting}: ${hasValue ? JSON.stringify(value) : '<not set>'}`);
+			log(`  ${setting}: ${hasValue ? JSON.stringify(value) : '<not set>'}`, 'dumpAllExtensionSettings', 'debug');
 		}
 		
-		log('WORKSPACE SETTINGS:');
+		log('WORKSPACE SETTINGS:', 'dumpAllExtensionSettings', 'debug');
 		for (const setting of knownSettings) {
 			const value = workspaceConfig.get(setting);
 			const hasValue = workspaceConfig.has(setting);
-			log(`  ${setting}: ${hasValue ? JSON.stringify(value) : '<not set>'}`);
+			log(`  ${setting}: ${hasValue ? JSON.stringify(value) : '<not set>'}`, 'dumpAllExtensionSettings', 'debug');
 		}
 		
 		// Check environment info
-		log('ENVIRONMENT INFO:');
-		log(`  Remote Name: ${vscode.env.remoteName || '<not remote>'}`);
-		log(`  VS Code Version: ${vscode.version}`);
-		log(`  Workspace Folders: ${vscode.workspace.workspaceFolders?.length || 0}`);
-		
+		log('ENVIRONMENT INFO:', 'dumpAllExtensionSettings', 'debug');
+		log(`  Remote Name: ${vscode.env.remoteName || '<not remote>'}`, 'dumpAllExtensionSettings', 'info');
+		log(`  VS Code Version: ${vscode.version}`, 'dumpAllExtensionSettings', 'info');
+		log(`  Workspace Folders: ${vscode.workspace.workspaceFolders?.length || 0}`, 'dumpAllExtensionSettings', 'info');
+
 		// Check if we're in a dev container
 		const isDevContainer = vscode.env.remoteName?.includes('dev-container');
-		log(`  Is Dev Container: ${isDevContainer}`);
-		
-		log('=== END SETTINGS DUMP ===');
+		log(`  Is Dev Container: ${isDevContainer}`, 'dumpAllExtensionSettings', 'info');
+
+		log('=== END SETTINGS DUMP ===', 'dumpAllExtensionSettings', 'info');
 		
 	} catch (error) {
-		log(`Failed to dump settings: ${error}`, "error");
+		log(`Failed to dump settings: ${error}`, 'dumpAllExtensionSettings', 'error');
 	}
 }
 
@@ -1658,7 +1640,7 @@ async function cleanupBackupsCommand(uri?: vscode.Uri): Promise<void> {
 		if (uri && (!uri.fsPath || typeof uri.fsPath !== 'string')) {
 			const errorMsg = 'Invalid URI parameter provided to cleanupBackups command';
 			vscode.window.showErrorMessage(errorMsg);
-			log(errorMsg, "error");
+			log(errorMsg, 'cleanupBackupsCommand', 'error');
 			return;
 		}
 		
@@ -1666,7 +1648,7 @@ async function cleanupBackupsCommand(uri?: vscode.Uri): Promise<void> {
 		if (!uri?.fsPath) {
 			const errorMsg = 'No Excel file specified. Use right-click on an Excel file or Command Palette with file open.';
 			vscode.window.showErrorMessage(errorMsg);
-			log(errorMsg, "error");
+			log(errorMsg, 'cleanupBackupsCommand', 'error');
 			return;
 		}
 		
@@ -1732,8 +1714,7 @@ async function cleanupBackupsCommand(uri?: vscode.Uri): Promise<void> {
 	} catch (error) {
 		const errorMsg = `Failed to cleanup backups: ${error}`;
 		vscode.window.showErrorMessage(errorMsg);
-		log(errorMsg, "error");
-		console.error('Backup cleanup error:', error);
+		log(`Backup cleanup error: ${error}`, 'cleanupBackupsCommand', 'error');
 	}
 }
 
@@ -1801,7 +1782,7 @@ async function installExcelSymbols(): Promise<void> {
 		// Create target directory if it doesn't exist
 		if (!fs.existsSync(targetDir)) {
 			fs.mkdirSync(targetDir, { recursive: true });
-			log(`Created symbols directory: ${targetDir}`);
+			log(`Created symbols directory: ${targetDir}`, 'installExcelSymbols', 'info');
 		}
 		
 		// Copy symbols file FIRST and ensure it's completely written
@@ -1815,26 +1796,33 @@ async function installExcelSymbols(): Promise<void> {
 			if (!Array.isArray(parsed) || parsed.length === 0) {
 				throw new Error('Copied symbols file is invalid or empty');
 			}
-			log(`✅ Verified Excel symbols file copied successfully: ${parsed.length} symbols`);
+			log(`Verified Excel symbols file copied successfully: ${parsed.length} symbols`, 'installExcelSymbols', 'success');
 		} catch (verifyError) {
 			throw new Error(`Failed to verify copied symbols file: ${verifyError}`);
 		}
 		
-		// CRITICAL: Only update Power Query settings AFTER file is verified
-		// The Language Server immediately tries to load the file when setting is added
+		// CRITICAL: Three-step update process to force immediate Power Query extension reload
+		// Step 1: Delete all existing Power Query symbols directory settings
 		const powerQueryConfig = vscode.workspace.getConfiguration('powerquery');
 		const existingDirs = powerQueryConfig.get<string[]>('client.additionalSymbolsDirectories', []);
 		
 		// Use forward slashes for cross-platform compatibility
 		const absoluteTargetDir = path.resolve(targetDir).replace(/\\/g, '/');
 		
-		if (!existingDirs.includes(absoluteTargetDir)) {
-			const updatedDirs = [...existingDirs, absoluteTargetDir];
-			await powerQueryConfig.update('client.additionalSymbolsDirectories', updatedDirs, targetScope);
-			log(`Updated Power Query settings with symbols directory: ${absoluteTargetDir}`);
-		} else {
-			log(`Symbols directory already configured in Power Query settings: ${absoluteTargetDir}`);
-		}
+		log(`Step 1: Clearing existing Power Query symbols directories (${existingDirs.length} entries)`, 'installExcelSymbols', 'verbose');
+		await powerQueryConfig.update('client.additionalSymbolsDirectories', [], targetScope);
+		
+		// Step 2: Pause to allow the Power Query extension to process the removal
+		log(`Step 2: Pausing 1000ms for Power Query extension to reload...`, 'installExcelSymbols', 'verbose');
+		await new Promise(resolve => setTimeout(resolve, 1000));
+		
+		// Step 3: Reset with new settings (including our new directory)
+		const filteredDirs = existingDirs.filter(dir => dir !== absoluteTargetDir);
+		const updatedDirs = [...filteredDirs, absoluteTargetDir];
+		log(`Step 3: Restoring symbols directories with new Excel symbols: ${updatedDirs.length} total entries`, 'installExcelSymbols', 'verbose');
+		await powerQueryConfig.update('client.additionalSymbolsDirectories', updatedDirs, targetScope);
+		
+		log(`Power Query settings updated with delete/pause/reset sequence - Excel symbols should take immediate effect`, 'installExcelSymbols', 'info');
 		
 		// Show success message
 		vscode.window.showInformationMessage(
@@ -1843,12 +1831,12 @@ async function installExcelSymbols(): Promise<void> {
 			`🔧 IntelliSense for Excel.CurrentWorkbook() and other Excel-specific functions should now work in .m files.`
 		);
 		
-		log(`Excel symbols installation completed successfully in ${scopeName} scope`);
+		log(`Excel symbols installation completed successfully in ${scopeName} scope`, 'installExcelSymbols', 'success');
 		
 	} catch (error) {
 		const errorMsg = `Failed to install Excel symbols: ${error}`;
 		vscode.window.showErrorMessage(errorMsg);
-		log(errorMsg, "error");
+		log(errorMsg, 'installExcelSymbols', 'error');
 	}
 }
 
@@ -1860,7 +1848,7 @@ async function autoInstallSymbolsIfEnabled(): Promise<void> {
 		const installLevel = config.get<string>('symbols.installLevel', 'workspace');
 		
 		if (!autoInstall || installLevel === 'off') {
-			log('Auto-install of Excel symbols is disabled');
+			log('Auto-install of Excel symbols is disabled', 'autoInstallExcelSymbols', 'verbose');
 			return;
 		}
 		
@@ -1875,15 +1863,15 @@ async function autoInstallSymbolsIfEnabled(): Promise<void> {
 		});
 		
 		if (hasExcelSymbols) {
-			log('Excel symbols already installed, skipping auto-install');
+			log('Excel symbols already installed, skipping auto-install', 'autoInstallExcelSymbols', 'verbose');
 			return;
 		}
-		
-		log('Auto-installing Excel symbols...');
+
+		log('Auto-installing Excel symbols...', 'autoInstallExcelSymbols', 'info');
 		await installExcelSymbols();
 		
 	} catch (error) {
-		log(`Auto-install of Excel symbols failed: ${error}`, 'warn');
+		log(`Auto-install of Excel symbols failed: ${error}`, 'autoInstallExcelSymbols', 'error');
 		// Don't show error to user for auto-install failures
 	}
 }
@@ -1892,7 +1880,7 @@ async function autoInstallSymbolsIfEnabled(): Promise<void> {
 async function debouncedSyncToExcel(mFile: string): Promise<void> {
 	// Check if this file was recently extracted - if so, skip auto-sync
 	if (recentExtractions.has(mFile)) {
-		log(`⏭️ Skipping auto-sync for recently extracted file: ${path.basename(mFile)}`, 'debouncedSyncToExcel');
+		log(`Skipping auto-sync for recently extracted file: ${path.basename(mFile)}`, 'debouncedSyncToExcel', 'verbose');
 		return;
 	}
 	
@@ -1919,19 +1907,19 @@ async function debouncedSyncToExcel(mFile: string): Promise<void> {
 	if (fileSizeMB > 50) {
 		// For files over 50MB, use configurable minimum debounce (default 5 seconds)
 		debounceMs = Math.max(debounceMs, largeFileMinDebounce);
-		log(`📁 Large file detected (${fileSizeMB.toFixed(1)}MB), using extended debounce: ${debounceMs}ms`, 'debouncedSyncToExcel');
+		log(`Large file detected (${fileSizeMB.toFixed(1)}MB), using extended debounce: ${debounceMs}ms`, 'debouncedSyncToExcel', 'verbose');
 	} else if (fileSizeMB > 10) {
 		// For files over 10MB, use half the large file debounce
 		const mediumFileDebounce = Math.max(2000, largeFileMinDebounce / 2);
 		debounceMs = Math.max(debounceMs, mediumFileDebounce);
-		log(`📁 Medium file detected (${fileSizeMB.toFixed(1)}MB), using extended debounce: ${debounceMs}ms`, 'debouncedSyncToExcel');
+		log(`Medium file detected (${fileSizeMB.toFixed(1)}MB), using extended debounce: ${debounceMs}ms`, 'debouncedSyncToExcel', 'verbose');
 	}
 	
 	// Only execute immediately if debounce is explicitly set to 0 (not just small)
 	if (debounceMs === 0) {
-		log(`🚀 IMMEDIATE SYNC (debounce explicitly disabled) for ${path.basename(mFile)}`, 'debouncedSyncToExcel');
+		log(`IMMEDIATE SYNC (debounce explicitly disabled) for ${path.basename(mFile)}`, 'debouncedSyncToExcel', 'verbose');
 		syncToExcel(vscode.Uri.file(mFile)).catch(error => {
-			log(`Immediate sync failed for ${path.basename(mFile)}: ${error}`, "error");
+			log(`Immediate sync failed for ${path.basename(mFile)}: ${error}`, 'debouncedSyncToExcel', 'error');
 		});
 		return;
 	}
@@ -1945,17 +1933,17 @@ async function debouncedSyncToExcel(mFile: string): Promise<void> {
 	// Set new timer
 	const timer = setTimeout(async () => {
 		try {
-			log(`Debounced sync executing for ${path.basename(mFile)}`);
+			log(`Debounced sync executing for ${path.basename(mFile)}`, 'debouncedSyncToExcel', 'verbose');
 			await syncToExcel(vscode.Uri.file(mFile));
 			debounceTimers.delete(mFile);
 		} catch (error) {
-			log(`Debounced sync failed for ${path.basename(mFile)}: ${error}`, "error");
+			log(`Debounced sync failed for ${path.basename(mFile)}: ${error}`, 'debouncedSyncToExcel', 'error');
 			debounceTimers.delete(mFile);
 		}
 	}, debounceMs);
 	
 	debounceTimers.set(mFile, timer);
-	log(`Sync debounced for ${path.basename(mFile)} (${debounceMs}ms)`);
+	log(`Sync debounced for ${path.basename(mFile)} (${debounceMs}ms)`, 'debouncedSyncToExcel', 'verbose');
 }
 
 // Check if Excel file is writable (not locked)
@@ -1974,7 +1962,7 @@ async function isExcelFileWritable(excelFile: string): Promise<boolean> {
 		return true;
 	} catch (error: any) {
 		// File is likely locked by Excel or another process
-		log(`Excel file appears to be locked: ${error.message}`, "error");
+		log(`Excel file appears to be locked: ${error.message}`, 'isExcelFileWritable', 'debug');
 		return false;
 	}
 }

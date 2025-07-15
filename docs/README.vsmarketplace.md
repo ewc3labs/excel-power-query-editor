@@ -13,6 +13,9 @@ A modern, reliable VS Code extension for editing Power Query M code directly fro
 - 🔍 View and edit Power Query `.m` code directly from `.xlsx`, `.xlsm`, or `.xlsb` files
 - 🔄 Auto-sync edits back to Excel on save
 - 💡 Full IntelliSense and syntax highlighting (via the M Language extension)
+- 🤖 Auto-installs Excel-specific symbols for `Excel.CurrentWorkbook()` and other Excel functions
+- 👀 Intelligent auto-watch with configurable file limits (up to 100 files)
+- 📊 Professional emoji-enhanced logging with multiple verbosity levels
 - 🖥️ Works on Windows, macOS, and Linux — no Excel or COM required
 - 🤖 Compatible with GitHub Copilot and other VS Code tools
 
@@ -46,7 +49,10 @@ Power Query development in Excel is often slow, opaque, and painful. This extens
 - ✅ Clean, editable `.m` files with no boilerplate
 - ✅ Full reference context for multi-query setups
 - ✅ Zero reliance on Excel or Windows APIs
-- ✅ Fast, reliable sync engine
+- ✅ Fast, reliable sync engine with intelligent debouncing
+- ✅ Automatic Excel symbols installation for enhanced IntelliSense
+- ✅ Configurable auto-watch limits (1-100 files) for large workspaces
+- ✅ Professional logging system with emoji support and multiple levels
 - ✅ Works offline, in containers, and on dev/CI environments
 
 ---
@@ -54,6 +60,8 @@ Power Query development in Excel is often slow, opaque, and painful. This extens
 ## 📚 Documentation & Support
 
 For complete documentation, source code, issue reporting, or to fork your own version, visit the [GitHub repo](https://github.com/ewc3labs/excel-power-query-editor).
+
+**📋 [What's New in v0.5.0?](https://github.com/ewc3labs/excel-power-query-editor/blob/main/docs/RELEASE_SUMMARY_v0.5.0.md)** - Professional logging, configurable auto-watch limits, enhanced Excel symbols integration, and more!
 
 ---
 

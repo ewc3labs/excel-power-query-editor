@@ -1,19 +1,35 @@
-<div align="center">
+<!-- HEADER_TABLE -->
+<table align="center">
+<tr>
+  <td width="112" align="center" valign="middle">
+    <img src="assets/excel-power-query-editor-logo-128x128.png" width="128" height="128"><br>
+    <strong>E · P · Q · E</strong>
+  </td>
 
-# ![Excel Power Query Editor](assets/excel-power-query-editor-logo-128x128.png) Excel Power Query Editor
+  <td align="center" valign="middle">
+    <h1 align="center">Excel Power Query Editor</h1>
+    <p align="left">
+      <b>Edit Power Query M code directly from Excel files in VS Code. No Excel needed. No bullshit. It Just Works™.</b><br>
+      <sub>
+        Built by <strong>EWC3 Labs</strong> — where we rage-build the tools everyone needs, but nobody <del>cares to build</del>
+        <em>is deranged enough to spend days perfecting until it actually works right.</em>
+      </sub>
+    </p>
+  </td>
 
-## Changelog
+  <td width="112" align="center" valign="middle">
+    <img src="assets/EWC3LabsLogo-blue-128x128.png" width="128" height="128"><br>
+    <strong><em>QA Officer</em></strong>
+  </td>
+</tr>
+</table>
+<!-- /HEADER_TABLE -->
+
+# Changelog
 
 All notable changes to the "excel-power-query-editor" extension will be documented in this file.
 
-Check [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) for formatting standards.
-
 ---
-
-**Built with 🧡 by** [![EWC3 Labs](assets/EWC3LabsLogo-blue-128x128.png)](https://github.com/ewc3labs) **EWC3 Labs**  
-_A skunkworks of code, plastic, and canine gaseous emissions_
-
-</div>
 
 ## [0.5.0-rc.2] - 2025-07-14
 
@@ -43,11 +59,49 @@ _A skunkworks of code, plastic, and canine gaseous emissions_
   - Recommended: `"files.autoSave": "off"` with extension file watching
   - Documented optimal performance configuration patterns
 
-## [0.5.0] - 2025-07-11
+## [0.5.0] - 2025-07-15
 
-### Added
+### 🎯 Marketplace Release - Professional Logging & Auto-Watch Enhancements
 
-- **New Configuration Options**:
+#### Added
+- **Professional Logging System**
+  - Emoji-enhanced logging with visual level indicators (🪲🔍ℹ️✅⚠️❌)
+  - Six configurable log levels: none, error, warn, info, verbose, debug
+  - Automatic emoji support detection for VS Code environments
+  - Context-aware logging with function-specific prefixes
+  - Environment detection and settings dump for debugging
+
+- **Intelligent Auto-Watch System**
+  - NEW: Configurable auto-watch file limits (`watchAlways.maxFiles`: 1-100, default 25)
+  - Prevents performance issues in large workspaces with many .m files
+  - Smart file discovery with Excel file matching validation
+  - Detailed logging of skipped files and initialization progress
+
+- **Enhanced Excel Symbols Integration**
+  - Three-step Power Query settings update for immediate effect
+  - Delete/pause/reset sequence forces Language Server reload
+  - Ensures new symbols take effect without VS Code restart
+  - Cross-platform directory path handling
+
+#### Fixed
+- **Logging System Consistency**
+  - Fixed context naming inconsistencies (ExtractFromExcel → extractFromExcel)
+  - Replaced generic contexts with specific function names
+  - Optimized log levels for better user experience
+  - Eliminated double logging patterns
+
+- **Auto-Watch Performance**
+  - Intelligent file limit enforcement prevents extension overwhelm
+  - Better handling of workspaces with many test fixtures
+  - Improved startup time with configurable limits
+
+#### Changed
+- **VS Code Marketplace Ready**
+  - Professional user experience with polished logging
+  - Enhanced settings documentation
+  - Optimal default configurations for production use
+
+## [0.5.0-rc.2] - 2025-07-14
   - `sync.openExcelAfterWrite`: Auto-launch Excel after sync operations
   - `sync.debounceMs`: Configurable sync delay (prevents duplicate syncs with CoPilot)
   - `watch.checkExcelWriteable`: Validate Excel file access before sync

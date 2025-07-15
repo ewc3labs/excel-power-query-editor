@@ -11,6 +11,7 @@ on:
     paths-ignore:
       - "**.md"
       - "docs/**"
+      - ".github/**"
 
   # Manual workflow dispatch for emergency releases
   workflow_dispatch:
@@ -240,12 +241,22 @@ jobs:
           name: excel-power-query-editor-vsix-${{ needs.determine-release.outputs.release_type }}
 
       - name: 🚀 Publish to VS Code Marketplace
+        env:
+          VSCE_PAT: ${{ secrets.VSCE_PAT }}
         run: |
+          if [[ -z "$VSCE_PAT" ]]; then
+            echo "⚠️ VSCE_PAT secret not configured - skipping marketplace publishing"
+            echo "To enable automatic publishing:"
+            echo "1. Get Personal Access Token from https://marketplace.visualstudio.com/manage"
+            echo "2. Add as repository secret named VSCE_PAT"
+            echo "3. Re-run this workflow"
+            exit 0
+          fi
+
           echo "🚀 Publishing to VS Code Marketplace..."
-          echo "Note: Configure VSCE_PAT secret to enable auto-publishing"
-          echo "1. Get Personal Access Token from https://marketplace.visualstudio.com"
-          echo "2. Add as repository secret named VSCE_PAT"
-          echo "3. Uncomment the vsce publish command in this workflow"
+          npm install -g @vscode/vsce
+          vsce publish --pat $VSCE_PAT
+          echo "✅ Successfully published to VS Code Marketplace!"
 
   # 📊 Release Summary
   summary:
