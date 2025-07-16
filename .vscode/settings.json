@@ -13,7 +13,7 @@
     
     // Excel Power Query Editor settings for dev container
     "excel-power-query-editor.verboseMode": true,
-    "excel-power-query-editor.watchAlways": true,
+    "excel-power-query-editor.watchAlways": false,
     "excel-power-query-editor.backupLocation": "sameFolder",
     "excel-power-query-editor.customBackupPath": "./VSCodeBackups",
     "excel-power-query-editor.debugMode": true,
@@ -31,6 +31,9 @@
     "workbench.editor.enablePreview": false,
     "workbench.editor.revealIfOpen": true,
     "editor.formatOnSave": true,
+    "[powerquery]": {
+        "editor.formatOnSave": false
+    },
     "editor.codeActionsOnSave": {
         "source.fixAll.eslint": "explicit"
     },
@@ -68,5 +71,7 @@
     // Power Query Language Server configuration
     "powerquery.client.additionalSymbolsDirectories": [
         "c:/DEV/ewc3labs/excel-power-query-editor/.vscode/excel-pq-symbols"
-    ]
+    ],
+    "excel-power-query-editor.watch.checkExcelWriteable": true,
+    "excel-power-query-editor.watchAlwaysMaxFiles": 100
 }

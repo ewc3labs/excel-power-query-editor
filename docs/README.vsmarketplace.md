@@ -61,7 +61,10 @@ Power Query development in Excel is often slow, opaque, and painful. This extens
 
 For complete documentation, source code, issue reporting, or to fork your own version, visit the [GitHub repo](https://github.com/ewc3labs/excel-power-query-editor).
 
-**📋 [What's New in v0.5.0?](https://github.com/ewc3labs/excel-power-query-editor/blob/main/docs/RELEASE_SUMMARY_v0.5.0.md)** - Professional logging, configurable auto-watch limits, enhanced Excel symbols integration, and more!
+- 🏠 **[GitHub Repository](https://github.com/ewc3labs/excel-power-query-editor)** - Complete source code and development resources
+- 📋 **[What's New in v0.5.0?](https://github.com/ewc3labs/excel-power-query-editor/blob/main/docs/RELEASE_SUMMARY_v0.5.0.md)** - Professional logging, configurable auto-watch limits, enhanced Excel symbols integration, and more!
+- 📖 **[User Guide](https://github.com/ewc3labs/excel-power-query-editor/blob/main/docs/USER_GUIDE.md)** - Step-by-step usage instructions and workflows
+- ⚙️ **[Configuration Guide](https://github.com/ewc3labs/excel-power-query-editor/blob/main/docs/CONFIGURATION.md)** - Detailed settings and customization options
 
 ---
 

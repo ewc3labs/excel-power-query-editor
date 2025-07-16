@@ -8,8 +8,8 @@ import { getConfig } from './configHelper';
 // Test environment detection
 function isTestEnvironment(): boolean {
 	return process.env.NODE_ENV === 'test' || 
-	       process.env.VSCODE_TEST_ENV === 'true' ||
-	       typeof global.describe !== 'undefined'; // Jest/Mocha detection
+		   process.env.VSCODE_TEST_ENV === 'true' ||
+		   typeof global.describe !== 'undefined'; // Jest/Mocha detection
 }
 
 // Helper to get test fixture path  
@@ -332,12 +332,36 @@ export async function activate(context: vscode.ExtensionContext) {
 	}
 }
 
-async function extractFromExcel(uri?: vscode.Uri): Promise<void> {
+async function extractFromExcel(uri?: vscode.Uri, uris?: vscode.Uri[]): Promise<void> {
 	try {
 		// Dump extension settings for debugging (debug level only)
 		const logLevel = getConfig().get<string>('logLevel', 'info');
 		if (logLevel === 'debug') {
 			dumpAllExtensionSettings();
+		}
+		
+		// Handle multiple file selection (batch operations)
+		if (uris && uris.length > 1) {
+			log(`Batch extraction started: ${uris.length} files selected`, 'extractFromExcel', 'info');
+			vscode.window.showInformationMessage(`Extracting Power Query from ${uris.length} Excel files...`);
+			
+			let successCount = 0;
+			let errorCount = 0;
+			
+			for (const fileUri of uris) {
+				try {
+					await extractFromExcel(fileUri); // Recursive call for single file
+					successCount++;
+				} catch (error) {
+					log(`Failed to extract from ${path.basename(fileUri.fsPath)}: ${error}`, 'extractFromExcel', 'error');
+					errorCount++;
+				}
+			}
+			
+			const resultMsg = `Batch extraction completed: ${successCount} successful, ${errorCount} failed`;
+			log(resultMsg, 'extractFromExcel', 'success');
+			vscode.window.showInformationMessage(resultMsg);
+			return;
 		}
 		
 		// Validate URI parameter - don't show file dialog for invalid input
@@ -577,13 +601,13 @@ async function extractFromExcel(uri?: vscode.Uri): Promise<void> {
 //   MyWorkbook.xlsm -> MyWorkbook.xlsm_PowerQuery.m
 
 let
-    // Sample Power Query code structure
-    Source = Excel.CurrentWorkbook(){[Name="Table1"]}[Content],
-    #"Changed Type" = Table.TransformColumnTypes(Source,{{"Column1", type text}}),
-    #"Filtered Rows" = Table.SelectRows(#"Changed Type", each [Column1] <> null),
-    Result = #"Filtered Rows"
+	// Sample Power Query code structure
+	Source = Excel.CurrentWorkbook(){[Name="Table1"]}[Content],
+	#"Changed Type" = Table.TransformColumnTypes(Source,{{"Column1", type text}}),
+	#"Filtered Rows" = Table.SelectRows(#"Changed Type", each [Column1] <> null),
+	Result = #"Filtered Rows"
 in
-    Result`;
+	Result`;
 
 			fs.writeFileSync(outputPath, placeholderContent, 'utf8');
 			
@@ -615,10 +639,34 @@ in
 	}
 }
 
-async function syncToExcel(uri?: vscode.Uri): Promise<void> {
+async function syncToExcel(uri?: vscode.Uri, uris?: vscode.Uri[]): Promise<void> {
 	let backupPath: string | null = null;
 	
 	try {
+		// Handle multiple file selection (batch operations)
+		if (uris && uris.length > 1) {
+			log(`Batch sync started: ${uris.length} .m files selected`, 'syncToExcel', 'info');
+			vscode.window.showInformationMessage(`Syncing ${uris.length} .m files to Excel...`);
+			
+			let successCount = 0;
+			let errorCount = 0;
+			
+			for (const fileUri of uris) {
+				try {
+					await syncToExcel(fileUri); // Recursive call for single file
+					successCount++;
+				} catch (error) {
+					log(`❌ Failed to sync ${path.basename(fileUri.fsPath)}: ${error}`, 'syncToExcel', 'error');
+					errorCount++;
+				}
+			}
+			
+			const resultMsg = `✅ Batch sync completed: ${successCount} successful, ${errorCount} failed`;
+			log(resultMsg, 'syncToExcel', 'success');
+			vscode.window.showInformationMessage(resultMsg);
+			return;
+		}
+		
 		const mFile = uri?.fsPath || vscode.window.activeTextEditor?.document.fileName;
 		if (!mFile || !mFile.endsWith('.m')) {
 			const receivedUri = uri ? `URI: ${uri.toString()}` : 'no URI provided';
@@ -812,21 +860,24 @@ async function syncToExcel(uri?: vscode.Uri): Promise<void> {
 			return;
 		}
 		
-		// DEBUG: Save the original DataMashup XML for inspection (debug mode only)
-		const logLevel = getConfig().get<string>('logLevel', 'info');
-		if (logLevel === 'debug') {
-			const baseName = path.basename(excelFile, path.extname(excelFile));
-			const debugDir = path.join(path.dirname(excelFile), `${baseName}_sync_debug`);
-			if (!fs.existsSync(debugDir)) {
-				fs.mkdirSync(debugDir, { recursive: true });
-			}
-			fs.writeFileSync(
-				path.join(debugDir, 'original_datamashup.xml'),
-				dataMashupXml,
-				'utf8'
-			);
-			log(`Debug: Saved original DataMashup XML to ${path.basename(debugDir)}/original_datamashup.xml`, 'syncToExcel', 'debug');
-		}
+		// Debug code removed: No longer saving original DataMashup XML when logLevel is 'debug'.
+		// // DEBUG: Save the original DataMashup XML for inspection (debug mode only)
+		// const logLevel = getConfig().get<string>('logLevel', 'info');
+		// if (logLevel === 'debug') {
+		// 	const baseName = path.basename(excelFile, path.extname(excelFile));
+		// 	const debugDir = path.join(path.dirname(excelFile), `${baseName}_sync_debug`);
+		// 	if (!fs.existsSync(debugDir)) {
+		// 		fs.mkdirSync(debugDir, { recursive: true });
+		// 	}
+		// 	fs.writeFileSync(
+		// 		path.join(debugDir, 'original_datamashup.xml'),
+		// 		dataMashupXml,
+		// 		'utf8'
+		// 	);
+		// 	log(`Debug: Saved original DataMashup XML to ${path.basename(debugDir)}/original_datamashup.xml`, 'syncToExcel', 'debug');
+		// }
+		// Debug code removed: No longer saving original DataMashup XML when logLevel is 'debug'.
+
 		
 		// Use excel-datamashup to correctly update the DataMashup binary content
 		try {
@@ -927,8 +978,32 @@ async function syncToExcel(uri?: vscode.Uri): Promise<void> {
 	}
 }
 
-async function watchFile(uri?: vscode.Uri): Promise<void> {
+async function watchFile(uri?: vscode.Uri, uris?: vscode.Uri[]): Promise<void> {
 	try {
+		// Handle multiple file selection (batch operations)
+		if (uris && uris.length > 1) {
+			log(`Batch watch started: ${uris.length} .m files selected`, 'watchFile', 'info');
+			vscode.window.showInformationMessage(`Setting up watchers for ${uris.length} .m files...`);
+			
+			let successCount = 0;
+			let errorCount = 0;
+			
+			for (const fileUri of uris) {
+				try {
+					await watchFile(fileUri); // Recursive call for single file
+					successCount++;
+				} catch (error) {
+					log(`Failed to watch ${path.basename(fileUri.fsPath)}: ${error}`, 'watchFile', 'error');
+					errorCount++;
+				}
+			}
+			
+			const resultMsg = `Batch watch completed: ${successCount} successful, ${errorCount} failed`;
+			log(resultMsg, 'watchFile', 'success');
+			vscode.window.showInformationMessage(resultMsg);
+			return;
+		}
+		
 		const mFile = uri?.fsPath || vscode.window.activeTextEditor?.document.fileName;
 		if (!mFile || !mFile.endsWith('.m')) {
 			const receivedUri = uri ? `URI: ${uri.toString()}` : 'no URI provided';
@@ -1384,12 +1459,36 @@ async function scanForDataMashup(
 	return results;
 }
 
-async function rawExtraction(uri?: vscode.Uri): Promise<void> {
+async function rawExtraction(uri?: vscode.Uri, uris?: vscode.Uri[]): Promise<void> {
 	try {
 		// Dump extension settings for debugging (debug level only)
 		const logLevel = getConfig().get<string>('logLevel', 'info');
 		if (logLevel === 'debug') {
 			dumpAllExtensionSettings();
+		}
+		
+		// Handle multiple file selection (batch operations)
+		if (uris && uris.length > 1) {
+			log(`Batch raw extraction started: ${uris.length} Excel files selected`, 'rawExtraction', 'info');
+			vscode.window.showInformationMessage(`Running raw extraction on ${uris.length} Excel files...`);
+			
+			let successCount = 0;
+			let errorCount = 0;
+			
+			for (const fileUri of uris) {
+				try {
+					await rawExtraction(fileUri); // Recursive call for single file
+					successCount++;
+				} catch (error) {
+					log(`Failed raw extraction from ${path.basename(fileUri.fsPath)}: ${error}`, 'rawExtraction', 'error');
+					errorCount++;
+				}
+			}
+			
+			const resultMsg = `Batch raw extraction completed: ${successCount} successful, ${errorCount} failed`;
+			log(resultMsg, 'rawExtraction', 'success');
+			vscode.window.showInformationMessage(resultMsg);
+			return;
 		}
 		
 		// Validate URI parameter - don't show file dialog for invalid input

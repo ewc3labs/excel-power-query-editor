@@ -65,41 +65,17 @@
 - ✅ **Automatic Changelogs**: Generates release notes from git commits
 - ✅ **Marketplace Publishing**: Ready (just needs VSCE_PAT secret)
 
-### Release Triggers:
-- **Pre-release**: Push to `release/v0.5.0` branch → Creates `v0.5.0-rc.N`
-- **Final Release**: Push tag `v0.5.0` → Publishes to marketplace
-- **Manual Release**: GitHub Actions workflow dispatch
+## 📚 Documentation & Support
 
-## 🎯 Next Steps to Publish
+### Complete Documentation Suite:
+- 🏠 **[GitHub Repository](https://github.com/ewc3labs/excel-power-query-editor)** - Complete source code and development resources
+- 📖 **[User Guide](https://github.com/ewc3labs/excel-power-query-editor/blob/main/docs/USER_GUIDE.md)** - Step-by-step usage instructions and workflows
+- ⚙️ **[Configuration Guide](https://github.com/ewc3labs/excel-power-query-editor/blob/main/docs/CONFIGURATION.md)** - Detailed settings and customization options
 
-### Immediate Actions:
-
-1. **✅ Set up GitHub Secret**:
-   ```bash
-   # Add VSCE_PAT secret to GitHub repository
-   # Settings → Secrets and variables → Actions → New repository secret
-   ```
-
-2. **✅ Test Pre-release** (Optional):
-   ```bash
-   git checkout -b release/v0.5.0
-   git push origin release/v0.5.0
-   # This will create a pre-release for testing
-   ```
-
-3. **🚀 Publish Final Release**:
-   ```bash
-   git tag v0.5.0
-   git push origin v0.5.0
-   # This will automatically publish to VS Code Marketplace
-   ```
-
-### Expected Results:
-- ✅ Automated testing and compilation
-- ✅ VSIX package creation
-- ✅ Publication to VS Code Marketplace
-- ✅ GitHub Release with changelog
-- ✅ Downloadable VSIX file
+### Support Resources:
+- 💬 **Issue Tracking**: GitHub Issues for bug reports and feature requests
+- 🤝 **Contributing**: Guidelines for community contributions
+- 📝 **Examples**: Test fixtures and sample workflows
 
 ## 🎉 User Experience
 
