@@ -1,104 +1,52 @@
+
 # Excel Power Query Editor v0.5.0 - Release Ready! 🚀
 
 ## 📋 Release Summary
 
 **Version**: 0.5.0  
-**Release Date**: July 15, 2025  
+**Release Date**: July 20, 2025  
 **Status**: ✅ Ready for Marketplace Publication
 
-## 🎯 Major Features in v0.5.0
+## 🎯 Major Features
 
-### 1. **Professional Logging System** 📊
-- ✅ Emoji-enhanced logging with visual indicators (🪲🔍ℹ️✅⚠️❌)
-- ✅ Six configurable log levels: none, error, warn, info, verbose, debug
-- ✅ Automatic emoji support detection for VS Code environments
-- ✅ Context-aware logging with function-specific prefixes
-- ✅ Environment detection and comprehensive settings dump
+- ✅ **Professional Logging System** with emoji indicators (🪲🔍ℹ️✅⚠️❌)
+- ✅ **Legacy Settings Migration** to new logLevel setting
+- ✅ **Intelligent Auto-Watch** with configurable limits (1-500 files, default 25)
+- ✅ **Excel Symbols JSON installation** with immediate reload capability
+- ✅ **Marketplace Production Ready** with polished UX
 
-### 2. **Intelligent Auto-Watch System** 👀
-- ✅ NEW: Configurable auto-watch file limits (`watchAlways.maxFiles`: 1-100, default 25)
-- ✅ Prevents performance issues in large workspaces with many .m files
-- ✅ Smart file discovery with Excel file matching validation
-- ✅ Detailed logging of skipped files and initialization progress
+## 📋 Changes Summary
 
-### 3. **Enhanced Excel Symbols Integration** 💡
-- ✅ Three-step Power Query settings update for immediate effect
-- ✅ Delete/pause/reset sequence forces Language Server reload
-- ✅ Ensures new symbols take effect without VS Code restart
-- ✅ Cross-platform directory path handling
+- Updated logging system with emoji support and context-aware prefixes
+- Added `watchAlways.maxFiles` setting for auto-watch performance
+- Enhanced symbols installation with delete/pause/reset sequence
+- Updated all documentation and release workflow
+- Version bumped to 0.5.0
 
-### 4. **Marketplace Production Ready** 🏪
-- ✅ Professional user experience with polished logging
-- ✅ Enhanced settings documentation
-- ✅ Optimal default configurations for production use
-- ✅ Comprehensive error handling and user feedback
+## 🧪 Testing Status
 
-## 🔧 Technical Improvements
-
-### Bug Fixes:
-- ✅ Fixed context naming inconsistencies in logging
-- ✅ Replaced generic contexts with specific function names
-- ✅ Optimized log levels for better user experience
-- ✅ Eliminated double logging patterns
-- ✅ Improved auto-watch performance with intelligent limits
-
-### Code Quality:
-- ✅ All 71 tests passing
+- ✅ All 74 tests passing
 - ✅ Clean compilation with no errors
-- ✅ Consistent emoji support across environments
-- ✅ Professional logging ready for marketplace users
+- ✅ Professional logging verified in VS Code output
 
-## 📁 Updated Documentation
+## 📁 Documentation Updated
 
-- ✅ **README.md**: Updated with latest features and emoji logging
-- ✅ **CHANGELOG.md**: Comprehensive v0.5.0 release notes
-- ✅ **PUBLISHING_GUIDE.md**: Complete GitHub Actions automation guide
-- ✅ **package.json**: Version updated to 0.5.0
+- README.md with latest features
+- USER_GUIDE.md reworked
+- CONFIGURATION.md with comprehensive settings reference
+- CHANGELOG.md with comprehensive v0.5.0 notes
+- CONTRIBUTING.md guide for contributing to this extension
+- PUBLISHING_GUIDE.md with details on GitHub Actions automation
+- BETA_DOWNLOADS.md guide to downloading dev builds!
+- RELEASE_SUMMARY_vX.Y.Z (updated with each release)
 
-## 🚀 Automated Release Process Ready
+## 🎯 Ready for Marketplace Publication
 
-### GitHub Actions Workflow Features:
-- ✅ **Smart Release Detection**: Auto-determines release type from branch/tag
-- ✅ **Multi-platform Testing**: Comprehensive test suite
-- ✅ **Dynamic Versioning**: Handles pre-releases and final versions
-- ✅ **Conditional Publishing**: Only publishes stable releases to marketplace
-- ✅ **Automatic Changelogs**: Generates release notes from git commits
-- ✅ **Marketplace Publishing**: Ready (just needs VSCE_PAT secret)
+This release is fully prepared for VS Code Marketplace with:
 
-## 📚 Documentation & Support
-
-### Complete Documentation Suite:
-- 🏠 **[GitHub Repository](https://github.com/ewc3labs/excel-power-query-editor)** - Complete source code and development resources
-- 📖 **[User Guide](https://github.com/ewc3labs/excel-power-query-editor/blob/main/docs/USER_GUIDE.md)** - Step-by-step usage instructions and workflows
-- ⚙️ **[Configuration Guide](https://github.com/ewc3labs/excel-power-query-editor/blob/main/docs/CONFIGURATION.md)** - Detailed settings and customization options
-
-### Support Resources:
-- 💬 **Issue Tracking**: GitHub Issues for bug reports and feature requests
-- 🤝 **Contributing**: Guidelines for community contributions
-- 📝 **Examples**: Test fixtures and sample workflows
-
-## 🎉 User Experience
-
-Users will experience:
-- 🎨 **Beautiful emoji logging** that's easy to scan and understand
-- ⚡ **Intelligent auto-watch** that doesn't overwhelm large workspaces
-- 💡 **Seamless Excel IntelliSense** with automatic symbol installation
-- 🛡️ **Professional error handling** with helpful user messages
-- 📊 **Configurable verbosity** from silent to full debug mode
-
-## 🏆 Quality Metrics
-
-- **Tests**: 71/71 passing ✅
-- **Coverage**: Comprehensive feature testing ✅
-- **Documentation**: Complete and up-to-date ✅
-- **User Experience**: Professional marketplace quality ✅
-- **Performance**: Optimized for large workspaces ✅
-- **Compatibility**: Windows, macOS, Linux ✅
-
----
-
-## 🚀 Ready for Launch!
-
-**Excel Power Query Editor v0.5.0** is fully prepared for VS Code Marketplace publication. The extension delivers a professional, feature-rich experience for Power Query development with beautiful logging, intelligent auto-watch, and seamless Excel integration.
-
-**Next Action**: Create and push the `v0.5.0` tag to trigger automated marketplace publishing! 🎯
+- Improved user experience
+- Corrected .m code extraction capability in large (50MB+) Excel files
+- Professional automated test suite
+- Improved error handling
+- Optimal default configurations
+- Improved logging levels with Emoji-enhanced log output
