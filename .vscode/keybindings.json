@@ -1,0 +1,54 @@
+// Quick DevOps Keyboard Shortcuts for Excel Power Query Editor
+[
+    // Build & Test Shortcuts
+    {
+        "key": "ctrl+shift+b",
+        "command": "workbench.action.tasks.runTask",
+        "args": "Compile Extension"
+    },
+    {
+        "key": "ctrl+shift+t",
+        "command": "workbench.action.tasks.runTask", 
+        "args": "Run Tests"
+    },
+    {
+        "key": "ctrl+shift+p ctrl+shift+i",
+        "command": "workbench.action.tasks.runTask",
+        "args": "Package and Install Extension"
+    },
+    {
+        "key": "ctrl+shift+w",
+        "command": "workbench.action.tasks.runTask",
+        "args": "Watch Extension"
+    },
+    
+    // Git Shortcuts
+    {
+        "key": "ctrl+shift+g ctrl+shift+a",
+        "command": "git.stageAll"
+    },
+    {
+        "key": "ctrl+shift+g ctrl+shift+c",
+        "command": "git.commitStaged"
+    },
+    {
+        "key": "ctrl+shift+g ctrl+shift+p",
+        "command": "git.push"
+    },
+    
+    // Debug Shortcuts
+    {
+        "key": "f5",
+        "command": "workbench.action.debug.start"
+    },
+    {
+        "key": "shift+f5",
+        "command": "workbench.action.debug.stop"
+    },
+    
+    // Quick Terminal Access
+    {
+        "key": "ctrl+shift+`",
+        "command": "workbench.action.terminal.new"
+    }
+]

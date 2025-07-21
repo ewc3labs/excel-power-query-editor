@@ -2,7 +2,7 @@
   "name": "excel-power-query-editor",
   "displayName": "Excel Power Query Editor",
   "description": "Extract and sync Power Query M code from Excel files",
-  "version": "0.4.3",
+  "version": "0.5.0",
   "publisher": "ewc3labs",
   "repository": {
     "type": "git",
@@ -16,7 +16,7 @@
     "url": "https://www.buymeacoffee.com/ewc3labs"
   },
   "license": "MIT",
-  "icon": "images/excel-power-query-editor-logo-128x128.png",
+  "icon": "assets/excel-power-query-editor-logo-128x128.png",
   "engines": {
     "vscode": "^1.101.0"
   },
@@ -80,6 +80,11 @@
         "command": "excel-power-query-editor.cleanupBackups",
         "title": "Cleanup Old Backups",
         "category": "Excel PQ"
+      },
+      {
+        "command": "excel-power-query-editor.installExcelSymbols",
+        "title": "Install Excel Symbol Definitions",
+        "category": "Excel PQ"
       }
     ],
     "configuration": {
@@ -90,70 +95,122 @@
           "default": false,
           "description": "Automatically start watching when extracting Power Query files"
         },
+        "excel-power-query-editor.watchAlwaysMaxFiles": {
+          "type": "number",
+          "default": 25,
+          "minimum": 1,
+          "maximum": 500,
+          "description": "Maximum number of .m files to auto-watch when watchAlways is enabled. Prevents performance issues with large workspaces."
+        },
         "excel-power-query-editor.watchOffOnDelete": {
           "type": "boolean",
           "default": true,
-          "description": "Automatically stop watching when the .m file is deleted"
-        },
-        "excel-power-query-editor.syncDeleteTurnsWatchOff": {
-          "type": "boolean",
-          "default": true,
-          "description": "Stop watching when using 'Sync & Delete'"
+          "description": "Stop watching a .m file if it is deleted from disk."
         },
         "excel-power-query-editor.syncDeleteAlwaysConfirm": {
           "type": "boolean",
           "default": true,
-          "description": "Always ask for confirmation before 'Sync & Delete' (uncheck to skip confirmation)"
+          "description": "Show a confirmation dialog before syncing and deleting the .m file. Uncheck to perform without confirmation."
         },
         "excel-power-query-editor.verboseMode": {
           "type": "boolean",
           "default": false,
-          "description": "Show detailed output in the Output panel"
+          "description": "[DEPRECATED] Use logLevel instead. Output detailed logs to the VS Code Output panel (recommended for troubleshooting)."
         },
         "excel-power-query-editor.autoBackupBeforeSync": {
           "type": "boolean",
           "default": true,
-          "description": "Create automatic backups before syncing to Excel"
+          "description": "Automatically create a backup of the Excel file before syncing from .m."
         },
         "excel-power-query-editor.backupLocation": {
           "type": "string",
-          "enum": ["sameFolder", "tempFolder", "custom"],
+          "enum": [
+            "sameFolder",
+            "tempFolder",
+            "custom"
+          ],
           "default": "sameFolder",
-          "description": "Where to store backup files"
+          "description": "Folder to store backup files: same as Excel file, system temp folder, or a custom path."
         },
         "excel-power-query-editor.customBackupPath": {
           "type": "string",
           "default": "",
-          "description": "Custom path for backups (when backupLocation is 'custom')"
+          "description": "Path to use if backupLocation is set to \"custom\". Can be relative to the workspace root."
         },
-        "excel-power-query-editor.maxBackups": {
+        "excel-power-query-editor.backup.maxFiles": {
           "type": "number",
           "default": 5,
           "minimum": 1,
           "maximum": 50,
-          "description": "Maximum number of backup files to keep per Excel file (older backups are automatically deleted)"
+          "description": "Maximum number of backup files to retain per Excel file. Older backups are deleted when exceeded."
         },
         "excel-power-query-editor.autoCleanupBackups": {
           "type": "boolean",
           "default": true,
-          "description": "Automatically delete old backup files when exceeding maxBackups limit"
+          "description": "Enable automatic deletion of old backups when the number exceeds maxBackups."
         },
         "excel-power-query-editor.syncTimeout": {
           "type": "number",
           "default": 30000,
           "minimum": 5000,
           "maximum": 120000,
-          "description": "Timeout in milliseconds for sync operations"
+          "description": "Time in milliseconds before a sync attempt is aborted."
         },
         "excel-power-query-editor.debugMode": {
           "type": "boolean",
           "default": false,
-          "description": "Enable debug logging and save debug files"
+          "description": "[DEPRECATED] Use logLevel instead. Enable debug-level logging and write internal debug files to disk."
+        },
+        "excel-power-query-editor.logLevel": {
+          "type": "string",
+          "enum": [
+            "none",
+            "error",
+            "warn",
+            "info",
+            "verbose",
+            "debug"
+          ],
+          "default": "info",
+          "description": "Set the logging level for the Excel Power Query Editor extension. Replaces legacy verboseMode and debugMode settings."
         },
         "excel-power-query-editor.showStatusBarInfo": {
           "type": "boolean",
           "default": true,
-          "description": "Show watch status and sync info in the status bar"
+          "description": "Display sync and watch status indicators in the VS Code status bar."
+        },
+        "excel-power-query-editor.sync.openExcelAfterWrite": {
+          "type": "boolean",
+          "default": false,
+          "description": "Automatically open the Excel file after a successful sync."
+        },
+        "excel-power-query-editor.sync.debounceMs": {
+          "type": "number",
+          "default": 500,
+          "minimum": 100,
+          "maximum": 5000,
+          "description": "Milliseconds to debounce file saves before sync. Prevents duplicate syncs in rapid succession."
+        },
+        "excel-power-query-editor.watch.checkExcelWriteable": {
+          "type": "boolean",
+          "default": true,
+          "description": "Before syncing, check if Excel file is writable. Warn or retry if locked."
+        },
+        "excel-power-query-editor.symbols.installLevel": {
+          "type": "string",
+          "default": "workspace",
+          "enum": [
+            "workspace",
+            "folder",
+            "user",
+            "off"
+          ],
+          "description": "Where to install excel-pq-symbols.json and update Power Query language settings. 'workspace' = .vscode/settings.json, 'folder' = workspace folder, 'user' = global settings, 'off' = disabled."
+        },
+        "excel-power-query-editor.symbols.autoInstall": {
+          "type": "boolean",
+          "default": true,
+          "description": "Automatically install Excel Power Query symbols on activation to enable Excel.CurrentWorkbook() IntelliSense in the M Language extension."
         }
       }
     },
@@ -172,6 +229,26 @@
         {
           "command": "excel-power-query-editor.cleanupBackups",
           "when": "resourceExtname =~ /\\.(xlsx|xlsm|xlsb)$/",
+          "group": "powerquery@3"
+        },
+        {
+          "command": "excel-power-query-editor.syncToExcel",
+          "when": "resourceExtname == '.m'",
+          "group": "powerquery@1"
+        },
+        {
+          "command": "excel-power-query-editor.watchFile",
+          "when": "resourceExtname == '.m'",
+          "group": "powerquery@2"
+        },
+        {
+          "command": "excel-power-query-editor.toggleWatch",
+          "when": "resourceExtname == '.m'",
+          "group": "powerquery@2"
+        },
+        {
+          "command": "excel-power-query-editor.syncAndDelete",
+          "when": "resourceExtname == '.m'",
           "group": "powerquery@3"
         }
       ],
@@ -217,11 +294,18 @@
   ],
   "scripts": {
     "vscode:prepublish": "npm run package",
+    "publish-marketplace": "node scripts/set-readme-vsce.js && vsce publish && node scripts/set-readme-gh.js",
+    "prepublishOnly": "npm run lint && npm test",
+    "postpublish": "node scripts/set-readme-gh.js",
     "compile": "npm run check-types && npm run lint && node esbuild.js",
     "watch": "npm-run-all -p watch:*",
     "watch:esbuild": "node esbuild.js --watch",
     "watch:tsc": "tsc --noEmit --watch --project tsconfig.json",
     "package": "npm run check-types && npm run lint && node esbuild.js --production",
+    "package-vsix": "node scripts/set-readme-vsce.js && npm run package && vsce package && node scripts/set-readme-gh.js",
+    "bump-version": "node scripts/bump-version.js",
+    "install-local": "npm run package-vsix && node scripts/install-extension.js",
+    "dev-install": "npm run package-vsix && node scripts/install-extension.js --force",
     "compile-tests": "tsc -p . --outDir out",
     "watch-tests": "tsc -p . -w --outDir out",
     "pretest": "npm run compile-tests && npm run compile && npm run lint",
@@ -237,6 +321,7 @@
     "@typescript-eslint/parser": "^8.31.1",
     "@vscode/test-cli": "^0.0.10",
     "@vscode/test-electron": "^2.5.2",
+    "@vscode/vsce": "^3.2.1",
     "esbuild": "^0.25.3",
     "eslint": "^9.25.1",
     "npm-run-all": "^4.1.5",
@@ -248,6 +333,7 @@
     "chokidar": "^4.0.3",
     "excel-datamashup": "^1.0.6",
     "jszip": "^3.10.1",
+    "ts-morph": "^26.0.0",
     "xml2js": "^0.6.2"
   }
 }

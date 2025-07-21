@@ -1,0 +1,36 @@
+{
+    "timestamp": "2025-07-14T19:28:17.172Z",
+    "file": {
+        "name": "no-powerquery.xlsx",
+        "size_mb": 0.01,
+        "total_files": 13
+    },
+    "scan_summary": {
+        "xml_files_scanned": 10,
+        "datamashup_files_found": 0,
+        "total_datamashup_size_kb": 0.0
+    },
+    "file_breakdown": {
+        "customXml": 0,
+        "xl": 9,
+        "query_related": 0,
+        "connection_related": 0
+    },
+    "datamashup_sources": [],
+    "file_categories": {
+        "power_query_m_files": 0,
+        "report_files": 1,
+        "datamashup_files": 0,
+        "xml_files": 0,
+        "customxml_files": 0
+    },
+    "validation": {
+        "m_code_valid": false,
+        "extraction_successful": true,
+        "no_powerquery_content": true
+    },
+    "recommendations": [
+        "No DataMashup content found in file",
+        "File contains no Power Query definitions"
+    ]
+}

@@ -9,5 +9,69 @@
         "dist": true // set this to false to include "dist" folder in search results
     },
     // Turn off tsc task auto detection since we have the necessary tasks as npm scripts
-    "typescript.tsc.autoDetect": "off"
+    "typescript.tsc.autoDetect": "off",
+    
+    // Excel Power Query Editor settings for dev container
+    "excel-power-query-editor.verboseMode": true,
+    "excel-power-query-editor.watchAlways": false,
+    "excel-power-query-editor.backupLocation": "sameFolder",
+    "excel-power-query-editor.customBackupPath": "./VSCodeBackups",
+    "excel-power-query-editor.debugMode": true,
+    "excel-power-query-editor.watchOffOnDelete": true,
+    "excel-power-query-editor.sync.debounceMs": 3000, // Fixed: was 100ms causing immediate sync with VS Code auto-save
+    "excel-power-query-editor.sync.largefile.minDebounceMs": 8000, // For large files like your 60MB one
+    
+    // Enterprise DevOps Settings
+    "git.autofetch": true,
+    "git.confirmSync": false,
+    "git.enableSmartCommit": true,
+    "git.autoStash": true,
+    "explorer.confirmDragAndDrop": false,
+    "explorer.confirmDelete": false,
+    "workbench.editor.enablePreview": false,
+    "workbench.editor.revealIfOpen": true,
+    "editor.formatOnSave": true,
+    "[powerquery]": {
+        "editor.formatOnSave": false
+    },
+    "editor.codeActionsOnSave": {
+        "source.fixAll.eslint": "explicit"
+    },
+    "files.autoSave": "off",
+    // "files.autoSaveDelay": 1000, // Disabled since autoSave is off
+    
+    // Test Explorer Settings
+    "testExplorer.useNativeTesting": true,
+    "testing.automaticallyOpenPeekView": "failureInVisibleDocument",
+    "testing.defaultGutterClickAction": "run",
+    "testing.followRunningTest": true,
+    "testing.openTesting": "openOnTestStart",
+    "typescript.preferences.includePackageJsonAutoImports": "on",
+    "npm.enableRunFromFolder": true,
+    
+    // Terminal configuration
+    "terminal.integrated.profiles.windows": {
+        "PowerShell": {
+            "source": "PowerShell",
+            "icon": "terminal-powershell"
+        },
+        "Command Prompt": {
+            "path": "cmd.exe",
+            "icon": "terminal-cmd"
+        },
+        "Git Bash": {
+            "path": "C:\\Program Files\\Git\\bin\\bash.exe",
+            "icon": "terminal-bash",
+            "args": ["-l"]
+        }
+    },
+    "terminal.integrated.defaultProfile.windows": "Git Bash",
+    "testing.automaticallyOpenTestResults": "openOnTestStart",
+    
+    // Power Query Language Server configuration
+    "powerquery.client.additionalSymbolsDirectories": [
+        "c:/DEV/ewc3labs/excel-power-query-editor/.vscode/excel-pq-symbols"
+    ],
+    "excel-power-query-editor.watch.checkExcelWriteable": true,
+    "excel-power-query-editor.watchAlwaysMaxFiles": 100
 }

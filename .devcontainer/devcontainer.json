@@ -1,0 +1,43 @@
+{
+  // ...
+  "name": "EPQE Extension Dev",
+  "image": "mcr.microsoft.com/devcontainers/typescript-node:22-bookworm",
+  "features": {
+    // ✅ Existing
+    "ghcr.io/devcontainers/features/github-cli:1": {},
+    "ghcr.io/devcontainers/features/git:1": {},
+    // For VS Code testing
+    "ghcr.io/devcontainers/features/desktop-lite:1": {}
+  },
+  "postCreateCommand": "sudo npm install -g npm@latest && npm --version && npm install && npm run compile",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        // existing...
+        "powerquery.vscode-powerquery",
+        "dbaeumer.vscode-eslint",
+        "esbenp.prettier-vscode",
+        "ms-vscode.vscode-typescript-next",
+        "ms-vscode.vscode-json",
+        "grapecity.gc-excelviewer",
+        // 🆕 Testing and debugging tools
+        "hbenl.vscode-test-explorer",
+        "ms-vscode.test-adapter-converter",
+        "ms-vscode.extension-test-runner"
+     ],
+      "settings": {
+        // keep your existing stuff
+        "terminal.integrated.defaultProfile.linux": "bash",
+        // 🆕 More useful stuff
+        "editor.formatOnSave": true,
+        "files.autoSave": "onWindowChange",
+        "powerquery.sdk.autoDetect": true
+      }
+    }
+  },
+  "mounts": [
+    "source=vscode-extensions,target=/home/vscode/.vscode-server/extensions,type=volume"
+  ],
+  "forwardPorts": [3000, 9229], // for debug/test in container if needed
+  "remoteUser": "node"
+}
