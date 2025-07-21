@@ -122,8 +122,15 @@ jobs:
 
       - name: 🔢 Update version in package.json
         run: |
-          npm version ${{ needs.determine-release.outputs.version }} --no-git-tag-version
-          echo "Updated version to: $(node -p "require('./package.json').version")"
+          CURRENT_VERSION=$(node -p "require('./package.json').version")
+          DESIRED_VERSION="${{ needs.determine-release.outputs.version }}"
+          if [ "$CURRENT_VERSION" != "$DESIRED_VERSION" ]; then
+            echo "Updating version from $CURRENT_VERSION to $DESIRED_VERSION"
+            npm version "$DESIRED_VERSION" --no-git-tag-version
+            echo "Updated version to: $(node -p \"require('./package.json').version\")"
+          else
+            echo "Version already set to $DESIRED_VERSION, skipping update."
+          fi
 
       - name: 🧪 Run tests (fast check)
         run: |
