@@ -251,7 +251,10 @@ jobs:
         with:
           name: excel-power-query-editor-vsix-${{ needs.determine-release.outputs.release_type }}
 
-      - name: 🚀 Publish to VS Code Marketplace
+      - name: � Install dependencies
+        run: npm ci
+
+      - name: �🚀 Publish to VS Code Marketplace
         env:
           VSCE_PAT: ${{ secrets.VSCE_PAT }}
         run: |
