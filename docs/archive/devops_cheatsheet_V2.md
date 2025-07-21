@@ -221,7 +221,7 @@ npm version preminor    # 0.5.0 → 0.6.0-0
 **Steps:**
 - Checkout → Install → Lint → TypeCheck → Test → Build → Package → Upload VSIX
 
-> 💥 Failing lint/typecheck = blocked CI. No bullshit allowed.
+> 💥 Failing lint/typecheck = blocked CI. No BS allowed.
 
 **Documentation Changes:**
 - Pushes that only modify `docs/**` or `*.md` files skip the release pipeline
@@ -287,7 +287,7 @@ code --install-extension excel-power-query-editor-*.vsix
 # Or use the GUI: Extensions → ⋯ → Install from VSIX
 ```
 
-> 🔥 **Wilson's Note:** This is the same automation infrastructure used by enterprise software companies. From a simple commit/push to professional releases with changelogs, versioning, and distribution. No manual bullshit required.
+> 🔥 **Wilson's Note:** This is the same automation infrastructure used by enterprise software companies. From a simple commit/push to professional releases with changelogs, versioning, and distribution. No manual BS required.
 
 </details>
 

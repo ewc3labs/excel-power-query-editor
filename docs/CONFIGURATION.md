@@ -1,31 +1,8 @@
-<!-- HEADER_TABLE -->
-<table align="center">
-<tr>
-  <td width="112" align="center" valign="middle">
-    <img src="assets/excel-power-query-editor-logo-128x128.png" width="128" height="128"><br>
-    <strong>E · P · Q · E</strong>
-  </td>
-
-  <td align="center" valign="middle">
-    <h1 align="center">Excel Power Query Editor</h1>
-    <p align="left">
-      <b>Edit Power Query M code directly from Excel files in VS Code. No Excel needed. No bullshit. It Just Works™.</b><br>
-      <sub>
-        Built by <strong>EWC3 Labs</strong> — where we rage-build the tools everyone needs, but nobody <del>cares to build</del>
-        <em>is deranged enough to spend days perfecting until it actually works right.</em>
-      </sub>
-    </p>
-  </td>
-
-  <td width="112" align="center" valign="middle">
-    <img src="assets/EWC3LabsLogo-blue-128x128.png" width="128" height="128"><br>
-    <strong><em>QA Officer</em></strong>
-  </td>
-</tr>
-</table>
-<!-- /HEADER_TABLE -->
+# Excel Power Query Editor
+A modern, reliable VS Code extension for editing Power Query M code directly from Excel files
 
 ---
+
 
 ## Configuration Reference
 
@@ -410,5 +387,10 @@ Then check: `View > Output > "Excel Power Query Editor"`
 - **📝 [Changelog](../CHANGELOG.md)** - Version history and setting changes
 
 ---
+
+<p align="center">
+  <img src="assets/EWC3LabsLogo-blue-128x128.png" width="128" height="128" alt="Georgie the QA Officer"><br>
+  <sub><b>Georgie, our QA Officer</b></sub>
+</p>
 
 **Excel Power Query Editor v0.5.0** - Professional configuration for every workflow

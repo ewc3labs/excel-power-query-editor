@@ -267,3 +267,11 @@ git checkout -b release/v0.5.0 && git push origin release/v0.5.0
 gh workflow list
 gh run list --workflow=release.yml
 ```
+---
+
+<p align="center">
+  <img src="assets/EWC3LabsLogo-blue-128x128.png" width="128" height="128" alt="Georgie the QA Officer"><br>
+  <sub><b>Georgie, our QA Officer</b></sub>
+</p>
+
+**Excel Power Query Editor** – _Because Power Query development shouldn’t be painful._

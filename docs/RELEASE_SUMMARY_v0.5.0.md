@@ -50,3 +50,12 @@ This release is fully prepared for VS Code Marketplace with:
 - Improved error handling
 - Optimal default configurations
 - Improved logging levels with Emoji-enhanced log output
+
+---
+
+<p align="center">
+  <img src="assets/EWC3LabsLogo-blue-128x128.png" width="128" height="128" alt="Georgie the QA Officer"><br>
+  <sub><b>Georgie, our QA Officer</b></sub>
+</p>
+
+**Excel Power Query Editor** – _Because Power Query development shouldn’t be painful._

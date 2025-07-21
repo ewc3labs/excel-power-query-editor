@@ -9,7 +9,7 @@
   <td align="center" valign="middle">
     <h1 align="center">Excel Power Query Editor</h1>
     <p align="left">
-      <b>Edit Power Query M code directly from Excel files in VS Code. No Excel needed. No bullshit. It Just Works™.</b><br>
+      <b>Edit Power Query M code directly from Excel files in VS Code. No Excel needed. No BS. It Just Works™.</b><br>
       <sub>
         Built by <strong>EWC3 Labs</strong> — where we rage-build the tools everyone needs, but nobody <del>cares to build</del>
         <em>is deranged enough to spend days perfecting until it actually works right.</em>

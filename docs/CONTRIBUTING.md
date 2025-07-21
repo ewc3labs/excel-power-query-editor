@@ -1,29 +1,5 @@
-<!-- HEADER_TABLE -->
-<table align="center">
-<tr>
-  <td width="112" align="center" valign="middle">
-    <img src="assets/excel-power-query-editor-logo-128x128.png" width="128" height="128"><br>
-    <strong>E · P · Q · E</strong>
-  </td>
-
-  <td align="center" valign="middle">
-    <h1 align="center">Excel Power Query Editor</h1>
-    <p align="left">
-      <b>Edit Power Query M code directly from Excel files in VS Code. No Excel needed. No bullshit. It Just Works™.</b><br>
-      <sub>
-        Built by <strong>EWC3 Labs</strong> — where we rage-build the tools everyone needs, but nobody <del>cares to build</del>
-        <em>is deranged enough to spend days perfecting until it actually works right.</em>
-      </sub>
-    </p>
-  </td>
-
-  <td width="112" align="center" valign="middle">
-    <img src="assets/EWC3LabsLogo-blue-128x128.png" width="128" height="128"><br>
-    <strong><em>QA Officer</em></strong>
-  </td>
-</tr>
-</table>
-<!-- /HEADER_TABLE -->
+# Excel Power Query Editor
+A modern, reliable VS Code extension for editing Power Query M code directly from Excel files
 
 ---
 
@@ -408,18 +384,6 @@ npm version patch --dry-run
 
 </details>
 
-### README Management
-
-| Task                          | Script                                                              |
-| ----------------------------- | ------------------------------------------------------------------- |
-| Set README for GitHub         | `node scripts/set-readme-gh.js`                                     |
-| Set README for VS Marketplace | `node scripts/set-readme-vsce.js`                                   |
-| Automated pre/post-publish    | Hooked via `prepublishOnly` and `postpublish` npm lifecycle scripts |
-
-> `vsce package` **must** see a clean Marketplace README. Run `set-readme-vsce.js` right before packaging.
-
----
-
 ## 🚀 CI/CD Pipeline - Professional Automation
 
 <a id="release-automation"></a>
@@ -447,7 +411,7 @@ npm version patch --dry-run
 **Steps:**
 - Checkout → Install → Lint → TypeCheck → Test → Build → Package → Upload VSIX
 
-> 💥 Failing lint/typecheck = blocked CI. No bullshit allowed.
+> 💥 Failing lint/typecheck = blocked CI. No BS allowed.
 
 **Documentation Changes:**
 - Pushes that only modify `docs/**` or `*.md` files skip the release pipeline
@@ -516,7 +480,7 @@ code --install-extension excel-power-query-editor-*.vsix
 # Or use the GUI: Extensions → ⋯ → Install from VSIX
 ```
 
-> 🔥 **Wilson's Note:** This is the same automation infrastructure used by enterprise software companies. From a simple commit/push to professional releases with changelogs, versioning, and distribution. No manual bullshit required.
+> 🔥 **Wilson's Note:** This is the same automation infrastructure used by enterprise software companies. From a simple commit/push to professional releases with changelogs, versioning, and distribution. No manual BS required.
 
 </details>
 
@@ -816,9 +780,8 @@ Brief description of changes
 .
 ├── docs/                    # All markdown docs (README variants, changelogs, etc.)
 ├── scripts/                 # Automation scripts
-│   ├── set-readme-gh.js     # GitHub README switcher
-│   ├── set-readme-vsce.js   # VS Marketplace README switcher  
-│   └── bump-version.js      # Smart semantic version bumping
+│   ├── bump-version.js      # Smart semantic version bumping
+│   └── install-extension.js # Cross-platform extension installer script
 ├── src/                     # Extension source code
 │   ├── extension.ts         # Main extension entry point
 │   ├── configHelper.ts      # Configuration management
@@ -941,3 +904,12 @@ Brief description of changes
 **Together, we're building the gold standard for Power Query development in VS Code.**
 
 🔥 **Wilson's Note:** This platform is now CI-tested, Docker-ready, GitHub-integrated, and script-powered. First release or fiftieth — this guide's got you covered.
+
+---
+
+<p align="center">
+  <img src="assets/EWC3LabsLogo-blue-128x128.png" width="128" height="128" alt="Georgie the QA Officer"><br>
+  <sub><b>Georgie, our QA Officer</b></sub>
+</p>
+
+**Excel Power Query Editor** – _Because Power Query development shouldn’t be painful._

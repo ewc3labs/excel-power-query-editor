@@ -1,3 +1,8 @@
+# Excel Power Query Editor
+A modern, reliable VS Code extension for editing Power Query M code directly from Excel files
+
+---
+
 # 📖 EWC3 Labs Documentation Hub
 
 Welcome to the **Excel Power Query Editor** documentation! This is your navigation center for all project documentation.
@@ -64,3 +69,12 @@ Some documents have multiple versions for different platforms:
 🔥 **Wilson's Note:** This documentation hub turns scattered docs into a navigable knowledge base — your own internal wiki without the GitHub Wiki complexity. Everything's organized, cross-referenced, and ready for both new contributors and seasoned developers.
 
 **Need something added?** Submit a PR — we keep this place current and useful! 🛠️
+
+---
+
+<p align="center">
+  <img src="assets/EWC3LabsLogo-blue-128x128.png" width="128" height="128" alt="Georgie the QA Officer"><br>
+  <sub><b>Georgie, our QA Officer</b></sub>
+</p>
+
+**Excel Power Query Editor** – _Because Power Query development shouldn’t be painful._

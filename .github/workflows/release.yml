@@ -13,6 +13,7 @@ on:
       - "**.md"
       - "docs/**"
       - ".github/**"
+      - ".vscode/**"
   # Manual workflow dispatch for emergency releases
   workflow_dispatch:
     inputs:

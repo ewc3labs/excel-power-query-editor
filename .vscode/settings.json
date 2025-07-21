@@ -13,7 +13,7 @@
     
     // Excel Power Query Editor settings for dev container
     "excel-power-query-editor.verboseMode": true,
-    "excel-power-query-editor.watchAlways": false,
+    "excel-power-query-editor.watchAlways": true,
     "excel-power-query-editor.backupLocation": "sameFolder",
     "excel-power-query-editor.customBackupPath": "./VSCodeBackups",
     "excel-power-query-editor.debugMode": true,
@@ -73,5 +73,6 @@
         "c:/DEV/ewc3labs/excel-power-query-editor/.vscode/excel-pq-symbols"
     ],
     "excel-power-query-editor.watch.checkExcelWriteable": true,
-    "excel-power-query-editor.watchAlwaysMaxFiles": 100
+    "excel-power-query-editor.watchAlwaysMaxFiles": 100,
+    "excel-power-query-editor.sync.openExcelAfterWrite": true
 }

@@ -95,7 +95,7 @@ Optional: use Git Bash as your default terminal for POSIX parity with Linux/macO
 
 - Checkout → Install → Lint → TypeCheck → Test → Build → Package → Upload VSIX
 
-> 💥 Failing lint/typecheck = blocked CI. No bullshit allowed.
+> 💥 Failing lint/typecheck = blocked CI. No BS allowed.
 
 ## 📁 Folder Structure Highlights
 

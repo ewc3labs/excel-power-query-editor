@@ -42,13 +42,23 @@ Give the project a star on GitHub to help others discover it.
 
 For technical support and questions:
 
-1. 📖 Check the [User Guide](USER_GUIDE.md) for detailed instructions
-2. ⚙️ Review [Configuration Guide](CONFIGURATION.md) for settings
-3. 🔍 Enable verbose mode for troubleshooting
-4. 🐛 Use debug mode for complex issues
+1. 📖 Check the [User Guide](docs/USER_GUIDE.md) for detailed instructions
+2. ⚙️ Review [Configuration Guide](docs/CONFIGURATION.md) for settings
+3. 🤝 See the [Contributing Guide](docs/CONTRIBUTING.md) for developer setup and automation
+4. � Review the [Release Summary](docs/RELEASE_SUMMARY_v0.5.0.md) for the latest features and technical notes
+5. �🔍 Enable verbose mode for troubleshooting
+6. 🐛 Use debug mode for complex issues
 
 ---
 
 **Thank you for supporting the Power Query development community!** ☕
+
+---
+<p align="center">
+  <img src="assets/EWC3LabsLogo-blue-128x128.png" width="128" height="128" alt="Georgie the QA Officer"><br>
+  <sub><b>Georgie, our QA Officer</b></sub>
+</p>
+
+---
 
 *Every contribution, no matter how small, helps make this extension better for everyone.*

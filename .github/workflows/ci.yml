@@ -2,9 +2,18 @@ name: VS Code Extension CI/CD
 on:
   push:
     branches: [main, release/**, wip/**, hotfix/**]
+    paths-ignore:
+      - "**.md"
+      - "docs/**"
+      - ".github/**"
+      - ".vscode/**"
   pull_request:
     branches: [main, release/**, wip/**, hotfix/**]
-
+    paths-ignore:
+      - "**.md"
+      - "docs/**"
+      - ".github/**"
+      - ".vscode/**"
 
 jobs:
   test:
