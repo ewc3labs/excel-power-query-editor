@@ -11,7 +11,6 @@ suite('Utils Tests', () => {
 	suiteSetup(() => {
 		// Initialize test configuration system
 		initTestConfig();
-		
 		// Ensure temp directory exists
 		if (!fs.existsSync(tempDir)) {
 			fs.mkdirSync(tempDir, { recursive: true });
@@ -21,7 +20,6 @@ suite('Utils Tests', () => {
 	suiteTeardown(() => {
 		// Clean up test configuration
 		cleanupTestConfig();
-		
 		// Clean up temp directory
 		if (fs.existsSync(tempDir)) {
 			fs.rmSync(tempDir, { recursive: true, force: true });
@@ -274,5 +272,48 @@ suite('Utils Tests', () => {
 				console.log(`✅ Debounce timing accepted: ${value}ms`);
 			}
 		});
+	});
+});
+
+
+// --- Legacy Settings Migration Tests ---
+import { migrateLegacySettings } from '../src/extension';
+
+suite('Legacy Settings Migration', () => {
+setup(() => {
+	initTestConfig();
+});
+teardown(() => {
+	cleanupTestConfig();
+});
+
+	test('Migrates both debugMode and verboseMode set', async () => {
+		await testConfigUpdate('debugMode', true);
+		await testConfigUpdate('verboseMode', true);
+		await migrateLegacySettings();
+		const config = vscode.workspace.getConfiguration('excel-power-query-editor');
+		assert.strictEqual(config.get('logLevel'), 'debug', 'logLevel should be set to debug');
+		assert.strictEqual(config.get('debugMode'), undefined, 'debugMode should be removed');
+		assert.strictEqual(config.get('verboseMode'), undefined, 'verboseMode should be removed');
+	});
+
+	test('Migrates only debugMode set', async () => {
+		await testConfigUpdate('debugMode', true);
+		await testConfigUpdate('verboseMode', false);
+		await migrateLegacySettings();
+		const config = vscode.workspace.getConfiguration('excel-power-query-editor');
+		assert.strictEqual(config.get('logLevel'), 'debug', 'logLevel should be set to debug');
+		assert.strictEqual(config.get('debugMode'), undefined, 'debugMode should be removed');
+		assert.strictEqual(config.get('verboseMode'), undefined, 'verboseMode should be removed');
+	});
+
+	test('Migrates only verboseMode set', async () => {
+		await testConfigUpdate('debugMode', false);
+		await testConfigUpdate('verboseMode', true);
+		await migrateLegacySettings();
+		const config = vscode.workspace.getConfiguration('excel-power-query-editor');
+		assert.strictEqual(config.get('logLevel'), 'verbose', 'logLevel should be set to verbose');
+		assert.strictEqual(config.get('debugMode'), undefined, 'debugMode should be removed');
+		assert.strictEqual(config.get('verboseMode'), undefined, 'verboseMode should be removed');
 	});
 });

@@ -156,9 +156,13 @@ Ctrl+Shift+P → "Excel Power Query: Apply Recommended Defaults"
 
 | Setting             | Type    | Default | Description                          | Use Cases                                                        |
 | ------------------- | ------- | ------- | ------------------------------------ | ---------------------------------------------------------------- |
-| `verboseMode`       | boolean | `false` | Detailed logs in Output panel        | ✅ Troubleshooting<br>✅ Understanding operations<br>❌ Clean UI |
-| `debugMode`         | boolean | `false` | Debug-level logging + files          | ✅ Extension development<br>❌ Normal usage                      |
+| `logLevel`          | string  | `info`  | Set logging level (`none`, `error`, `warn`, `info`, `verbose`, `debug`). Replaces legacy settings. | ✅ Control log detail<br>✅ Troubleshooting<br>❌ Minimal UI |
+| `verboseMode`       | boolean | `false` | **[DEPRECATED]** Use `logLevel` instead. Detailed logs in Output panel. | ✅ Troubleshooting<br>✅ Understanding operations<br>❌ Clean UI |
+| `debugMode`         | boolean | `false` | **[DEPRECATED]** Use `logLevel` instead. Debug-level logging + files. | ✅ Extension development<br>❌ Normal usage                      |
 | `showStatusBarInfo` | boolean | `true`  | Show watch/sync status in status bar | ✅ Visual feedback<br>❌ Minimal UI                              |
+
+
+**Note:** `verboseMode` and `debugMode` are deprecated and will be removed in a future release. The extension will automatically migrate these to `logLevel` on upgrade.
 
 **Example - Troubleshooting Setup:**
 
@@ -167,6 +171,15 @@ Ctrl+Shift+P → "Excel Power Query: Apply Recommended Defaults"
   "excel-power-query-editor.verboseMode": true,
   "excel-power-query-editor.debugMode": false,
   "excel-power-query-editor.showStatusBarInfo": true
+}
+```
+
+
+**Example - Set Logging Level:**
+
+```json
+{
+  "excel-power-query-editor.logLevel": "debug"
 }
 ```
 
@@ -311,6 +324,7 @@ Ctrl+Shift+P → "Excel Power Query: Apply Recommended Defaults"
 
 ### New Settings in v0.5.0:
 
+- `logLevel` - Set the logging level for the extension (replaces `verboseMode` and `debugMode`)
 - `sync.openExcelAfterWrite` - Automatically open Excel after sync
 - `sync.debounceMs` - Configurable sync delay (prevents CoPilot triple-sync)
 - `watch.checkExcelWriteable` - Excel file access validation
@@ -318,23 +332,29 @@ Ctrl+Shift+P → "Excel Power Query: Apply Recommended Defaults"
 
 ### Deprecated Settings:
 
+- `verboseMode` - Use `logLevel` instead. Will be removed in a future release.
+- `debugMode` - Use `logLevel` instead. Will be removed in a future release.
 - `syncDeleteTurnsWatchOff` - Functionality merged with `watchOffOnDelete`
+
 
 ### Automatic Migration:
 
-The extension automatically migrates your v0.4.x settings. **No action required.**
+The extension automatically migrates your v0.4.x settings, including legacy logging settings (`verboseMode`, `debugMode`) to the new `logLevel` setting. **No action required.**
 
 ### Manual Migration (Optional):
 
 ```json
 // v0.4.x
 {
-  "excel-power-query-editor.maxBackups": 5
+  "excel-power-query-editor.maxBackups": 5,
+  "excel-power-query-editor.verboseMode": true,
+  "excel-power-query-editor.debugMode": false
 }
 
 // v0.5.0 (improved)
 {
-  "excel-power-query-editor.backup.maxFiles": 5
+  "excel-power-query-editor.backup.maxFiles": 5,
+  "excel-power-query-editor.logLevel": "verbose"
 }
 ```
 

@@ -1658,61 +1658,83 @@ async function rawExtraction(uri?: vscode.Uri, uris?: vscode.Uri[]): Promise<voi
 function dumpAllExtensionSettings(): void {
 	try {
 		log('=== EXTENSION SETTINGS DUMP ===', 'dumpAllExtensionSettings', 'debug');
-		
 		const extensionId = 'excel-power-query-editor';
-		
 		// Get all configuration scopes
 		const userConfig = vscode.workspace.getConfiguration(extensionId, null);
 		const workspaceConfig = vscode.workspace.getConfiguration(extensionId, vscode.workspace.workspaceFolders?.[0]?.uri);
-		
-		// Define all known extension settings
-		const knownSettings = [
-			'watchAlways',
-			'watchAlwaysMaxFiles',
-			'watchOffOnDelete', 
-			'syncDeleteAlwaysConfirm',
-			'verboseMode',
-			'autoBackupBeforeSync',
-			'backupLocation',
-			'customBackupPath',
-			'backup.maxFiles',
-			'autoCleanupBackups',
-			'syncTimeout',
-			'debugMode',
-			'showStatusBarInfo',
-			'sync.openExcelAfterWrite',
-			'sync.debounceMs',
-			'watch.checkExcelWriteable'
-		];
-		
-		log('USER SETTINGS (Global):', 'dumpAllExtensionSettings', 'debug');
-		for (const setting of knownSettings) {
-			const value = userConfig.get(setting);
-			const hasValue = userConfig.has(setting);
-			log(`  ${setting}: ${hasValue ? JSON.stringify(value) : '<not set>'}`, 'dumpAllExtensionSettings', 'debug');
+		// Collect all keys from both configs
+		const allKeys = new Set<string>();
+		for (const key of Object.keys(userConfig)) { allKeys.add(key); }
+		for (const key of Object.keys(workspaceConfig)) { allKeys.add(key); }
+		// Always include logLevel
+		// allKeys.add('logLevel');
+		// Dump each setting with its value and source
+		for (const key of Array.from(allKeys).sort()) {
+			let value: any = undefined;
+			let source: string = 'default';
+			if (workspaceConfig.has(key)) {
+				value = workspaceConfig.get(key);
+				source = 'workspace';
+			} else if (userConfig.has(key)) {
+				value = userConfig.get(key);
+				source = 'user';
+			} else {
+				value = vscode.workspace.getConfiguration(extensionId).inspect(key)?.defaultValue;
+			}
+			log(`  ${key}: ${JSON.stringify(value)} [${source}]`, 'dumpAllExtensionSettings', 'debug');
 		}
-		
-		log('WORKSPACE SETTINGS:', 'dumpAllExtensionSettings', 'debug');
-		for (const setting of knownSettings) {
-			const value = workspaceConfig.get(setting);
-			const hasValue = workspaceConfig.has(setting);
-			log(`  ${setting}: ${hasValue ? JSON.stringify(value) : '<not set>'}`, 'dumpAllExtensionSettings', 'debug');
-		}
-		
 		// Check environment info
 		log('ENVIRONMENT INFO:', 'dumpAllExtensionSettings', 'debug');
 		log(`  Remote Name: ${vscode.env.remoteName || '<not remote>'}`, 'dumpAllExtensionSettings', 'info');
 		log(`  VS Code Version: ${vscode.version}`, 'dumpAllExtensionSettings', 'info');
 		log(`  Workspace Folders: ${vscode.workspace.workspaceFolders?.length || 0}`, 'dumpAllExtensionSettings', 'info');
-
 		// Check if we're in a dev container
 		const isDevContainer = vscode.env.remoteName?.includes('dev-container');
 		log(`  Is Dev Container: ${isDevContainer}`, 'dumpAllExtensionSettings', 'info');
-
 		log('=== END SETTINGS DUMP ===', 'dumpAllExtensionSettings', 'info');
-		
 	} catch (error) {
 		log(`Failed to dump settings: ${error}`, 'dumpAllExtensionSettings', 'error');
+	}
+}
+// Migrate legacy debugMode/verboseMode to logLevel at activation
+export async function migrateLegacySettings() {
+	const extensionId = 'excel-power-query-editor';
+	const config = vscode.workspace.getConfiguration(extensionId);
+	const debugMode = config.get('debugMode');
+	const verboseMode = config.get('verboseMode');
+	let needsUpdate = false;
+	let newLogLevel: string | undefined = undefined;
+	if (debugMode === true) {
+		newLogLevel = 'debug';
+		needsUpdate = true;
+	} else if (verboseMode === true) {
+		newLogLevel = 'verbose';
+		needsUpdate = true;
+	}
+	if (needsUpdate) {
+		await config.update('logLevel', newLogLevel, vscode.ConfigurationTarget.Workspace);
+		await config.update('debugMode', undefined, vscode.ConfigurationTarget.Workspace);
+		await config.update('verboseMode', undefined, vscode.ConfigurationTarget.Workspace);
+		log(`Migrated legacy settings to logLevel='${newLogLevel}' and removed debugMode/verboseMode from workspace settings`, 'settingsMigration', 'info');
+	}
+	// Also check user settings
+	const userConfig = vscode.workspace.getConfiguration(extensionId, null);
+	const userDebug = userConfig.get('debugMode');
+	const userVerbose = userConfig.get('verboseMode');
+	let userNeedsUpdate = false;
+	let userLogLevel: string | undefined = undefined;
+	if (userDebug === true) {
+		userLogLevel = 'debug';
+		userNeedsUpdate = true;
+	} else if (userVerbose === true) {
+		userLogLevel = 'verbose';
+		userNeedsUpdate = true;
+	}
+	if (userNeedsUpdate) {
+		await userConfig.update('logLevel', userLogLevel, vscode.ConfigurationTarget.Global);
+		await userConfig.update('debugMode', undefined, vscode.ConfigurationTarget.Global);
+		await userConfig.update('verboseMode', undefined, vscode.ConfigurationTarget.Global);
+		log(`Migrated legacy settings to logLevel='${userLogLevel}' and removed debugMode/verboseMode from user settings`, 'settingsMigration', 'info');
 	}
 }
 
@@ -1735,6 +1757,8 @@ async function findExcelFile(mFilePath: string): Promise<string | undefined> {
 
 async function cleanupBackupsCommand(uri?: vscode.Uri): Promise<void> {
 	try {
+		// Migrate legacy settings on every activation
+		await migrateLegacySettings();
 		// Validate URI parameter - don't show file dialog for invalid input
 		if (uri && (!uri.fsPath || typeof uri.fsPath !== 'string')) {
 			const errorMsg = 'Invalid URI parameter provided to cleanupBackups command';
