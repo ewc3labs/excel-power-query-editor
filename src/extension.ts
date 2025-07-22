@@ -298,6 +298,8 @@ export async function activate(context: vscode.ExtensionContext) {
 		log('Excel Power Query Editor extension is now active!', 'activate', 'info');
 
 		// Register all commands
+		// Migrate legacy settings (debugMode/verboseMode) to logLevel
+		await migrateLegacySettings();
 		const commands = [
 			vscode.commands.registerCommand('excel-power-query-editor.extractFromExcel', extractFromExcel),
 			vscode.commands.registerCommand('excel-power-query-editor.syncToExcel', syncToExcel),
