@@ -1,7 +1,9 @@
-name: VS Code Extension CI/CD
+name: CI Pipeline
 on:
   push:
     branches: [main, release/**, wip/**, hotfix/**]
+    tags:
+      - "v*"
     paths-ignore:
       - "**.md"
       - "docs/**"

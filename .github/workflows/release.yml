@@ -1,20 +1,13 @@
 name: 🚀 Release Pipeline
 
 on:
-  # Manual release creation (the sacred manual tag!)
-  push:
-    tags:
-      - "v*"
+  # Triggered by CI workflow_run or manual dispatch only
+  workflow_run:
+    workflows: ["CI Pipeline"]
+    types:
+      - completed
     branches:
-      - "release/**"
       - main
-
-    paths-ignore:
-      - "**.md"
-      - "docs/**"
-      - ".github/**"
-      - ".vscode/**"
-  # Manual workflow dispatch for emergency releases
   workflow_dispatch:
     inputs:
       release_type:
@@ -77,8 +70,10 @@ jobs:
       - name: 🎯 Determine release type
         id: type
         run: |
-          if [[ "${{ github.ref }}" =~ ^refs/tags/v.*$ ]]; then
+          if [[ "${{ github.ref }}" =~ ^refs/tags/v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
             echo "type=release" >> $GITHUB_OUTPUT
+          elif [[ "${{ github.ref }}" =~ ^refs/tags/v[0-9]+\.[0-9]+\.[0-9]+-rc\.[0-9]+$ ]]; then
+            echo "type=prerelease" >> $GITHUB_OUTPUT
           elif [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
             echo "type=stable" >> $GITHUB_OUTPUT
           elif [[ "${{ github.ref }}" =~ ^refs/heads/release/.*$ ]]; then
@@ -90,8 +85,8 @@ jobs:
       - name: 📦 Determine publication targets
         id: publish
         run: |
-          # Only publish to marketplace on manual tags or main branch
-          if [[ "${{ steps.type.outputs.type }}" == "release" ]] || [[ "${{ steps.type.outputs.type }}" == "stable" ]]; then
+          # Only publish to marketplace for stable tags (vX.Y.Z)
+          if [[ "${{ steps.type.outputs.type }}" == "release" ]]; then
             echo "marketplace=true" >> $GITHUB_OUTPUT
           else
             echo "marketplace=false" >> $GITHUB_OUTPUT
