@@ -85,8 +85,8 @@ in
 	suite('Watch Configuration Settings', () => {
 		test('Watch-related configuration is accepted', async () => {
 			const configTests = [
-				{ key: 'watchAlways', values: [true, false] },
-				{ key: 'watchOffOnDelete', values: [true, false] },
+				{ key: 'watch.always', values: [true, false] },
+				{ key: 'watch.offOnDelete', values: [true, false] },
 				{ key: 'watch.checkExcelWriteable', values: [true, false] }
 			];
 			

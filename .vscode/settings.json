@@ -70,6 +70,6 @@
     ],
     "excel-power-query-editor.watch.checkExcelWriteable": true,
     "excel-power-query-editor.watchAlwaysMaxFiles": 100,
-    "excel-power-query-editor.sync.openExcelAfterWrite": true,
+    "excel-power-query-editor.sync.openExcelAfterWrite": false,
     "excel-power-query-editor.logLevel": "debug"
 }

@@ -165,10 +165,10 @@ my-data-analysis.xlsx  ← Right-click here
 ```json
 // .vscode/settings.json (workspace)
 {
-  "excel-power-query-editor.autoBackupBeforeSync": true,
+  "excel-power-query-editor.backup.autoBackupBeforeSync": true,
   "excel-power-query-editor.backup.maxFiles": 10,
   "excel-power-query-editor.sync.openExcelAfterWrite": false,
-  "excel-power-query-editor.verboseMode": true
+  "excel-power-query-editor.log.verboseMode": true
 }
 ```
 
@@ -178,8 +178,8 @@ my-data-analysis.xlsx  ← Right-click here
 // Disable interactive features for automation
 {
   "excel-power-query-editor.sync.openExcelAfterWrite": false,
-  "excel-power-query-editor.autoBackupBeforeSync": false,
-  "excel-power-query-editor.watchAlways": false
+  "excel-power-query-editor.backup.autoBackupBeforeSync": false,
+  "excel-power-query-editor.watch.always": false
 }
 ```
 
@@ -188,8 +188,8 @@ my-data-analysis.xlsx  ← Right-click here
 ```json
 // For SSD-constrained environments
 {
-  "excel-power-query-editor.autoBackupBeforeSync": false,
-  "excel-power-query-editor.backupLocation": "temp"
+  "excel-power-query-editor.backup.autoBackupBeforeSync": false,
+  "excel-power-query-editor.backup.location": "temp"
 }
 ```
 
@@ -250,8 +250,8 @@ Access via `Ctrl+Shift+P` (Command Palette) or right-click context menus:
 
 ```json
 {
-  "excel-power-query-editor.debugMode": true,
-  "excel-power-query-editor.verboseMode": true
+  "excel-power-query-editor.log.debugMode": true,
+  "excel-power-query-editor.log.verboseMode": true
 }
 ```
 
