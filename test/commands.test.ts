@@ -254,11 +254,11 @@ suite('Commands Tests', () => {
 
 			// Store original config value for restoration
 			const config = vscode.workspace.getConfiguration('excel-power-query-editor');
-			const originalConfirmValue = config.get<boolean>('syncDeleteAlwaysConfirm', true);
+			const originalConfirmValue = config.get<boolean>('sync.deleteAlwaysConfirm', true);
 
 			try {
 				// Disable confirmation dialog for testing
-				await config.update('syncDeleteAlwaysConfirm', false, vscode.ConfigurationTarget.Workspace);
+				await config.update('sync.deleteAlwaysConfirm', false, vscode.ConfigurationTarget.Workspace);
 				console.log(`⚙️  Temporarily disabled syncDeleteAlwaysConfirm for testing`);
 
 				// Copy test file to temp directory
@@ -346,7 +346,7 @@ suite('Commands Tests', () => {
 
 			} finally {
 				// Restore original configuration
-				await config.update('syncDeleteAlwaysConfirm', originalConfirmValue, vscode.ConfigurationTarget.Workspace);
+				await config.update('sync.deleteAlwaysConfirm', originalConfirmValue, vscode.ConfigurationTarget.Workspace);
 				console.log(`⚙️  Restored syncDeleteAlwaysConfirm to: ${originalConfirmValue}`);
 
 				// Clean up test directory

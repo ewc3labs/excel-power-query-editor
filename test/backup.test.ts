@@ -47,14 +47,14 @@ suite('Backup Tests', () => {
 			
 			try {
 				// Configure backup settings
-				await testConfigUpdate('autoBackupBeforeSync', true);
-				await testConfigUpdate('backupLocation', 'custom');
-				await testConfigUpdate('customBackupPath', tempDir);
+				await testConfigUpdate('backup.autoBackupBeforeSync', true);
+				await testConfigUpdate('backup.location', 'custom');
+				await testConfigUpdate('backup.customPath', tempDir);
 				console.log(`⚙️  Configured backup settings: enabled=true, location=custom, path=${tempDir}`);
 				
 				// Verify configuration was actually set
 				const config = vscode.workspace.getConfiguration('excel-power-query-editor');
-				console.log(`🔍 Config verification: autoBackupBeforeSync=${config.get('autoBackupBeforeSync')}, backupLocation=${config.get('backupLocation')}, customBackupPath=${config.get('customBackupPath')}`);
+				console.log(`🔍 Config verification: autoBackupBeforeSync=${config.get('backup.autoBackupBeforeSync')}, backupLocation=${config.get('backup.location')}, customBackupPath=${config.get('backup.customPath')}`);
 				
 				// Step 1: Extract to get .m files
 				await vscode.commands.executeCommand('excel-power-query-editor.extractFromExcel', uri);
@@ -581,7 +581,7 @@ suite('Backup Tests', () => {
 
 		test('Backup integration with watch mode', async () => {
 			// Test backup behavior when watch mode is active
-			await testConfigUpdate('watchAlways', true);
+			await testConfigUpdate('watch.always', true);
 			await testConfigUpdate('backup.enable', true);
 			await testConfigUpdate('backup.duringWatch', true);
 

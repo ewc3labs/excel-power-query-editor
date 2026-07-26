@@ -42,7 +42,7 @@ Ctrl+Shift+P → "Excel Power Query: Apply Recommended Defaults"
 
 ```json
 {
-  "excel-power-query-editor.watchAlways": true,
+  "excel-power-query-editor.watch.always": true,
   "excel-power-query-editor.sync.debounceMs": 300,
   "excel-power-query-editor.watch.checkExcelWriteable": true
 }
@@ -52,7 +52,7 @@ Ctrl+Shift+P → "Excel Power Query: Apply Recommended Defaults"
 
 ```json
 {
-  "excel-power-query-editor.watchAlways": false,
+  "excel-power-query-editor.watch.always": false,
   "excel-power-query-editor.sync.debounceMs": 500,
   "excel-power-query-editor.watch.checkExcelWriteable": true
 }
@@ -71,8 +71,8 @@ Ctrl+Shift+P → "Excel Power Query: Apply Recommended Defaults"
 ```json
 {
   "excel-power-query-editor.sync.openExcelAfterWrite": true,
-  "excel-power-query-editor.syncDeleteAlwaysConfirm": true,
-  "excel-power-query-editor.syncTimeout": 30000
+  "excel-power-query-editor.sync.deleteAlwaysConfirm": true,
+  "excel-power-query-editor.sync.timeout": 30000
 }
 ```
 
@@ -81,8 +81,8 @@ Ctrl+Shift+P → "Excel Power Query: Apply Recommended Defaults"
 ```json
 {
   "excel-power-query-editor.sync.openExcelAfterWrite": false,
-  "excel-power-query-editor.syncDeleteAlwaysConfirm": false,
-  "excel-power-query-editor.syncTimeout": 60000
+  "excel-power-query-editor.sync.deleteAlwaysConfirm": false,
+  "excel-power-query-editor.sync.timeout": 60000
 }
 ```
 
@@ -100,11 +100,11 @@ Ctrl+Shift+P → "Excel Power Query: Apply Recommended Defaults"
 
 ```json
 {
-  "excel-power-query-editor.autoBackupBeforeSync": true,
-  "excel-power-query-editor.backupLocation": "custom",
-  "excel-power-query-editor.customBackupPath": "./project-backups",
+  "excel-power-query-editor.backup.autoBackupBeforeSync": true,
+  "excel-power-query-editor.backup.location": "custom",
+  "excel-power-query-editor.backup.customPath": "./project-backups",
   "excel-power-query-editor.backup.maxFiles": 10,
-  "excel-power-query-editor.autoCleanupBackups": true
+  "excel-power-query-editor.backup.autoCleanup": true
 }
 ```
 
@@ -112,10 +112,10 @@ Ctrl+Shift+P → "Excel Power Query: Apply Recommended Defaults"
 
 ```json
 {
-  "excel-power-query-editor.autoBackupBeforeSync": false,
-  "excel-power-query-editor.backupLocation": "temp",
+  "excel-power-query-editor.backup.autoBackupBeforeSync": false,
+  "excel-power-query-editor.backup.location": "temp",
   "excel-power-query-editor.backup.maxFiles": 2,
-  "excel-power-query-editor.autoCleanupBackups": true
+  "excel-power-query-editor.backup.autoCleanup": true
 }
 ```
 
@@ -123,8 +123,8 @@ Ctrl+Shift+P → "Excel Power Query: Apply Recommended Defaults"
 
 ```json
 {
-  "excel-power-query-editor.autoBackupBeforeSync": false,
-  "excel-power-query-editor.backupLocation": "temp",
+  "excel-power-query-editor.backup.autoBackupBeforeSync": false,
+  "excel-power-query-editor.backup.location": "temp",
   "excel-power-query-editor.backup.maxFiles": 1
 }
 ```
@@ -145,9 +145,9 @@ Ctrl+Shift+P → "Excel Power Query: Apply Recommended Defaults"
 
 ```json
 {
-  "excel-power-query-editor.verboseMode": true,
-  "excel-power-query-editor.debugMode": false,
-  "excel-power-query-editor.showStatusBarInfo": true
+  "excel-power-query-editor.log.verboseMode": true,
+  "excel-power-query-editor.log.debugMode": false,
+  "excel-power-query-editor.log.showStatusBarInfo": true
 }
 ```
 
@@ -156,7 +156,7 @@ Ctrl+Shift+P → "Excel Power Query: Apply Recommended Defaults"
 
 ```json
 {
-  "excel-power-query-editor.logLevel": "debug"
+  "excel-power-query-editor.log.level": "debug"
 }
 ```
 
@@ -164,9 +164,9 @@ Ctrl+Shift+P → "Excel Power Query: Apply Recommended Defaults"
 
 ```json
 {
-  "excel-power-query-editor.verboseMode": true,
-  "excel-power-query-editor.debugMode": true,
-  "excel-power-query-editor.showStatusBarInfo": true
+  "excel-power-query-editor.log.verboseMode": true,
+  "excel-power-query-editor.log.debugMode": true,
+  "excel-power-query-editor.log.showStatusBarInfo": true
 }
 ```
 
@@ -178,13 +178,13 @@ Ctrl+Shift+P → "Excel Power Query: Apply Recommended Defaults"
 
 ```json
 {
-  "excel-power-query-editor.watchAlways": true,
+  "excel-power-query-editor.watch.always": true,
   "excel-power-query-editor.sync.openExcelAfterWrite": true,
   "excel-power-query-editor.sync.debounceMs": 300,
-  "excel-power-query-editor.autoBackupBeforeSync": true,
+  "excel-power-query-editor.backup.autoBackupBeforeSync": true,
   "excel-power-query-editor.backup.maxFiles": 10,
-  "excel-power-query-editor.verboseMode": false,
-  "excel-power-query-editor.showStatusBarInfo": true
+  "excel-power-query-editor.log.verboseMode": false,
+  "excel-power-query-editor.log.showStatusBarInfo": true
 }
 ```
 
@@ -194,15 +194,15 @@ Ctrl+Shift+P → "Excel Power Query: Apply Recommended Defaults"
 
 ```json
 {
-  "excel-power-query-editor.watchAlways": false,
+  "excel-power-query-editor.watch.always": false,
   "excel-power-query-editor.sync.openExcelAfterWrite": false,
   "excel-power-query-editor.sync.debounceMs": 500,
-  "excel-power-query-editor.autoBackupBeforeSync": true,
-  "excel-power-query-editor.backupLocation": "custom",
-  "excel-power-query-editor.customBackupPath": "./team-backups",
+  "excel-power-query-editor.backup.autoBackupBeforeSync": true,
+  "excel-power-query-editor.backup.location": "custom",
+  "excel-power-query-editor.backup.customPath": "./team-backups",
   "excel-power-query-editor.backup.maxFiles": 15,
-  "excel-power-query-editor.verboseMode": true,
-  "excel-power-query-editor.syncDeleteAlwaysConfirm": true
+  "excel-power-query-editor.log.verboseMode": true,
+  "excel-power-query-editor.sync.deleteAlwaysConfirm": true
 }
 ```
 
@@ -212,16 +212,16 @@ Ctrl+Shift+P → "Excel Power Query: Apply Recommended Defaults"
 
 ```json
 {
-  "excel-power-query-editor.watchAlways": false,
+  "excel-power-query-editor.watch.always": false,
   "excel-power-query-editor.sync.openExcelAfterWrite": false,
   "excel-power-query-editor.sync.debounceMs": 100,
-  "excel-power-query-editor.autoBackupBeforeSync": false,
-  "excel-power-query-editor.backupLocation": "temp",
+  "excel-power-query-editor.backup.autoBackupBeforeSync": false,
+  "excel-power-query-editor.backup.location": "temp",
   "excel-power-query-editor.backup.maxFiles": 1,
-  "excel-power-query-editor.verboseMode": true,
-  "excel-power-query-editor.syncDeleteAlwaysConfirm": false,
-  "excel-power-query-editor.syncTimeout": 60000,
-  "excel-power-query-editor.showStatusBarInfo": false
+  "excel-power-query-editor.log.verboseMode": true,
+  "excel-power-query-editor.sync.deleteAlwaysConfirm": false,
+  "excel-power-query-editor.sync.timeout": 60000,
+  "excel-power-query-editor.log.showStatusBarInfo": false
 }
 ```
 
@@ -231,14 +231,14 @@ Ctrl+Shift+P → "Excel Power Query: Apply Recommended Defaults"
 
 ```json
 {
-  "excel-power-query-editor.watchAlways": false,
+  "excel-power-query-editor.watch.always": false,
   "excel-power-query-editor.sync.openExcelAfterWrite": false,
   "excel-power-query-editor.sync.debounceMs": 500,
   "excel-power-query-editor.watch.checkExcelWriteable": true,
-  "excel-power-query-editor.autoBackupBeforeSync": true,
+  "excel-power-query-editor.backup.autoBackupBeforeSync": true,
   "excel-power-query-editor.backup.maxFiles": 8,
-  "excel-power-query-editor.verboseMode": false,
-  "excel-power-query-editor.showStatusBarInfo": true
+  "excel-power-query-editor.log.verboseMode": false,
+  "excel-power-query-editor.log.showStatusBarInfo": true
 }
 ```
 
@@ -250,11 +250,11 @@ Ctrl+Shift+P → "Excel Power Query: Apply Recommended Defaults"
 {
   "excel-power-query-editor.sync.debounceMs": 1000,
   "excel-power-query-editor.watch.checkExcelWriteable": false,
-  "excel-power-query-editor.autoBackupBeforeSync": true,
-  "excel-power-query-editor.backupLocation": "temp",
+  "excel-power-query-editor.backup.autoBackupBeforeSync": true,
+  "excel-power-query-editor.backup.location": "temp",
   "excel-power-query-editor.backup.maxFiles": 3,
-  "excel-power-query-editor.syncTimeout": 120000,
-  "excel-power-query-editor.verboseMode": true
+  "excel-power-query-editor.sync.timeout": 120000,
+  "excel-power-query-editor.log.verboseMode": true
 }
 ```
 
@@ -279,8 +279,8 @@ Ctrl+Shift+P → "Excel Power Query: Apply Recommended Defaults"
 
 ```json
 {
-  "excel-power-query-editor.verboseMode": false,
-  "excel-power-query-editor.showStatusBarInfo": true,
+  "excel-power-query-editor.log.verboseMode": false,
+  "excel-power-query-editor.log.showStatusBarInfo": true,
   "excel-power-query-editor.sync.openExcelAfterWrite": true
 }
 ```
@@ -289,10 +289,10 @@ Ctrl+Shift+P → "Excel Power Query: Apply Recommended Defaults"
 
 ```json
 {
-  "excel-power-query-editor.watchAlways": false,
+  "excel-power-query-editor.watch.always": false,
   "excel-power-query-editor.sync.debounceMs": 500,
-  "excel-power-query-editor.backupLocation": "custom",
-  "excel-power-query-editor.customBackupPath": "./project-backups",
+  "excel-power-query-editor.backup.location": "custom",
+  "excel-power-query-editor.backup.customPath": "./project-backups",
   "excel-power-query-editor.backup.maxFiles": 10
 }
 ```
@@ -324,14 +324,14 @@ The extension automatically migrates your v0.4.x settings, including legacy logg
 // v0.4.x
 {
   "excel-power-query-editor.maxBackups": 5,
-  "excel-power-query-editor.verboseMode": true,
-  "excel-power-query-editor.debugMode": false
+  "excel-power-query-editor.log.verboseMode": true,
+  "excel-power-query-editor.log.debugMode": false
 }
 
 // v0.5.0 (improved)
 {
   "excel-power-query-editor.backup.maxFiles": 5,
-  "excel-power-query-editor.logLevel": "verbose"
+  "excel-power-query-editor.log.level": "verbose"
 }
 ```
 
@@ -373,8 +373,8 @@ Ctrl+Shift+P → "Excel Power Query: Apply Recommended Defaults"
 
 ```json
 {
-  "excel-power-query-editor.verboseMode": true,
-  "excel-power-query-editor.debugMode": true
+  "excel-power-query-editor.log.verboseMode": true,
+  "excel-power-query-editor.log.debugMode": true
 }
 ```
 

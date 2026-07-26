@@ -176,18 +176,18 @@ suite('Utils Tests', () => {
 			const validSettings = ['sameFolder', 'tempFolder', 'custom'];
 			
 			for (const setting of validSettings) {
-				await testConfigUpdate('backupLocation', setting);
+				await testConfigUpdate('backup.location', setting);
 				console.log(`✅ Backup location setting accepted: ${setting}`);
 			}
 			
 			// Test invalid setting (should handle gracefully)
-			await testConfigUpdate('backupLocation', 'invalidOption');
+			await testConfigUpdate('backup.location', 'invalidOption');
 			console.log(`✅ Invalid backup location handled gracefully`);
 		});
 
 		test('Numeric configuration bounds', async () => {
 			const numericTests = [
-				{ key: 'syncTimeout', valid: [5000, 30000, 120000], invalid: [1000, 200000] },
+				{ key: 'sync.timeout', valid: [5000, 30000, 120000], invalid: [1000, 200000] },
 				{ key: 'backup.maxFiles', valid: [1, 5, 50], invalid: [0, 100] }
 			];
 
@@ -208,10 +208,10 @@ suite('Utils Tests', () => {
 
 		test('Boolean configuration handling', async () => {
 			const booleanSettings = [
-				'watchAlways',
-				'autoBackupBeforeSync',
-				'verboseMode',
-				'debugMode'
+				'watch.always',
+				'backup.autoBackupBeforeSync',
+				'log.verboseMode',
+				'log.debugMode'
 			];
 
 			for (const setting of booleanSettings) {
@@ -288,32 +288,32 @@ teardown(() => {
 });
 
 	test('Migrates both debugMode and verboseMode set', async () => {
-		await testConfigUpdate('debugMode', true);
-		await testConfigUpdate('verboseMode', true);
+		await testConfigUpdate('log.debugMode', true);
+		await testConfigUpdate('log.verboseMode', true);
 		await migrateLegacySettings();
 		const config = vscode.workspace.getConfiguration('excel-power-query-editor');
-		assert.strictEqual(config.get('logLevel'), 'debug', 'logLevel should be set to debug');
-		assert.strictEqual(config.get('debugMode'), undefined, 'debugMode should be removed');
-		assert.strictEqual(config.get('verboseMode'), undefined, 'verboseMode should be removed');
+		assert.strictEqual(config.get('log.level'), 'debug', 'logLevel should be set to debug');
+		assert.strictEqual(config.get('log.debugMode'), undefined, 'debugMode should be removed');
+		assert.strictEqual(config.get('log.verboseMode'), undefined, 'verboseMode should be removed');
 	});
 
 	test('Migrates only debugMode set', async () => {
-		await testConfigUpdate('debugMode', true);
-		await testConfigUpdate('verboseMode', false);
+		await testConfigUpdate('log.debugMode', true);
+		await testConfigUpdate('log.verboseMode', false);
 		await migrateLegacySettings();
 		const config = vscode.workspace.getConfiguration('excel-power-query-editor');
-		assert.strictEqual(config.get('logLevel'), 'debug', 'logLevel should be set to debug');
-		assert.strictEqual(config.get('debugMode'), undefined, 'debugMode should be removed');
-		assert.strictEqual(config.get('verboseMode'), undefined, 'verboseMode should be removed');
+		assert.strictEqual(config.get('log.level'), 'debug', 'logLevel should be set to debug');
+		assert.strictEqual(config.get('log.debugMode'), undefined, 'debugMode should be removed');
+		assert.strictEqual(config.get('log.verboseMode'), undefined, 'verboseMode should be removed');
 	});
 
 	test('Migrates only verboseMode set', async () => {
-		await testConfigUpdate('debugMode', false);
-		await testConfigUpdate('verboseMode', true);
+		await testConfigUpdate('log.debugMode', false);
+		await testConfigUpdate('log.verboseMode', true);
 		await migrateLegacySettings();
 		const config = vscode.workspace.getConfiguration('excel-power-query-editor');
-		assert.strictEqual(config.get('logLevel'), 'verbose', 'logLevel should be set to verbose');
-		assert.strictEqual(config.get('debugMode'), undefined, 'debugMode should be removed');
-		assert.strictEqual(config.get('verboseMode'), undefined, 'verboseMode should be removed');
+		assert.strictEqual(config.get('log.level'), 'verbose', 'logLevel should be set to verbose');
+		assert.strictEqual(config.get('log.debugMode'), undefined, 'debugMode should be removed');
+		assert.strictEqual(config.get('log.verboseMode'), undefined, 'verboseMode should be removed');
 	});
 });

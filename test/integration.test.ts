@@ -351,9 +351,9 @@ suite('Integration Tests', () => {
 			const uri = vscode.Uri.file(testFile);
 			
 			// Set backup configuration (these are real settings)
-			await testConfigUpdate('autoBackupBeforeSync', true);
-			await testConfigUpdate('backupLocation', 'custom');
-			await testConfigUpdate('customBackupPath', tempDir);
+			await testConfigUpdate('backup.autoBackupBeforeSync', true);
+			await testConfigUpdate('backup.location', 'custom');
+			await testConfigUpdate('backup.customPath', tempDir);
 
 			// Extract to trigger potential backup creation
 			await vscode.commands.executeCommand('excel-power-query-editor.extractFromExcel', uri);
