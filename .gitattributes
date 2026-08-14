@@ -1,0 +1,45 @@
+# EWC3 Labs canonical line-ending policy: LF everywhere.
+#
+# WHY: CRLF<->LF drift produces phantom whole-file diffs, poisons `git blame`, and makes a clean
+# checkout on another machine look modified. Git for Windows installs `core.autocrlf=true` at the
+# SYSTEM level, so a fresh box reintroduces the problem unless something overrides it.
+#
+# Belts and suspenders — three independent layers, any one of which is sufficient:
+#   1. global git config     core.autocrlf=false, core.eol=lf   (per user)
+#   2. this file                                                (per repo, travels with the clone)
+#   3. .editorconfig                                            (per repo, editor-side)
+# All three means a fresh clone on a never-configured machine still behaves.
+
+* text=auto eol=lf
+
+# Deliberately NOT excepted: .sln, .csproj, .props, .targets, .ps1, .cmd, .bat.
+# MSBuild, PowerShell, and modern cmd.exe all read LF fine. If a legacy batch file ever misbehaves
+# (cmd.exe has historic edge cases with LF-only files around multi-line blocks and GOTO), add the
+# NARROWEST possible exception here rather than reverting the policy:
+#   *.bat text eol=crlf
+
+# Binary: never touched, never diffed as text.
+*.png   binary
+*.jpg   binary
+*.jpeg  binary
+*.gif   binary
+*.webp  binary
+*.ico   binary
+*.pdf   binary
+*.zip   binary
+*.7z    binary
+*.wav   binary
+*.mp3   binary
+*.ttf   binary
+*.otf   binary
+*.woff  binary
+*.woff2 binary
+*.snk   binary
+*.pfx   binary
+*.p12   binary
+*.xlsx  binary
+*.xlsm  binary
+*.xlsb  binary
+*.stl   binary
+*.3mf   binary
+*.one   binary

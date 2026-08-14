@@ -1,0 +1,24 @@
+# EWC3 Labs canonical editor policy. Layer 3 of the LF defence — editor-side, cross-editor,
+# and it works for people who never open VS Code. See template_gitattributes for the full why.
+root = true
+
+[*]
+end_of_line = lf
+insert_final_newline = true
+charset = utf-8
+trim_trailing_whitespace = true
+indent_style = space
+indent_size = 4
+
+[*.md]
+# Two trailing spaces are a hard line break in Markdown; stripping them silently changes rendering.
+trim_trailing_whitespace = false
+
+[*.{yml,yaml,json,jsonc}]
+indent_size = 2
+
+[*.{ps1,psm1}]
+indent_size = 4
+
+[Makefile]
+indent_style = tab
