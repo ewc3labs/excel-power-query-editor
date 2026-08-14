@@ -21,9 +21,9 @@ AsOf: 2026-08-14
 The extension works and has users. What is broken is everything *around* it: a release pipeline that
 last succeeded in July 2025, and a finished version that never shipped because of it.
 
-1. `PQ-01` — next, and it unblocks everything else
-2. `PQ-02` — the release that has been sitting built for a year
-3. `PQ-05` — before any refactor touches the write path
+1. `PQ-09` — 0.5.2 cannot ship without it; it would reset every user's configuration
+2. `PQ-01` — the pipeline, which unblocks releasing anything at all
+3. `PQ-02` — then the release itself, renumbered to reflect what it actually is
 
 ## Last Numbers
 
@@ -32,7 +32,7 @@ not a summary of them.
 
 | Series | Last Num | Series Description |
 | --- | --- | --- |
-| PQ | PQ-08 | Excel Power Query Editor slices and fixes |
+| PQ | PQ-10 | Excel Power Query Editor slices and fixes |
 
 `Last Num` is a cache over the Delivery Index, not a second source of truth — the IDs in the tables are
 authoritative. When minting, take the next number **and** confirm it is unused across every sub-table,
@@ -42,7 +42,7 @@ then bump this cell in the same edit.
 
 **Rows are one line.** `Doc` pins a filename; anything wanting a paragraph wants a slice doc.
 
-States: `⬜ planned` · `🟨 coded` — built and deployed, nobody has used it yet · `💨 proven` — someone
+States: `⬜ planned` · `⛔ blocked` · `🟨 coded` — built and deployed, nobody has used it yet · `💨 proven` — someone
 used it and it worked · `⏸ retired` — tried, backed out, kept for the reason.
 
 ### Shipping — the pipeline is the blocker
@@ -50,7 +50,7 @@ used it and it worked · `⏸ retired` — tried, backed out, kept for the reaso
 | ID | State | Slice | Est | Doc | Status |
 | --- | --- | --- | --- | --- | --- |
 | PQ-01 | ⬜ planned | Rebuild release.yml as tag-triggered | M | — | `workflow_run` runs as main; tag branches unreachable |
-| PQ-02 | ⬜ planned | Ship 0.5.2 | S | — | built ~2025-07; package.json is ahead of the newest release |
+| PQ-02 | ⛔ blocked | Ship 0.5.2 | S | — | BLOCKED by PQ-09 — it is a breaking change wearing a patch number |
 | PQ-03 | ⬜ planned | Verify marketplace publish end to end | S | — | `VSCE_PAT` path has never demonstrably fired from a tag |
 | PQ-04 | ⬜ planned | Prune the release workflow | S | — | 318 lines, mostly reporting; RecallTape's is a third of it |
 
@@ -67,6 +67,8 @@ used it and it worked · `⏸ retired` — tried, backed out, kept for the reaso
 | --- | --- | --- | --- | --- | --- |
 | PQ-07 | ⬜ planned | Extract the workbook read/write seam from extension.ts | L | — | 2,152 lines in one file; extract WITH tests, never wholesale |
 | PQ-08 | ⬜ planned | Settings deprecation policy | S | — | 18 public settings; renaming one breaks configs silently |
+| PQ-09 | ⬜ planned | Migrate v0.5.0 settings to the namespaced names | M | — | 13 of 19 renamed or removed, no migration, gates PQ-02 |
+| PQ-10 | ⬜ planned | Decide one README or two, and delete the loser | S | — | swap scripts are orphaned and would copy an empty file |
 
 ## Working Rules
 
