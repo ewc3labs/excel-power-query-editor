@@ -35,6 +35,15 @@ receipts**. Before minting a new slice, check whether an existing one already co
       and so on — **13 of 19 renamed or removed**, with `debugMode` and `verboseMode` gone entirely.
       There is no migration code. Shipping it as a patch would silently reset the configuration of
       every existing user. [PQ-09] blocks [PQ-02].
+- [x] **`migrateLegacySettings()` is a WIPE, not a migration**, and it runs at activation
+      (`extension.ts:306`). It enumerates the config and sets every key to `undefined` in both User and
+      Workspace scope, preserving nothing, and its guard compares against the *extension version* so it
+      re-fires on every bump. The correct earlier attempt sits commented out directly above it. Full
+      write-up in `docs/analysis/settings-migration.md`. [PQ-09]
+- [x] **Why removing old settings was impossible:** VS Code only lets an extension write a key that is
+      *registered*. Once the old names were deleted from `contributes.configuration`, they could no
+      longer be cleared — the value sits in the user's settings.json permanently as an unknown setting.
+      The fix is to keep them declared with `deprecationMessage`, migrate, then clear. [PQ-09]
 - [ ] The code still references the OLD setting names — `logLevel` 13 times, `debugMode` 9,
       `verboseMode` 9, `backupLocation` 3, `watchAlways` 2 — while `package.json` declares only the
       new ones. Those reads can only ever return defaults. Needs a proper audit, not a sweep. [PQ-09]
@@ -45,6 +54,10 @@ receipts**. Before minting a new slice, check whether an existing one already co
       package.json, not the workflows. Left as-is they are a loaded weapon: running either copies its
       source over `README.md`, and until just now both sources were empty. Decide one README or two,
       then delete whichever machinery loses. [PQ-10]
+- [ ] EPQE writes `excel-pq-symbols.json` into `.vscode/` in the workspace root, which is somebody
+      else's folder. Worth researching whether Microsoft's PQ/M extension now ships these symbols, and
+      whether there is a way to reference them that does not require writing into a user's workspace at
+      all. Also: what happens when a plain folder is opened with no workspace. [PQ-11]
 - [ ] `src/refactor-settings.py` was committed into `src/` during the refactor. A one-off migration
       script does not live beside the extension source.
 
