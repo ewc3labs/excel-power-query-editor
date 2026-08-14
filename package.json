@@ -344,6 +344,12 @@
           "markdownDeprecationMessage": "**Deprecated.** Use `#excel-power-query-editor.log.level#` instead — set it to `verbose`. Your existing value is migrated automatically.",
           "deprecationMessage": "Deprecated: use excel-power-query-editor.log.level set to 'verbose'. Migrated automatically.",
           "order": 900
+        },
+        "excel-power-query-editor.sync.liveWhenOpen": {
+          "type": "boolean",
+          "default": false,
+          "markdownDescription": "**Windows + Excel only.** When the workbook is already open in Excel, write the query changes straight into it through Excel itself instead of failing or waiting for the file to be closed. The file on disk is not touched — the workbook is left with unsaved changes for you to review and save.\n\nOff by default while this is new: it is a different write path from the one every existing version used. Closed workbooks are unaffected, and so is extraction.",
+          "order": 20
         }
       }
     },
