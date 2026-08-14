@@ -21,8 +21,10 @@ AsOf: 2026-08-14
 The extension works and has users. What is broken is everything *around* it: a release pipeline that
 last succeeded in July 2025, and a finished version that never shipped because of it.
 
-1. `PQ-01` — the pipeline; nothing can be released until it works
-2. `PQ-02` — then ship the settings refactor, **as 0.6.0** rather than a patch
+**v0.6.0 = live sync to an open workbook.** The mechanism is proven (`PQ-12`); the rest is product.
+
+1. `PQ-12` … `PQ-15` — the feature, in that order
+2. `PQ-01` — the pipeline; nothing can be released until it works
 3. `PQ-10` — one README, before the marketplace page is republished
 
 ## Last Numbers
@@ -32,7 +34,7 @@ not a summary of them.
 
 | Series | Last Num | Series Description |
 | --- | --- | --- |
-| PQ | PQ-11 | Excel Power Query Editor slices and fixes |
+| PQ | PQ-16 | Excel Power Query Editor slices and fixes |
 
 `Last Num` is a cache over the Delivery Index, not a second source of truth — the IDs in the tables are
 authoritative. When minting, take the next number **and** confirm it is unused across every sub-table,
@@ -53,6 +55,20 @@ used it and it worked · `⏸ retired` — tried, backed out, kept for the reaso
 | PQ-02 | ⬜ planned | Ship the settings refactor as 0.6.0 | S | — | unblocked; NOT a patch — 13 settings renamed |
 | PQ-03 | ⬜ planned | Verify marketplace publish end to end | S | — | `VSCE_PAT` path has never demonstrably fired from a tag |
 | PQ-04 | ⬜ planned | Prune the release workflow | S | — | 318 lines, mostly reporting; RecallTape's is a third of it |
+
+### v0.6.0 — live sync to an open workbook
+
+The headline feature, requested by a real user in October 2025 and left for ten months because the
+object model looked like a dead end. It is not: `WorkbookQuery.Formula` is read/write, and a running
+Excel serves external automation. See `design/live-sync-to-open-excel.md`.
+
+| ID | State | Slice | Est | Doc | Status |
+| --- | --- | --- | --- | --- | --- |
+| PQ-12 | 💨 proven | Spike: rewrite a query in a workbook the user has OPEN | S | live-sync-to-open-excel.md | proven 2026-08-14 — attached via ROT, wrote, went dirty |
+| PQ-13 | ⬜ planned | Ship it: helper process, query lookup, error paths | L | live-sync-to-open-excel.md | PowerShell helper first — no new dependencies |
+| PQ-14 | ⬜ planned | Decide the .m file to query-name mapping | M | — | gates PQ-13; filename, header comment, or stored map |
+| PQ-15 | ⬜ planned | Prove live writes round-trip against the on-disk writer | M | — | two writers, one truth; must be byte-identical |
+| PQ-16 | ⬜ planned | Reply to namgaw, and reach out to Ken Puls | S | — | he asked in Oct 2025 and suggested the contact |
 
 ### Data safety — the thing that must never break
 
