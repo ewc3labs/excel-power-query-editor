@@ -45,8 +45,8 @@ For technical support and questions:
 1. 📖 Check the [User Guide](docs/USER_GUIDE.md) for detailed instructions
 2. ⚙️ Review [Configuration Guide](docs/CONFIGURATION.md) for settings
 3. 🤝 See the [Contributing Guide](docs/CONTRIBUTING.md) for developer setup and automation
-4. � Review the [Release Summary](docs/RELEASE_SUMMARY_v0.5.0.md) for the latest features and technical notes
-5. �🔍 Enable verbose mode for troubleshooting
+4. Review the [Release Summary](docs/RELEASE_SUMMARY_v0.5.0.md) for the latest features and technical notes
+5. 🔍 Enable verbose mode for troubleshooting
 6. 🐛 Use debug mode for complex issues
 
 ---

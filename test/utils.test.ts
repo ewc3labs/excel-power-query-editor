@@ -210,8 +210,10 @@ suite('Utils Tests', () => {
 			const booleanSettings = [
 				'watch.always',
 				'backup.autoBackupBeforeSync',
-				'log.verboseMode',
-				'log.debugMode'
+				// NB: there are no boolean logging settings. debugMode and verboseMode were flat
+				// keys in v0.5.0 and are now deprecated aliases that fold into log.level.
+				'watch.always',
+				'watch.offOnDelete'
 			];
 
 			for (const setting of booleanSettings) {
@@ -366,11 +368,11 @@ suite('Legacy Settings Migration', () => {
 
 	// The regression that matters. The previous implementation wiped every setting in scope.
 	test('leaves settings it does not own completely alone', async () => {
-		await setGlobal('backup.location', 'customFolder');
+		await setGlobal('backup.location', 'custom');
 		await setGlobal('watchAlways', true);
 		await migrateLegacySettings();
 
-		assert.strictEqual(globalValue('backup.location'), 'customFolder',
+		assert.strictEqual(globalValue('backup.location'), 'custom',
 			'an unrelated modern setting must survive migration');
 	});
 
