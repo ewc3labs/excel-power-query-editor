@@ -58,6 +58,9 @@ receipts**. Before minting a new slice, check whether an existing one already co
       else's folder. Worth researching whether Microsoft's PQ/M extension now ships these symbols, and
       whether there is a way to reference them that does not require writing into a user's workspace at
       all. Also: what happens when a plain folder is opened with no workspace. [PQ-11]
+- [ ] `test/fixtures/test_workbook.xlsx` and `test_workbook.xlsb` are not workbooks — the first
+      contains the literal text "test xlsx file". `test_clean.xlsx` is four bytes. Byte-identical to
+      v0.5.0, so they have always been stubs; worth knowing before trusting a test that opens one.
 - [ ] `src/refactor-settings.py` was committed into `src/` during the refactor. A one-off migration
       script does not live beside the extension source.
 
