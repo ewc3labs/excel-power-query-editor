@@ -168,7 +168,7 @@ my-data-analysis.xlsx  ← Right-click here
   "excel-power-query-editor.backup.autoBackupBeforeSync": true,
   "excel-power-query-editor.backup.maxFiles": 10,
   "excel-power-query-editor.sync.openExcelAfterWrite": false,
-  "excel-power-query-editor.log.verboseMode": true
+  "excel-power-query-editor.log.level": "verbose"
 }
 ```
 
@@ -189,7 +189,7 @@ my-data-analysis.xlsx  ← Right-click here
 // For SSD-constrained environments
 {
   "excel-power-query-editor.backup.autoBackupBeforeSync": false,
-  "excel-power-query-editor.backup.location": "temp"
+  "excel-power-query-editor.backup.location": "tempFolder"
 }
 ```
 
@@ -250,8 +250,7 @@ Access via `Ctrl+Shift+P` (Command Palette) or right-click context menus:
 
 ```json
 {
-  "excel-power-query-editor.log.debugMode": true,
-  "excel-power-query-editor.log.verboseMode": true
+  "excel-power-query-editor.log.level": "debug"
 }
 ```
 

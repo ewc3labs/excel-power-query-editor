@@ -1,3 +1,7 @@
+# One-off, already run: renamed v0.5.0 flat settings into namespaces for 0.6.0.
+# Kept for provenance, moved out of src/ so it is neither compiled nor shipped.
+# Known defect, left as-is because re-running it is not the intent: it writes the
+# modified file twice.
 import os
 import re
 
