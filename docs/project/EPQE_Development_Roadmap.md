@@ -23,7 +23,8 @@ last succeeded in July 2025, and a finished version that never shipped because o
 
 **v0.6.0 = live sync to an open workbook.** The mechanism is proven (`PQ-12`); the rest is product.
 
-1. `PQ-12` … `PQ-15` — the feature, in that order
+1. `PQ-17` — wire the helper into the sync command; the plumbing below it works
+2. `PQ-15` — the round-trip test through a real Excel, before any of it ships
 2. `PQ-01` — the pipeline; nothing can be released until it works
 3. `PQ-10` — one README, before the marketplace page is republished
 
@@ -34,7 +35,7 @@ not a summary of them.
 
 | Series | Last Num | Series Description |
 | --- | --- | --- |
-| PQ | PQ-16 | Excel Power Query Editor slices and fixes |
+| PQ | PQ-17 | Excel Power Query Editor slices and fixes |
 
 `Last Num` is a cache over the Delivery Index, not a second source of truth — the IDs in the tables are
 authoritative. When minting, take the next number **and** confirm it is unused across every sub-table,
@@ -65,10 +66,11 @@ Excel serves external automation. See `design/live-sync-to-open-excel.md`.
 | ID | State | Slice | Est | Doc | Status |
 | --- | --- | --- | --- | --- | --- |
 | PQ-12 | 💨 proven | Spike: rewrite a query in a workbook the user has OPEN | S | live-sync-to-open-excel.md | proven 2026-08-14 — attached via ROT, wrote, went dirty |
-| PQ-13 | ⬜ planned | Ship it: helper process, query lookup, error paths | L | live-sync-to-open-excel.md | PowerShell helper first — no new dependencies |
-| PQ-14 | ⬜ planned | Split a section document and match queries by name | M | live-sync-to-open-excel.md | .m holds ALL queries; COM Formula is one — gates PQ-13 |
+| PQ-13 | 🟨 coded | Helper process, status/write, error paths | L | live-sync-to-open-excel.md | end-to-end live write works; not yet wired to a command |
+| PQ-14 | 💨 proven | Split a section document and match queries by name | M | live-sync-to-open-excel.md | proven 2026-08-14 — 3 fixtures round-trip byte for byte |
 | PQ-15 | ⬜ planned | Round-trip test: section -> N formulas -> save -> section | M | live-sync-to-open-excel.md | the invariant for two-tailed write; do before PQ-13 ships |
 | PQ-16 | ⬜ planned | Reply to namgaw, and reach out to Ken Puls | S | — | he asked in Oct 2025 and suggested the contact |
+| PQ-17 | ⬜ planned | Wire live sync into the sync command and settings | M | live-sync-to-open-excel.md | choose live vs disk per file; opt-in setting; status feedback |
 
 ### Data safety — the thing that must never break
 
