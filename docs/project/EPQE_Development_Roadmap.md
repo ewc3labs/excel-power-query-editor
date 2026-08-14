@@ -21,7 +21,7 @@ AsOf: 2026-08-14
 The extension works and has users. What is broken is everything *around* it: a release pipeline that
 last succeeded in July 2025, and a finished version that never shipped because of it.
 
-1. `PQ-09` — 0.5.2 cannot ship without it; it would reset every user's configuration
+1. `PQ-09` — **nothing ships before this.** Code in `main` deletes user settings on activation
 2. `PQ-01` — the pipeline, which unblocks releasing anything at all
 3. `PQ-02` — then the release itself, renumbered to reflect what it actually is
 
@@ -32,7 +32,7 @@ not a summary of them.
 
 | Series | Last Num | Series Description |
 | --- | --- | --- |
-| PQ | PQ-10 | Excel Power Query Editor slices and fixes |
+| PQ | PQ-11 | Excel Power Query Editor slices and fixes |
 
 `Last Num` is a cache over the Delivery Index, not a second source of truth — the IDs in the tables are
 authoritative. When minting, take the next number **and** confirm it is unused across every sub-table,
@@ -67,8 +67,9 @@ used it and it worked · `⏸ retired` — tried, backed out, kept for the reaso
 | --- | --- | --- | --- | --- | --- |
 | PQ-07 | ⬜ planned | Extract the workbook read/write seam from extension.ts | L | — | 2,152 lines in one file; extract WITH tests, never wholesale |
 | PQ-08 | ⬜ planned | Settings deprecation policy | S | — | 18 public settings; renaming one breaks configs silently |
-| PQ-09 | ⬜ planned | Migrate v0.5.0 settings to the namespaced names | M | — | 13 of 19 renamed or removed, no migration, gates PQ-02 |
-| PQ-10 | ⬜ planned | Decide one README or two, and delete the loser | S | — | swap scripts are orphaned and would copy an empty file |
+| PQ-09 | ⬜ planned | Replace the settings WIPE with a real migration | M | settings-migration.md | UNRELEASED CODE DELETES USER SETTINGS — fix before anything ships |
+| PQ-10 | ⬜ planned | Converge on ONE README | S | — | Wilson's call; also tone down the Microsoft sarcasm |
+| PQ-11 | ⬜ planned | Research: does the PQ/M extension now ship Excel symbols | S | — | if so, stop writing excel-pq-symbols.json into workspaces |
 
 ## Working Rules
 
