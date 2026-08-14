@@ -98,6 +98,78 @@ surface at all. It would have to be VSTO/COM.
 - **Refresh is a separate decision.** Setting `Formula` changes the query; it does not re-run it.
   Whether to refresh, and whether that is a setting, is a UX question not a technical one.
 
+## The two writers do not write the same thing
+
+This is the finding that shapes the whole feature, and it is not visible until you look at both
+sides.
+
+**On disk, a `.m` file is a SECTION DOCUMENT holding every query in the workbook:**
+
+```
+section Section1;
+
+shared fGetNamedRange = let ... ;
+shared RawInput       = let ... ;
+shared FinalTable     = let ... ;
+```
+
+`test/fixtures/expected/complex_FinalTable.m` has three `shared` blocks in one file. Extraction pulls
+**all** queries out together, and the disk writer puts them **all** back together.
+
+**Through COM, `WorkbookQuery.Formula` is ONE query's expression, with no wrapper:**
+
+```
+let
+    Source = Excel.CurrentWorkbook(){[Name="StudentNames"]}[Content],
+    ...
+in
+    Source
+```
+
+Measured: 160 characters written through COM came back from disk as 199. The 46-character delta is
+exactly `section Section1;`, the blank line, `shared StudentResults = `, and the closing `;`.
+
+So the live path cannot simply hand the file's contents to Excel. It has to:
+
+1. Parse the section document into `{ name -> expression }`
+2. Walk `Workbook.Queries` and set `Formula` per matching name
+3. Decide what to do about queries present on one side and not the other — a `shared` block with no
+   matching query means `Queries.Add`; a query with no matching block means the user deleted it, and
+   deleting someone's query is not something to do on a guess
+
+**Zero drift is achievable, but the invariant has to be stated as a round trip, not a byte compare:**
+
+> section document → split → N × `Formula` → save → extract → section document
+
+must return the original text. Anything else — reordering, whitespace normalisation, a lost trailing
+semicolon — is drift, and drift means two sources of truth in a tool whose whole job is not corrupting
+workbooks. That is `PQ-15`, and it should be a test with real fixtures before `PQ-13` ships.
+
+**What does survive, verified:** a formula written through COM and read back from the saved file kept a
+literal tab, trailing spaces, all seven CRLFs, and `café naïve` intact. The M itself is not mangled.
+The only difference is the wrapper.
+
+## Bulk extraction is untouched, and never needed a close
+
+Extraction reads the file; **Excel takes a write lock, not a read lock.** Measured against a workbook
+open in Excel:
+
+```
+plain read: OK, 38596 bytes
+zip open  : OK, 22 entries, customXml present=True
+open for write FAILED: PermissionError
+```
+
+So ripping M out of a folder of workbooks works whether they are open or closed, needs no Excel, no
+COM and no Windows, and **live sync changes none of it**. Only the write path was ever blocked, and
+live sync is a write-path option that appears when Excel happens to be running.
+
+The two-tailed rule is therefore simple to state: **write into the zip when the file is closed, write
+through COM when it is open.** One decision, made per file, at write time.
+
+Note the `customXml/item1.xml` part is **UTF-16LE** with a BOM. Read it as a buffer and sniff, which
+is what the extension already does; decoding it as UTF-8 yields mojibake and `DataMashupNotFound`.
+
 ## Open questions for the slices
 
 1. How does a `.m` file map to a query name — filename convention, a header comment, or a stored map?

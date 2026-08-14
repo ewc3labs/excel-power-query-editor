@@ -66,8 +66,8 @@ Excel serves external automation. See `design/live-sync-to-open-excel.md`.
 | --- | --- | --- | --- | --- | --- |
 | PQ-12 | 💨 proven | Spike: rewrite a query in a workbook the user has OPEN | S | live-sync-to-open-excel.md | proven 2026-08-14 — attached via ROT, wrote, went dirty |
 | PQ-13 | ⬜ planned | Ship it: helper process, query lookup, error paths | L | live-sync-to-open-excel.md | PowerShell helper first — no new dependencies |
-| PQ-14 | ⬜ planned | Decide the .m file to query-name mapping | M | — | gates PQ-13; filename, header comment, or stored map |
-| PQ-15 | ⬜ planned | Prove live writes round-trip against the on-disk writer | M | — | two writers, one truth; must be byte-identical |
+| PQ-14 | ⬜ planned | Split a section document and match queries by name | M | live-sync-to-open-excel.md | .m holds ALL queries; COM Formula is one — gates PQ-13 |
+| PQ-15 | ⬜ planned | Round-trip test: section -> N formulas -> save -> section | M | live-sync-to-open-excel.md | the invariant for two-tailed write; do before PQ-13 ships |
 | PQ-16 | ⬜ planned | Reply to namgaw, and reach out to Ken Puls | S | — | he asked in Oct 2025 and suggested the contact |
 
 ### Data safety — the thing that must never break
