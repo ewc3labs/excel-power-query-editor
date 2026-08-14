@@ -10,10 +10,10 @@
     },
     // Turn off tsc task auto detection since we have the necessary tasks as npm scripts
     "typescript.tsc.autoDetect": "off",
-    "excel-power-query-editor.watchAlways": false,
-    "excel-power-query-editor.backupLocation": "sameFolder",
-    "excel-power-query-editor.customBackupPath": "./VSCodeBackups",
-    "excel-power-query-editor.watchOffOnDelete": true,
+    "excel-power-query-editor.watch.always": false,
+    "excel-power-query-editor.backup.location": "sameFolder",
+    "excel-power-query-editor.backup.customPath": "./VSCodeBackups",
+    "excel-power-query-editor.watch.offOnDelete": true,
     "excel-power-query-editor.sync.debounceMs": 3000, // Fixed: was 100ms causing immediate sync with VS Code auto-save
     "excel-power-query-editor.sync.largefile.minDebounceMs": 8000, // For large files like your 60MB one
     
@@ -69,7 +69,7 @@
         "c:/DEV/ewc3labs/excel-power-query-editor/.vscode/excel-pq-symbols"
     ],
     "excel-power-query-editor.watch.checkExcelWriteable": true,
-    "excel-power-query-editor.watchAlwaysMaxFiles": 100,
+    "excel-power-query-editor.watch.maxFiles": 100,
     "excel-power-query-editor.sync.openExcelAfterWrite": false,
-    "excel-power-query-editor.logLevel": "debug"
+    "excel-power-query-editor.log.level": "debug"
 }
