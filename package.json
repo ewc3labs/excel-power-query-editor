@@ -98,11 +98,11 @@
         "title": "Install Excel Symbol Definitions",
         "category": "Excel PQ"
       },
-        {
-          "command": "excel-power-query-editor.openSettings",
-          "title": "Settings",
-          "category": "Excel PQ"
-        }
+      {
+        "command": "excel-power-query-editor.openSettings",
+        "title": "Settings",
+        "category": "Excel PQ"
+      }
     ],
     "configuration": {
       "title": "Excel Power Query Editor",
@@ -223,6 +223,127 @@
           "type": "string",
           "default": "",
           "description": "Internal migration marker for extension settings. Do not edit."
+        },
+        "excel-power-query-editor.autoBackupBeforeSync": {
+          "type": "boolean",
+          "default": true,
+          "description": "Automatically create a backup of the Excel file before syncing from .m.",
+          "markdownDeprecationMessage": "**Deprecated.** Use `#excel-power-query-editor.backup.autoBackupBeforeSync#` instead. Your existing value is migrated automatically.",
+          "deprecationMessage": "Deprecated: use excel-power-query-editor.backup.autoBackupBeforeSync. Migrated automatically.",
+          "order": 900
+        },
+        "excel-power-query-editor.autoCleanupBackups": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable automatic deletion of old backups when the number exceeds maxBackups.",
+          "markdownDeprecationMessage": "**Deprecated.** Use `#excel-power-query-editor.backup.autoCleanup#` instead. Your existing value is migrated automatically.",
+          "deprecationMessage": "Deprecated: use excel-power-query-editor.backup.autoCleanup. Migrated automatically.",
+          "order": 900
+        },
+        "excel-power-query-editor.backupLocation": {
+          "type": "string",
+          "enum": [
+            "sameFolder",
+            "tempFolder",
+            "custom"
+          ],
+          "default": "sameFolder",
+          "description": "Folder to store backup files: same as Excel file, system temp folder, or a custom path.",
+          "markdownDeprecationMessage": "**Deprecated.** Use `#excel-power-query-editor.backup.location#` instead. Your existing value is migrated automatically.",
+          "deprecationMessage": "Deprecated: use excel-power-query-editor.backup.location. Migrated automatically.",
+          "order": 900
+        },
+        "excel-power-query-editor.customBackupPath": {
+          "type": "string",
+          "default": "",
+          "description": "Path to use if backupLocation is set to \"custom\". Can be relative to the workspace root.",
+          "markdownDeprecationMessage": "**Deprecated.** Use `#excel-power-query-editor.backup.customPath#` instead. Your existing value is migrated automatically.",
+          "deprecationMessage": "Deprecated: use excel-power-query-editor.backup.customPath. Migrated automatically.",
+          "order": 900
+        },
+        "excel-power-query-editor.logLevel": {
+          "type": "string",
+          "enum": [
+            "none",
+            "error",
+            "warn",
+            "info",
+            "verbose",
+            "debug"
+          ],
+          "default": "info",
+          "description": "Set the logging level for the Excel Power Query Editor extension. Replaces legacy verboseMode and debugMode settings.",
+          "markdownDeprecationMessage": "**Deprecated.** Use `#excel-power-query-editor.log.level#` instead. Your existing value is migrated automatically.",
+          "deprecationMessage": "Deprecated: use excel-power-query-editor.log.level. Migrated automatically.",
+          "order": 900
+        },
+        "excel-power-query-editor.showStatusBarInfo": {
+          "type": "boolean",
+          "default": true,
+          "description": "Display sync and watch status indicators in the VS Code status bar.",
+          "markdownDeprecationMessage": "**Deprecated.** Use `#excel-power-query-editor.log.showStatusBarInfo#` instead. Your existing value is migrated automatically.",
+          "deprecationMessage": "Deprecated: use excel-power-query-editor.log.showStatusBarInfo. Migrated automatically.",
+          "order": 900
+        },
+        "excel-power-query-editor.syncDeleteAlwaysConfirm": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show a confirmation dialog before syncing and deleting the .m file. Uncheck to perform without confirmation.",
+          "markdownDeprecationMessage": "**Deprecated.** Use `#excel-power-query-editor.sync.deleteAlwaysConfirm#` instead. Your existing value is migrated automatically.",
+          "deprecationMessage": "Deprecated: use excel-power-query-editor.sync.deleteAlwaysConfirm. Migrated automatically.",
+          "order": 900
+        },
+        "excel-power-query-editor.syncTimeout": {
+          "type": "number",
+          "default": 30000,
+          "minimum": 5000,
+          "maximum": 120000,
+          "description": "Time in milliseconds before a sync attempt is aborted.",
+          "markdownDeprecationMessage": "**Deprecated.** Use `#excel-power-query-editor.sync.timeout#` instead. Your existing value is migrated automatically.",
+          "deprecationMessage": "Deprecated: use excel-power-query-editor.sync.timeout. Migrated automatically.",
+          "order": 900
+        },
+        "excel-power-query-editor.watchAlways": {
+          "type": "boolean",
+          "default": false,
+          "description": "Automatically start watching when extracting Power Query files",
+          "markdownDeprecationMessage": "**Deprecated.** Use `#excel-power-query-editor.watch.always#` instead. Your existing value is migrated automatically.",
+          "deprecationMessage": "Deprecated: use excel-power-query-editor.watch.always. Migrated automatically.",
+          "order": 900
+        },
+        "excel-power-query-editor.watchAlwaysMaxFiles": {
+          "type": "number",
+          "default": 25,
+          "minimum": 1,
+          "maximum": 500,
+          "description": "Maximum number of .m files to auto-watch when watchAlways is enabled. Prevents performance issues with large workspaces.",
+          "markdownDeprecationMessage": "**Deprecated.** Use `#excel-power-query-editor.watch.maxFiles#` instead. Your existing value is migrated automatically.",
+          "deprecationMessage": "Deprecated: use excel-power-query-editor.watch.maxFiles. Migrated automatically.",
+          "order": 900
+        },
+        "excel-power-query-editor.watchOffOnDelete": {
+          "type": "boolean",
+          "default": true,
+          "description": "Stop watching a .m file if it is deleted from disk.",
+          "markdownDeprecationMessage": "**Deprecated.** Use `#excel-power-query-editor.watch.offOnDelete#` instead. Your existing value is migrated automatically.",
+          "deprecationMessage": "Deprecated: use excel-power-query-editor.watch.offOnDelete. Migrated automatically.",
+          "order": 900
+        },
+        "excel-power-query-editor.debugMode": {
+          "type": "boolean",
+          "default": false,
+          "description": "[DEPRECATED] Use logLevel instead. Enable debug-level logging and write internal debug files to disk.",
+          "markdownDeprecationMessage": "**Deprecated.** Use `#excel-power-query-editor.log.level#` instead — set it to `debug`. Your existing value is migrated automatically.",
+          "deprecationMessage": "Deprecated: use excel-power-query-editor.log.level set to 'debug'. Migrated automatically.",
+          "order": 900
+        },
+        "excel-power-query-editor.verboseMode": {
+          "type": "boolean",
+          "default": false,
+          "description": "[DEPRECATED] Use logLevel instead. Output detailed logs to the VS Code Output panel (recommended for troubleshooting).",
+          "markdownDeprecationMessage": "**Deprecated.** Use `#excel-power-query-editor.log.level#` instead — set it to `verbose`. Your existing value is migrated automatically.",
+          "deprecationMessage": "Deprecated: use excel-power-query-editor.log.level set to 'verbose'. Migrated automatically.",
+          "order": 900
         }
       }
     },

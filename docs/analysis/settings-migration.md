@@ -1,7 +1,7 @@
 # Settings migration — why it fought back, and what actually works
 
-**Status:** unreleased code in `main` will delete every user's settings. Do not publish until this
-is fixed. See `PQ-09`.
+**Status:** fixed and verified 2026-08-14 (`PQ-09`). This document is kept because the trap that
+caused it is not obvious and will be met again by anyone renaming a setting.
 
 ## What is in the repo right now
 
@@ -73,3 +73,27 @@ rule written down: debug beats verbose, and neither beats an explicit `log.level
 
 They cost nothing but a few lines of JSON, they let a user who skipped a version still migrate, and
 removing them early recreates exactly this problem for whoever is here next.
+
+## Verified, on a real install
+
+The wipe was not hypothetical: the marker `xtn.level: "0.5.2"` and a stale
+`settings.level: "0.5.2"` were sitting in the developer's own VS Code settings, with everything else
+for this extension gone. It had already run.
+
+The replacement was tested end to end rather than only in unit tests — seven v0.5.0-era settings were
+written into a real `settings.json`, the built `.vsix` installed with `--force`, and VS Code started:
+
+| seeded | became |
+| --- | --- |
+| `watchAlways: true` | `watch.always: true` |
+| `watchAlwaysMaxFiles: 42` | `watch.maxFiles: 42` |
+| `syncTimeout: 15` | `sync.timeout: 15` |
+| `backupLocation: "customFolder"` | `backup.location: "customFolder"` |
+| `customBackupPath: "C:/Temp/pq-backups"` | `backup.customPath: "C:/Temp/pq-backups"` |
+| `debugMode: true` | `log.level: "debug"` |
+| `autoCleanupBackups: true` | `backup.autoCleanup: true` |
+
+All seven old keys were cleared. `watch.checkExcelWriteable`, which the migration has no business
+touching, was still there afterwards — the specific thing the wipe destroyed. A second activation
+changed the file not at all: the schema marker holds, so this cannot become a repeating wipe the way
+a version-keyed marker did.

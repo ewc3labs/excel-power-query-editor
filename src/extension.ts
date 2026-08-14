@@ -610,7 +610,7 @@ async function extractFromExcel(uri?: vscode.Uri, uris?: vscode.Uri[]): Promise<
 let
 	// Sample Power Query code structure
 	Source = Excel.CurrentWorkbook(){[Name="Table1"]}[Content],
-	#"Changed Type" = Table.TransformColumnTypes(Source,{{"Column1", type text}}),
+	#"Changed Type" = Table.TransformColumnTypes(Source,{"Column1", type text}),
 	#"Filtered Rows" = Table.SelectRows(#"Changed Type", each [Column1] <> null),
 	Result = #"Filtered Rows"
 in
@@ -1703,86 +1703,151 @@ function dumpAllExtensionSettings(): void {
 		log(`Failed to dump settings: ${error}`, 'dumpAllExtensionSettings', 'error');
 	}
 }
-// Migrate legacy debugMode/verboseMode to logLevel at activation
-// export async function migrateLegacySettings() {
-// 	const extensionId = 'excel-power-query-editor';
-// 	const config = vscode.workspace.getConfiguration(extensionId);
-// 	const debugMode = config.get('log.debugMode');
-// 	const verboseMode = config.get('log.verboseMode');
-// 	let needsUpdate = false;
-// 	let newLogLevel: string | undefined = undefined;
-// 	if (debugMode === true) {
-// 		newLogLevel = 'debug';
-// 		needsUpdate = true;
-// 	} else if (verboseMode === true) {
-// 		newLogLevel = 'verbose';
-// 		needsUpdate = true;
-// 	}
-// 	if (needsUpdate) {
-// 		await config.update('log.level', newLogLevel, vscode.ConfigurationTarget.Workspace);
-// 		await config.update('log.debugMode', undefined, vscode.ConfigurationTarget.Workspace);
-// 		await config.update('log.verboseMode', undefined, vscode.ConfigurationTarget.Workspace);
-// 		log(`Migrated legacy settings to logLevel='${newLogLevel}' and removed debugMode/verboseMode from workspace settings`, 'settingsMigration', 'info');
-// 	}
-// 	// Also check user settings
-// 	const userConfig = vscode.workspace.getConfiguration(extensionId, null);
-// 	const userDebug = userConfig.get('log.debugMode');
-// 	const userVerbose = userConfig.get('log.verboseMode');
-// 	let userNeedsUpdate = false;
-// 	let userLogLevel: string | undefined = undefined;
-// 	if (userDebug === true) {
-// 		userLogLevel = 'debug';
-// 		userNeedsUpdate = true;
-// 	} else if (userVerbose === true) {
-// 		userLogLevel = 'verbose';
-// 		userNeedsUpdate = true;
-// 	}
-// 	if (userNeedsUpdate) {
-// 		await userConfig.update('log.level', userLogLevel, vscode.ConfigurationTarget.Global);
-// 		await userConfig.update('log.debugMode', undefined, vscode.ConfigurationTarget.Global);
-// 		await userConfig.update('log.verboseMode', undefined, vscode.ConfigurationTarget.Global);
-// 		log(`Migrated legacy settings to logLevel='${userLogLevel}' and removed debugMode/verboseMode from user settings`, 'settingsMigration', 'info');
-// 	}
-// }
-export async function migrateLegacySettings() {
-	const extensionId = 'excel-power-query-editor';
-	// Dynamically get extension version from package.json
-	const extension = vscode.extensions.getExtension('ewc3labs.excel-power-query-editor');
-	const extensionVersion = extension?.packageJSON.version || 'unknown';
-	const migrationKey = 'xtn.level';
+/**
+ * Settings migration: v0.5.0 flat names -> namespaced names.
+ *
+ * WHAT THIS REPLACES. The previous implementation enumerated the configuration object and set
+ * every key to `undefined` in both User and Workspace scope - a wipe, not a migration. It
+ * preserved nothing, and its guard compared a stored marker against the EXTENSION VERSION, so it
+ * re-ran on every release. Shipping that would have deleted the settings of every user of this
+ * extension, twice.
+ *
+ * WHY THE OBVIOUS APPROACH DOES NOT WORK. VS Code only lets an extension write a configuration key
+ * that is REGISTERED in `contributes.configuration`. The 0.5.x refactor renamed the settings and
+ * deleted the old names from package.json in the same change, which removed the only handle a
+ * migration has: `update(oldKey, undefined, ...)` on an unregistered key fails, so the stale value
+ * stays in the user's settings.json forever with no API able to remove it.
+ *
+ * The old keys are therefore still DECLARED in package.json, marked deprecated. They render struck
+ * through with a pointer to the replacement, and - the part that matters - they remain clearable.
+ * Leave them in place for at least one minor release so a user who skips a version still migrates.
+ *
+ * RULES THIS FOLLOWS:
+ *   - never write a scope the user did not already use - `inspect()` says where the value lives
+ *   - never overwrite a new value the user has already set
+ *   - only clear an old key in the scope it was actually set in
+ *   - a failure on one key must not abandon the rest
+ */
 
-	// Helper to wipe all settings in a config scope
-	async function wipeConfig(config: vscode.WorkspaceConfiguration, scope: vscode.ConfigurationTarget) {
-		const keys = Object.keys(config);
-		for (const key of keys) {
-			await config.update(key, undefined, scope);
+/** Bump this when the rename table changes. Deliberately NOT the extension version. */
+const SETTINGS_MIGRATION_SCHEMA = '1';
+
+/** Old key -> new key, relative to the `excel-power-query-editor` section. */
+const LEGACY_RENAMES: ReadonlyArray<readonly [string, string]> = [
+	['autoBackupBeforeSync', 'backup.autoBackupBeforeSync'],
+	['autoCleanupBackups', 'backup.autoCleanup'],
+	['backupLocation', 'backup.location'],
+	['customBackupPath', 'backup.customPath'],
+	['logLevel', 'log.level'],
+	['showStatusBarInfo', 'log.showStatusBarInfo'],
+	['syncDeleteAlwaysConfirm', 'sync.deleteAlwaysConfirm'],
+	['syncTimeout', 'sync.timeout'],
+	['watchAlways', 'watch.always'],
+	['watchAlwaysMaxFiles', 'watch.maxFiles'],
+	['watchOffOnDelete', 'watch.offOnDelete'],
+];
+
+type ScopeField = 'globalValue' | 'workspaceValue' | 'workspaceFolderValue';
+
+/** Move one scope's worth of settings. Returns how many values were carried across. */
+async function migrateScope(
+	config: vscode.WorkspaceConfiguration,
+	target: vscode.ConfigurationTarget,
+	field: ScopeField
+): Promise<number> {
+	let moved = 0;
+
+	for (const [oldKey, newKey] of LEGACY_RENAMES) {
+		const oldInfo = config.inspect(oldKey);
+		const oldValue = oldInfo ? (oldInfo as Record<string, unknown>)[field] : undefined;
+		if (oldValue === undefined) { continue; }
+
+		try {
+			const newInfo = config.inspect(newKey);
+			const newValue = newInfo ? (newInfo as Record<string, unknown>)[field] : undefined;
+
+			// Only carry the value across if the user has not already set the new one here.
+			if (newValue === undefined) {
+				await config.update(newKey, oldValue, target);
+				moved++;
+				log(`Migrated ${oldKey} -> ${newKey} (${field})`, 'settingsMigration', 'info');
+			} else {
+				log(`Kept existing ${newKey} (${field}); dropped stale ${oldKey}`, 'settingsMigration', 'info');
+			}
+
+			await config.update(oldKey, undefined, target);
+		} catch (error) {
+			// One bad key must not strand the others.
+			log(`Could not migrate ${oldKey} (${field}): ${error}`, 'settingsMigration', 'warn');
 		}
-		await config.update(migrationKey, extensionVersion, scope);
 	}
 
-	// User scope
-	const userConfig = vscode.workspace.getConfiguration(extensionId, null);
-	if (userConfig.get(migrationKey) !== extensionVersion) {
-		await wipeConfig(userConfig, vscode.ConfigurationTarget.Global);
-		log(`Wiped user settings and set migration marker to ${extensionVersion}`, 'settingsMigration', 'info');
-	}
+	moved += await migrateLogFlags(config, target, field);
+	return moved;
+}
 
-	// Workspace scope
-	const workspaceConfig = vscode.workspace.getConfiguration(extensionId, vscode.workspace.workspaceFolders?.[0]?.uri);
-	if (workspaceConfig.get(migrationKey) !== extensionVersion) {
-		await wipeConfig(workspaceConfig, vscode.ConfigurationTarget.Workspace);
-		log(`Wiped workspace settings and set migration marker to ${extensionVersion}`, 'settingsMigration', 'info');
-	}
+/**
+ * debugMode and verboseMode were booleans; log.level is an enum. Precedence: an explicit
+ * log.level the user already set wins, then debug, then verbose.
+ */
+async function migrateLogFlags(
+	config: vscode.WorkspaceConfiguration,
+	target: vscode.ConfigurationTarget,
+	field: ScopeField
+): Promise<number> {
+	const read = (key: string): unknown => {
+		const info = config.inspect(key);
+		return info ? (info as Record<string, unknown>)[field] : undefined;
+	};
 
-	// Folder scope (if applicable)
-	if (vscode.workspace.workspaceFolders) {
-		for (const folder of vscode.workspace.workspaceFolders) {
-			const folderConfig = vscode.workspace.getConfiguration(extensionId, folder.uri);
-			if (folderConfig.get(migrationKey) !== extensionVersion) {
-				await wipeConfig(folderConfig, vscode.ConfigurationTarget.WorkspaceFolder);
-				log(`Wiped folder settings for ${folder.name} and set migration marker to ${extensionVersion}`, 'settingsMigration', 'info');
+	const debugMode = read('debugMode');
+	const verboseMode = read('verboseMode');
+	if (debugMode === undefined && verboseMode === undefined) { return 0; }
+
+	let moved = 0;
+	try {
+		if (read('log.level') === undefined) {
+			const level = debugMode === true ? 'debug' : verboseMode === true ? 'verbose' : undefined;
+			if (level) {
+				await config.update('log.level', level, target);
+				moved++;
+				log(`Migrated ${debugMode === true ? 'debugMode' : 'verboseMode'} -> log.level='${level}' (${field})`,
+					'settingsMigration', 'info');
 			}
 		}
+		if (debugMode !== undefined) { await config.update('debugMode', undefined, target); }
+		if (verboseMode !== undefined) { await config.update('verboseMode', undefined, target); }
+	} catch (error) {
+		log(`Could not migrate log flags (${field}): ${error}`, 'settingsMigration', 'warn');
+	}
+	return moved;
+}
+
+export async function migrateLegacySettings(): Promise<void> {
+	const extensionId = 'excel-power-query-editor';
+
+	try {
+		const root = vscode.workspace.getConfiguration(extensionId);
+		if (root.get<string>('xtn.level', '') === SETTINGS_MIGRATION_SCHEMA) {
+			return;   // already done; do NOT re-run on every version bump
+		}
+
+		let moved = 0;
+		moved += await migrateScope(root, vscode.ConfigurationTarget.Global, 'globalValue');
+		moved += await migrateScope(root, vscode.ConfigurationTarget.Workspace, 'workspaceValue');
+
+		// Folder scope needs a folder-scoped configuration object to write to.
+		for (const folder of vscode.workspace.workspaceFolders ?? []) {
+			const folderConfig = vscode.workspace.getConfiguration(extensionId, folder.uri);
+			moved += await migrateScope(folderConfig, vscode.ConfigurationTarget.WorkspaceFolder, 'workspaceFolderValue');
+		}
+
+		await root.update('xtn.level', SETTINGS_MIGRATION_SCHEMA, vscode.ConfigurationTarget.Global);
+		log(`Settings migration complete - ${moved} value(s) carried across (schema ${SETTINGS_MIGRATION_SCHEMA})`,
+			'settingsMigration', moved > 0 ? 'info' : 'debug');
+	} catch (error) {
+		// Never let a settings migration stop the extension activating.
+		log(`Settings migration failed: ${error}`, 'settingsMigration', 'error');
 	}
 }
 

@@ -21,9 +21,9 @@ AsOf: 2026-08-14
 The extension works and has users. What is broken is everything *around* it: a release pipeline that
 last succeeded in July 2025, and a finished version that never shipped because of it.
 
-1. `PQ-09` — **nothing ships before this.** Code in `main` deletes user settings on activation
-2. `PQ-01` — the pipeline, which unblocks releasing anything at all
-3. `PQ-02` — then the release itself, renumbered to reflect what it actually is
+1. `PQ-01` — the pipeline; nothing can be released until it works
+2. `PQ-02` — then ship the settings refactor, **as 0.6.0** rather than a patch
+3. `PQ-10` — one README, before the marketplace page is republished
 
 ## Last Numbers
 
@@ -50,7 +50,7 @@ used it and it worked · `⏸ retired` — tried, backed out, kept for the reaso
 | ID | State | Slice | Est | Doc | Status |
 | --- | --- | --- | --- | --- | --- |
 | PQ-01 | ⬜ planned | Rebuild release.yml as tag-triggered | M | — | `workflow_run` runs as main; tag branches unreachable |
-| PQ-02 | ⛔ blocked | Ship 0.5.2 | S | — | BLOCKED by PQ-09 — it is a breaking change wearing a patch number |
+| PQ-02 | ⬜ planned | Ship the settings refactor as 0.6.0 | S | — | unblocked; NOT a patch — 13 settings renamed |
 | PQ-03 | ⬜ planned | Verify marketplace publish end to end | S | — | `VSCE_PAT` path has never demonstrably fired from a tag |
 | PQ-04 | ⬜ planned | Prune the release workflow | S | — | 318 lines, mostly reporting; RecallTape's is a third of it |
 
@@ -67,7 +67,7 @@ used it and it worked · `⏸ retired` — tried, backed out, kept for the reaso
 | --- | --- | --- | --- | --- | --- |
 | PQ-07 | ⬜ planned | Extract the workbook read/write seam from extension.ts | L | — | 2,152 lines in one file; extract WITH tests, never wholesale |
 | PQ-08 | ⬜ planned | Settings deprecation policy | S | — | 18 public settings; renaming one breaks configs silently |
-| PQ-09 | ⬜ planned | Replace the settings WIPE with a real migration | M | settings-migration.md | UNRELEASED CODE DELETES USER SETTINGS — fix before anything ships |
+| PQ-09 | 💨 proven | Replace the settings WIPE with a real migration | M | settings-migration.md | proven 2026-08-14 — 7 legacy values migrated on a real install |
 | PQ-10 | ⬜ planned | Converge on ONE README | S | — | Wilson's call; also tone down the Microsoft sarcasm |
 | PQ-11 | ⬜ planned | Research: does the PQ/M extension now ship Excel symbols | S | — | if so, stop writing excel-pq-symbols.json into workspaces |
 

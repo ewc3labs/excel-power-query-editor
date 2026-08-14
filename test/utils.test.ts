@@ -277,43 +277,111 @@ suite('Utils Tests', () => {
 
 
 // --- Legacy Settings Migration Tests ---
+//
+// These drive the REAL VS Code configuration, not the in-memory test map. The previous versions
+// wrote to the test map with `testConfigUpdate` while migrateLegacySettings() read
+// vscode.workspace.getConfiguration - so they asserted on values the code under test never saw.
+// They also used the key names `log.debugMode` and `log.verboseMode`, which have never existed in
+// any shipped version; the v0.5.0 names were `debugMode` and `verboseMode`.
 import { migrateLegacySettings } from '../src/extension';
 
+const SECTION = 'excel-power-query-editor';
+const MARKER = 'xtn.level';
+const G = vscode.ConfigurationTarget.Global;
+
+async function setGlobal(key: string, value: unknown): Promise<void> {
+	await vscode.workspace.getConfiguration(SECTION).update(key, value, G);
+}
+
+async function clearGlobal(...keys: string[]): Promise<void> {
+	const cfg = vscode.workspace.getConfiguration(SECTION);
+	for (const key of keys) {
+		await cfg.update(key, undefined, G);
+	}
+}
+
+function globalValue(key: string): unknown {
+	const info = vscode.workspace.getConfiguration(SECTION).inspect(key);
+	return info ? (info as Record<string, unknown>).globalValue : undefined;
+}
+
 suite('Legacy Settings Migration', () => {
-setup(() => {
-	initTestConfig();
-});
-teardown(() => {
-	cleanupTestConfig();
-});
+	const touched = [
+		MARKER, 'watchAlways', 'watch.always', 'syncTimeout', 'sync.timeout',
+		'debugMode', 'verboseMode', 'log.level', 'backupLocation', 'backup.location',
+	];
 
-	test('Migrates both debugMode and verboseMode set', async () => {
-		await testConfigUpdate('log.debugMode', true);
-		await testConfigUpdate('log.verboseMode', true);
+	setup(async () => { await clearGlobal(...touched); });
+	teardown(async () => { await clearGlobal(...touched); });
+
+	test('carries a renamed value across and clears the old key', async () => {
+		await setGlobal('watchAlways', true);
 		await migrateLegacySettings();
-		const config = vscode.workspace.getConfiguration('excel-power-query-editor');
-		assert.strictEqual(config.get('log.level'), 'debug', 'logLevel should be set to debug');
-		assert.strictEqual(config.get('log.debugMode'), undefined, 'debugMode should be removed');
-		assert.strictEqual(config.get('log.verboseMode'), undefined, 'verboseMode should be removed');
+
+		assert.strictEqual(globalValue('watch.always'), true, 'new key should hold the old value');
+		assert.strictEqual(globalValue('watchAlways'), undefined, 'old key should be cleared');
 	});
 
-	test('Migrates only debugMode set', async () => {
-		await testConfigUpdate('log.debugMode', true);
-		await testConfigUpdate('log.verboseMode', false);
+	test('does NOT overwrite a new value the user has already set', async () => {
+		await setGlobal('syncTimeout', 10);
+		await setGlobal('sync.timeout', 99);
 		await migrateLegacySettings();
-		const config = vscode.workspace.getConfiguration('excel-power-query-editor');
-		assert.strictEqual(config.get('log.level'), 'debug', 'logLevel should be set to debug');
-		assert.strictEqual(config.get('log.debugMode'), undefined, 'debugMode should be removed');
-		assert.strictEqual(config.get('log.verboseMode'), undefined, 'verboseMode should be removed');
+
+		assert.strictEqual(globalValue('sync.timeout'), 99, 'existing new value must win');
+		assert.strictEqual(globalValue('syncTimeout'), undefined, 'stale old key still cleared');
 	});
 
-	test('Migrates only verboseMode set', async () => {
-		await testConfigUpdate('log.debugMode', false);
-		await testConfigUpdate('log.verboseMode', true);
+	test('debugMode becomes log.level=debug', async () => {
+		await setGlobal('debugMode', true);
 		await migrateLegacySettings();
-		const config = vscode.workspace.getConfiguration('excel-power-query-editor');
-		assert.strictEqual(config.get('log.level'), 'verbose', 'logLevel should be set to verbose');
-		assert.strictEqual(config.get('log.debugMode'), undefined, 'debugMode should be removed');
-		assert.strictEqual(config.get('log.verboseMode'), undefined, 'verboseMode should be removed');
+
+		assert.strictEqual(globalValue('log.level'), 'debug');
+		assert.strictEqual(globalValue('debugMode'), undefined);
+	});
+
+	test('debug beats verbose when both are set', async () => {
+		await setGlobal('debugMode', true);
+		await setGlobal('verboseMode', true);
+		await migrateLegacySettings();
+
+		assert.strictEqual(globalValue('log.level'), 'debug');
+		assert.strictEqual(globalValue('debugMode'), undefined);
+		assert.strictEqual(globalValue('verboseMode'), undefined);
+	});
+
+	test('verboseMode alone becomes log.level=verbose', async () => {
+		await setGlobal('verboseMode', true);
+		await migrateLegacySettings();
+
+		assert.strictEqual(globalValue('log.level'), 'verbose');
+	});
+
+	test('a false legacy flag is cleared without inventing a log level', async () => {
+		await setGlobal('debugMode', false);
+		await migrateLegacySettings();
+
+		assert.strictEqual(globalValue('log.level'), undefined, 'false should not set a level');
+		assert.strictEqual(globalValue('debugMode'), undefined, 'but the key is still cleared');
+	});
+
+	// The regression that matters. The previous implementation wiped every setting in scope.
+	test('leaves settings it does not own completely alone', async () => {
+		await setGlobal('backup.location', 'customFolder');
+		await setGlobal('watchAlways', true);
+		await migrateLegacySettings();
+
+		assert.strictEqual(globalValue('backup.location'), 'customFolder',
+			'an unrelated modern setting must survive migration');
+	});
+
+	test('runs once - a second call is a no-op', async () => {
+		await setGlobal('watchAlways', true);
+		await migrateLegacySettings();
+		assert.strictEqual(globalValue(MARKER), '1', 'marker should be stamped');
+
+		// Set a legacy key again; the marker should stop it being touched.
+		await setGlobal('watchAlways', true);
+		await migrateLegacySettings();
+		assert.strictEqual(globalValue('watchAlways'), true, 'second run must not migrate again');
 	});
 });
