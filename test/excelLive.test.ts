@@ -61,7 +61,7 @@ suite('Live sync', () => {
 		assert.ok(Array.isArray(result.failures));
 	});
 
-	test('the payload temp file does not outlive the call', async () => {
+	test('the payload never touches disk', async () => {
 		const before = fs.readdirSync(os.tmpdir()).filter(f => f.startsWith('epqe-live-')).length;
 		await writeLive(
 			path.join(os.tmpdir(), 'not-open.xlsx'),
@@ -69,16 +69,24 @@ suite('Live sync', () => {
 			extensionPath
 		);
 		const after = fs.readdirSync(os.tmpdir()).filter(f => f.startsWith('epqe-live-')).length;
-		// It holds the user's M. Leaving it in the temp directory is a small privacy leak.
-		assert.strictEqual(after, before, 'payload file must be cleaned up');
+		// It is the user's source code. It travels on stdin and is never written anywhere.
+		assert.strictEqual(after, before, 'no payload file should ever be created');
 	});
 
 	test('the shipped helper is where the code looks for it', () => {
 		const helper = path.join(extensionPath, 'resources', 'live-sync', 'excel-live-sync.ps1');
 		assert.ok(fs.existsSync(helper), `helper must ship at ${helper}`);
 		const body = fs.readFileSync(helper, 'utf8');
-		assert.ok(body.includes('GetActiveObject'), 'helper must attach to a RUNNING Excel');
+		// Not GetActiveObject: that finds ONE instance and misses a workbook open in another.
+		assert.ok(body.includes('[RunningObjects]::Get'),
+			'helper must find the workbook through the ROT, not a single Excel instance');
 		assert.ok(!body.includes('New-Object -ComObject Excel.Application'),
 			'helper must never START Excel - that would surprise the user');
+		// The CALL syntax, not the word: the helper's own comments explain why BindToMoniker is
+		// avoided, and matching those would make this assertion pass for the wrong reason.
+		assert.ok(!body.includes(']::BindToMoniker'),
+			'BindToMoniker OPENS a closed file - measured. The ROT lookup exists to avoid that.');
+		assert.ok(fs.existsSync(path.join(extensionPath, 'resources', 'live-sync', 'RunningObjects.cs.txt')),
+			'the ROT interop source must ship alongside the helper');
 	});
 });
