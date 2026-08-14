@@ -4,6 +4,8 @@ function openExtensionSettings() {
 }
 // The module 'vscode' contains the VS Code extensibility API
 import * as vscode from 'vscode';
+import { parseSection, diffQueries } from './mSection';
+import { getLiveStatus, writeLive, isLiveSyncSupported } from './excelLive';
 import * as fs from 'fs';
 import * as path from 'path';
 import { watch, FSWatcher } from 'chokidar';
@@ -782,6 +784,84 @@ async function syncToExcel(uri?: vscode.Uri, uris?: vscode.Uri[]): Promise<void>
 			vscode.window.showInformationMessage(`Syncing to Excel... (No backup - disabled in settings)`);
 		}
 		
+		// --- live sync -----------------------------------------------------------------------
+		// If Excel already has this workbook open, the zip below cannot be written: Excel holds an
+		// exclusive WRITE lock. Historically that meant failing, or waiting for the user to close
+		// the file. Instead, ask the running Excel to make the change through its own object model.
+		//
+		// The backup above still ran, deliberately. A live write leaves the workbook dirty rather
+		// than changing the file, but the user may well save it - and then the on-disk state has
+		// changed with no backup, which is not a trade this project makes.
+		if (config.get<boolean>('sync.liveWhenOpen', false) && isLiveSyncSupported()) {
+			const extensionPath = vscode.extensions
+				.getExtension('ewc3labs.excel-power-query-editor')?.extensionPath;
+
+			if (!extensionPath) {
+				log('Live sync enabled but the extension path is unavailable; using the on-disk writer',
+					'syncToExcel', 'warn');
+			} else {
+				const status = await getLiveStatus(excelFile, extensionPath);
+
+				if (!status.available) {
+					// Not a failure. Excel is not running, or we could not ask - either way the file
+					// is not locked by it, so the normal path below is the right answer.
+					log(`Live sync unavailable (${status.reason}); using the on-disk writer`,
+						'syncToExcel', 'debug');
+				} else if (!status.open) {
+					log('Workbook is not open in Excel; using the on-disk writer', 'syncToExcel', 'debug');
+				} else {
+					const section = parseSection(cleanMCode);
+					if (section.queries.length === 0) {
+						log('No shared bindings found in the .m file; using the on-disk writer',
+							'syncToExcel', 'warn');
+					} else {
+						const diff = diffQueries(section, status.queries);
+						const payload = [...diff.update, ...diff.add]
+							.map(q => ({ name: q.name, formula: q.expression }));
+
+						log(`Live sync: ${diff.update.length} to update, ${diff.add.length} to add, ` +
+							`${diff.missingFromDocument.length} in the workbook but not the file`,
+							'syncToExcel', 'info');
+
+						const result = await writeLive(excelFile, payload, extensionPath);
+
+						if (!result.ok && result.reason) {
+							throw new Error(`Live sync failed: ${result.reason}`);
+						}
+						if (result.failures.length > 0) {
+							const detail = result.failures.map(f => `${f.name}: ${f.message}`).join('; ');
+							vscode.window.showWarningMessage(
+								`Synced to open workbook with ${result.failures.length} problem(s): ${detail}`);
+						}
+
+						const parts: string[] = [];
+						if (result.updated.length) { parts.push(`${result.updated.length} updated`); }
+						if (result.added.length) { parts.push(`${result.added.length} added`); }
+						if (result.unchanged.length) { parts.push(`${result.unchanged.length} unchanged`); }
+
+						// Say plainly that the file on disk has NOT changed. A user who has been
+						// trained by every previous version to expect a written file needs to know
+						// their workbook now has unsaved changes.
+						const saveNote = result.dirty
+							? ' — the workbook now has unsaved changes in Excel, save it there.'
+							: ' — nothing needed changing.';
+						const summary = `Synced to the open workbook (${parts.join(', ') || 'no changes'})${saveNote}`;
+
+						log(summary, 'syncToExcel', 'success');
+						vscode.window.showInformationMessage(summary);
+
+						if (diff.missingFromDocument.length > 0) {
+							// Never deleted, only reported - see diffQueries.
+							const names = diff.missingFromDocument.join(', ');
+							log(`Left alone (present in the workbook, absent from the .m file): ${names}`,
+								'syncToExcel', 'info');
+						}
+						return;
+					}
+				}
+			}
+		}
+
 		// Load Excel file as ZIP
 		const JSZip = (await import('jszip')).default;
 		const xml2js = await import('xml2js');
