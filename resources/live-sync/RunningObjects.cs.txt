@@ -1,0 +1,91 @@
+// Compiled at runtime by excel-live-sync.ps1 via Add-Type. Kept as a separate file so it is
+// readable and reviewable rather than buried in a here-string.
+//
+// WHY THIS EXISTS AT ALL. The obvious ways to reach an open workbook are both wrong:
+//
+//   Marshal.GetActiveObject("Excel.Application")
+//       Returns ONE instance - whichever registered first. A user with two Excel instances (and
+//       Excel does start a second one for some file types, or via /x) can have the workbook in the
+//       other one, and we would report "not open" while they stare at it.
+//
+//   Marshal.BindToMoniker(path)
+//       Binds by path across all instances, which sounds perfect. Measured 2026-08-14: on a file
+//       that EXISTS BUT IS CLOSED it OPENS THE FILE. Silently opening somebody's workbook because
+//       we were checking whether it was open is the worst kind of side effect.
+//
+// So: enumerate the Running Object Table, and only bind to a moniker that is ALREADY THERE.
+// Excel registers each open workbook in the ROT under its full path, so presence in the table is
+// exactly the question "is this workbook open, in any instance?" - and GetObject on an existing
+// entry cannot start anything.
+
+using System;
+using System.Collections.Generic;
+using System.Runtime.InteropServices;
+using System.Runtime.InteropServices.ComTypes;
+
+public static class RunningObjects
+{
+    [DllImport("ole32.dll")]
+    private static extern int GetRunningObjectTable(int reserved, out IRunningObjectTable prot);
+
+    [DllImport("ole32.dll")]
+    private static extern int CreateBindCtx(int reserved, out IBindCtx ppbc);
+
+    /// <summary>Display names of everything currently registered. Excel workbooks appear as full paths.</summary>
+    public static string[] Names()
+    {
+        var names = new List<string>();
+        IRunningObjectTable rot;
+        IBindCtx ctx;
+        if (GetRunningObjectTable(0, out rot) != 0 || rot == null) { return names.ToArray(); }
+        if (CreateBindCtx(0, out ctx) != 0 || ctx == null) { return names.ToArray(); }
+
+        IEnumMoniker monikers;
+        rot.EnumRunning(out monikers);
+        monikers.Reset();
+
+        var slot = new IMoniker[1];
+        while (monikers.Next(1, slot, IntPtr.Zero) == 0)
+        {
+            string name = null;
+            try { slot[0].GetDisplayName(ctx, null, out name); }
+            catch { continue; }
+            if (!string.IsNullOrEmpty(name)) { names.Add(name); }
+        }
+        return names.ToArray();
+    }
+
+    /// <summary>
+    /// The object registered under this exact display name, or null.
+    ///
+    /// Never starts anything: it walks the table and returns what is already registered. If the
+    /// name is absent, the answer is null and nothing happens - which is the whole point.
+    /// </summary>
+    public static object Get(string displayName)
+    {
+        IRunningObjectTable rot;
+        IBindCtx ctx;
+        if (GetRunningObjectTable(0, out rot) != 0 || rot == null) { return null; }
+        if (CreateBindCtx(0, out ctx) != 0 || ctx == null) { return null; }
+
+        IEnumMoniker monikers;
+        rot.EnumRunning(out monikers);
+        monikers.Reset();
+
+        var slot = new IMoniker[1];
+        while (monikers.Next(1, slot, IntPtr.Zero) == 0)
+        {
+            string name = null;
+            try { slot[0].GetDisplayName(ctx, null, out name); }
+            catch { continue; }
+            if (name == null) { continue; }
+            if (!string.Equals(name, displayName, StringComparison.OrdinalIgnoreCase)) { continue; }
+
+            object found = null;
+            try { rot.GetObject(slot[0], out found); }
+            catch { return null; }
+            return found;
+        }
+        return null;
+    }
+}

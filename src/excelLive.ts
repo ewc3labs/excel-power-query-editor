@@ -1,6 +1,5 @@
 import { execFile } from 'child_process';
 import * as fs from 'fs';
-import * as os from 'os';
 import * as path from 'path';
 
 /**
@@ -48,6 +47,8 @@ export interface LiveWriteResult {
 	open: boolean;
 	updated: string[];
 	added: string[];
+	/** Present in the workbook already, byte-identical, so deliberately not written. */
+	unchanged: string[];
 	failures: { name: string; message: string }[];
 	/** The workbook has unsaved changes - true after any real write. */
 	dirty?: boolean;
@@ -68,7 +69,11 @@ function helperPath(extensionPath: string): string {
  * The helper answers with JSON for failures too, so a rejected promise here means something more
  * basic went wrong - PowerShell missing, the script absent, a timeout.
  */
-function runHelper(extensionPath: string, args: string[]): Promise<Record<string, unknown>> {
+function runHelper(
+	extensionPath: string,
+	args: string[],
+	stdin?: string
+): Promise<Record<string, unknown>> {
 	return new Promise((resolve, reject) => {
 		const script = helperPath(extensionPath);
 		if (!fs.existsSync(script)) {
@@ -76,7 +81,7 @@ function runHelper(extensionPath: string, args: string[]): Promise<Record<string
 			return;
 		}
 
-		execFile(
+		const child = execFile(
 			'powershell.exe',
 			['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File', script, ...args],
 			{ timeout: HELPER_TIMEOUT_MS, windowsHide: true, maxBuffer: 4 * 1024 * 1024 },
@@ -97,6 +102,14 @@ function runHelper(extensionPath: string, args: string[]): Promise<Record<string
 				}
 			}
 		);
+
+		// The payload is the user's source code. It goes down a pipe that exists only for the life
+		// of this call - never a temp file, which would leave their M sitting on disk, and never a
+		// command-line argument, where quotes and backslashes become a corruption bug.
+		if (stdin !== undefined) {
+			child.stdin?.on('error', () => { /* the callback above reports the real failure */ });
+			child.stdin?.end(stdin, 'utf8');
+		}
 	});
 }
 
@@ -130,42 +143,40 @@ export async function getLiveStatus(workbookPath: string, extensionPath: string)
 /**
  * Write formulas into the open workbook.
  *
- * The payload goes via a temp FILE rather than the command line, because M contains quotes,
- * newlines and backslashes and a quoting bug here would corrupt somebody's query.
+ * The payload goes down the helper's STDIN. Not a command-line argument, where M's quotes and
+ * backslashes become a corruption bug, and not a temp file, which would write the user's source
+ * code to disk behind their back.
  */
 export async function writeLive(
 	workbookPath: string,
 	queries: LiveQuery[],
 	extensionPath: string
 ): Promise<LiveWriteResult> {
-	const empty: LiveWriteResult = { ok: false, open: false, updated: [], added: [], failures: [] };
+	const empty: LiveWriteResult = { ok: false, open: false, updated: [], added: [], unchanged: [], failures: [] };
 
 	if (!isLiveSyncSupported()) {
 		return { ...empty, reason: 'not-windows' };
 	}
 	if (queries.length === 0) {
-		return { ok: true, open: true, updated: [], added: [], failures: [] };
+		return { ok: true, open: true, updated: [], added: [], unchanged: [], failures: [] };
 	}
 
-	const payloadFile = path.join(
-		os.tmpdir(),
-		`epqe-live-${process.pid}-${Date.now()}.json`
-	);
-
 	try {
-		fs.writeFileSync(payloadFile, JSON.stringify(queries), 'utf8');
-		const r = await runHelper(extensionPath, [
-			'-Action', 'write', '-Path', workbookPath, '-PayloadFile', payloadFile
-		]);
+		const r = await runHelper(
+			extensionPath,
+			['-Action', 'write', '-Path', workbookPath],
+			JSON.stringify(queries)
+		);
 
 		if (r.ok === false && r.error) {
-			return { ...empty, reason: String(r.error) };
+			return { ...empty, open: r.open === true, reason: String(r.error) };
 		}
 		return {
 			ok: r.ok === true,
 			open: r.open === true,
 			updated: Array.isArray(r.updated) ? (r.updated as string[]) : [],
 			added: Array.isArray(r.added) ? (r.added as string[]) : [],
+			unchanged: Array.isArray(r.unchanged) ? (r.unchanged as string[]) : [],
 			failures: Array.isArray(r.failures)
 				? (r.failures as { name: string; message: string }[])
 				: [],
@@ -173,8 +184,5 @@ export async function writeLive(
 		};
 	} catch (e) {
 		return { ...empty, reason: e instanceof Error ? e.message : String(e) };
-	} finally {
-		// The payload holds the user's M. Do not leave it lying in the temp directory.
-		try { fs.unlinkSync(payloadFile); } catch { /* nothing useful to do */ }
 	}
 }
