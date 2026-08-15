@@ -25,9 +25,11 @@ last succeeded in July 2025, and a finished version that never shipped because o
 
 **Live sync works on a real workbook.** What is left is getting it to the person who asked.
 
-1. `PQ-01` — the release pipeline, broken since July 2025 and the only thing between this and a user
+The pipeline works and cannot publish by accident. What is left is a decision, not a blocker.
+
+1. `PQ-19` — CI has failed on every run for a year; macOS cannot launch VS Code
 2. `PQ-16` — reply to namgaw, who asked for this in October 2025
-3. `PQ-10` — one README, before the marketplace page is republished
+3. Merge `wip/live-sync`, decide on 0.6.0, and set `MARKETPLACE_PUBLISH` when ready
 2. `PQ-01` — the pipeline; nothing can be released until it works
 3. `PQ-10` — one README, before the marketplace page is republished
 
@@ -38,7 +40,7 @@ not a summary of them.
 
 | Series | Last Num | Series Description |
 | --- | --- | --- |
-| PQ | PQ-18 | Excel Power Query Editor slices and fixes |
+| PQ | PQ-19 | Excel Power Query Editor slices and fixes |
 
 `Last Num` is a cache over the Delivery Index, not a second source of truth — the IDs in the tables are
 authoritative. When minting, take the next number **and** confirm it is unused across every sub-table,
@@ -55,10 +57,10 @@ used it and it worked · `⏸ retired` — tried, backed out, kept for the reaso
 
 | ID | State | Slice | Est | Doc | Status |
 | --- | --- | --- | --- | --- | --- |
-| PQ-01 | ⬜ planned | Rebuild release.yml as tag-triggered | M | — | `workflow_run` runs as main; tag branches unreachable |
+| PQ-01 | 💨 proven | Rebuild release.yml as tag-triggered | M | — | proven 2026-08-15 — v0.6.0-rc.1 built a draft, marketplace skipped |
 | PQ-02 | ⬜ planned | Ship the settings refactor as 0.6.0 | S | — | unblocked; NOT a patch — 13 settings renamed |
 | PQ-03 | ⬜ planned | Verify marketplace publish end to end | S | — | `VSCE_PAT` path has never demonstrably fired from a tag |
-| PQ-04 | ⬜ planned | Prune the release workflow | S | — | 318 lines, mostly reporting; RecallTape's is a third of it |
+| PQ-04 | 💨 proven | Prune the release workflow | S | — | done with PQ-01 — 318 lines to 190 |
 
 ### v0.6.0 — live sync to an open workbook
 
@@ -89,9 +91,10 @@ Excel serves external automation. See `design/live-sync-to-open-excel.md`.
 | PQ-07 | ⬜ planned | Extract the workbook read/write seam from extension.ts | L | — | 2,152 lines in one file; extract WITH tests, never wholesale |
 | PQ-08 | ⬜ planned | Settings deprecation policy | S | — | 18 public settings; renaming one breaks configs silently |
 | PQ-09 | 💨 proven | Replace the settings WIPE with a real migration | M | settings-migration.md | proven 2026-08-14 — 7 legacy values migrated on a real install |
-| PQ-10 | ⬜ planned | Converge on ONE README | S | — | Wilson's call; also tone down the Microsoft sarcasm |
+| PQ-10 | 🟨 coded | Converge on ONE README | S | — | merged, split files and swap scripts deleted; needs a read |
 | PQ-11 | 💨 proven | Research: does the PQ/M extension ship Excel symbols | S | excel-symbols.md | answered 2026-08-14 — it does NOT ship Excel.CurrentWorkbook |
 | PQ-18 | ⬜ planned | Symbols by command, not by writing into a workspace | M | excel-symbols.md | user picks where; we point the PQ setting at it |
+| PQ-19 | ⬜ planned | CI: macOS cannot launch VS Code for the test suite | M | — | ENOENT on Electron; every CI run has failed for a year |
 
 ## Working Rules
 
