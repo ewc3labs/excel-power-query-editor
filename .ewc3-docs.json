@@ -1,0 +1,65 @@
+{
+  "include": [
+    "README.md",
+    "SUPPORT.md",
+    "docs/**.md"
+  ],
+  "exclude": [
+    "docs/Config_Reference.md"
+  ],
+  "values": {
+    "tests": {
+      "fromJson": {
+        "file": "test-counts.json",
+        "path": "total"
+      }
+    },
+    "version": {
+      "fromJson": {
+        "file": "package.json",
+        "path": "version"
+      }
+    },
+    "commands": {
+      "countJson": {
+        "file": "package.json",
+        "path": "contributes.commands"
+      }
+    },
+    "settings": {
+      "countJson": {
+        "file": "package.json",
+        "path": "contributes.configuration.properties"
+      }
+    },
+    "vscodeMin": {
+      "fromJson": {
+        "file": "package.json",
+        "path": "engines.vscode"
+      }
+    },
+    "badgeTests": {
+      "template": {
+        "text": "\n[tests]: https://img.shields.io/badge/tests-${tests}-brightgreen.svg\n"
+      }
+    },
+    "badgeVersion": {
+      "template": {
+        "text": "\n  <img alt=\"Version\" src=\"https://img.shields.io/badge/Version-${version}-brightgreen.svg\">\n"
+      }
+    },
+    "badgeTestsHtml": {
+      "template": {
+        "text": "\n  <img alt=\"Tests\" src=\"https://img.shields.io/badge/tests-${tests}-brightgreen.svg\">\n"
+      }
+    },
+    "testsNeedingExcel": {
+      "countMatches": {
+        "files": [
+          "test/liveSync.integration.test.ts"
+        ],
+        "pattern": "^\\s*(test|it)\\("
+      }
+    }
+  }
+}

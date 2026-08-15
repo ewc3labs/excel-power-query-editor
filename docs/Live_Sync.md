@@ -2,7 +2,8 @@
 
 Writing Power Query into a workbook Excel already has open.
 
-**Windows and Excel only. Off by default. Beta** — see [What has not been tried](#what-has-not-been-tried).
+**Windows and Excel only. Off by default. Beta** — see [What has not been
+tried](#what-has-not-been-tried).
 
 ## The problem it removes
 
@@ -10,8 +11,8 @@ Excel holds an open workbook with an exclusive write lock. Editing a `.m` file a
 workbook is open used to produce *"the file is locked, close Excel and try again"* — so you closed
 the workbook, synced, reopened it, found your place again, and lost your thread.
 
-Live sync does not fight the lock. It asks Excel to make the change through Excel's own object model,
-so the file on disk is never touched.
+Live sync does not fight the lock. It asks Excel to make the change through Excel's own object
+model, so the file on disk is never touched.
 
 ## Turning it on
 
@@ -31,8 +32,8 @@ There is nothing else to configure and no mode to remember being in.
 
 ## What happens when it works
 
-The queries in the open workbook are updated in place, and **Excel shows unsaved changes** — the same
-state as if you had typed the edit yourself. You save when you are ready, in Excel.
+The queries in the open workbook are updated in place, and **Excel shows unsaved changes** — the
+same state as if you had typed the edit yourself. You save when you are ready, in Excel.
 
 That is the part worth internalizing: **your file on disk has not changed.** If you close the
 workbook without saving, the edit is gone from Excel and still present in your `.m` file.
@@ -41,8 +42,8 @@ Three behaviors worth knowing:
 
 - **Queries you did not touch are left alone.** A query whose M is already identical is not
   rewritten, so the workbook is not marked as modified for no reason.
-- **A query in the workbook that is not in your `.m` file is reported, never deleted.** The log names
-  it. Nothing is removed.
+- **A query in the workbook that is not in your `.m` file is reported, never deleted.** The log
+  names it. Nothing is removed.
 - **New queries are added.** A `shared` binding with no matching query creates one.
 
 ## What it handles
@@ -65,8 +66,8 @@ Untested, not known-broken:
 Protected View · workbooks opened from a web link · co-authored files with AutoSave · `excel.exe /x`
 · environments where group policy restricts automation · Office update channels other than Current.
 
-The worst plausible failure is that live sync declines and the normal file path takes over — which is
-what would have happened anyway. It cannot corrupt a workbook, because it never writes one.
+The worst plausible failure is that live sync declines and the normal file path takes over — which
+is what would have happened anyway. It cannot corrupt a workbook, because it never writes one.
 
 ## When it does not work
 
@@ -91,8 +92,7 @@ That single line says which branch was taken and why. Common answers:
 | `Excel is running but this workbook is not visible` | usually VS Code and Excel at different elevation levels — COM hides running objects across integrity levels. Run both normally |
 | `Workbook is not open in Excel` | the workbook really is not open. Check you are syncing the `.m` that matches the workbook you have open |
 
-If it is none of those,
-[open an issue](https://github.com/ewc3labs/excel-power-query-editor/issues) with that line.
+If it is none of those, [open an issue][open-an-issue] with that line.
 
 ## How it works
 
@@ -101,4 +101,7 @@ query's `Formula` property — the M — is readable and writable. A helper scri
 running Excel, finds the workbook, and sets the formulas.
 
 The design, including the approaches that were rejected and why, is in
-[design/live-sync-to-open-excel.md](design/live-sync-to-open-excel.md).
+[design/live-sync-to-open-excel.md][design-live-sync-to].
+
+[design-live-sync-to]: design/live-sync-to-open-excel.md
+[open-an-issue]: https://github.com/ewc3labs/excel-power-query-editor/issues

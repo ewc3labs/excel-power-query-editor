@@ -11,7 +11,8 @@
     <p align="left">
       <b>Edit Power Query M code directly from Excel files in VS Code. No Excel needed. No BS. It Just Works™.</b><br>
       <sub>
-        Built by <strong>EWC3 Labs</strong> — where we rage-build the tools everyone needs, but nobody <del>cares to build</del>
+        Built by <strong>EWC3 Labs</strong> — where we rage-build the tools everyone needs, but
+        nobody <del>cares to build</del>
         <em>is deranged enough to spend days perfecting until it actually works right.</em>
       </sub>
     </p>
@@ -127,8 +128,8 @@ ready.
 There is no mode to remember being in and nothing else to configure.
 
 Windows and Excel only, and currently beta — Excel varies wildly in the wild. The full picture,
-including what has not been tried and how to read the log when it declines, is in
-[Live Sync](Live_Sync.md).
+including what has not been tried and how to read the log when it declines, is in [Live
+Sync](Live_Sync.md).
 
 ## 🛠️ Advanced Features & Configuration
 

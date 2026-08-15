@@ -30,8 +30,9 @@ manager. That is deliberate — a backup that needs the tool that made it is not
 | `custom` | wherever `backup.customPath` points |
 
 `sameFolder` keeps the backup next to the thing it protects, which is where you will look for it.
-Choose `tempFolder` if the workbook lives somewhere that syncs — OneDrive and SharePoint will happily
-upload every backup you make, and version-control users generally do not want them in the diff.
+Choose `tempFolder` if the workbook lives somewhere that syncs — OneDrive and SharePoint will
+happily upload every backup you make, and version-control users generally do not want them in the
+diff.
 
 `custom` takes an absolute path, or one relative to the workspace root:
 

@@ -9,7 +9,8 @@ A modern, reliable VS Code extension for editing Power Query M code directly fro
 
 **Welcome to the most professional VS Code extension development environment you'll ever see!**
 
-Thanks for your interest in contributing! This project has achieved **enterprise-grade quality** with 63 comprehensive tests, cross-platform CI/CD, and a world-class development experience.
+Thanks for your interest in contributing! This project has achieved **enterprise-grade quality**
+with 63 comprehensive tests, cross-platform CI/CD, and a world-class development experience.
 
 ## 📋 Table of Contents
 
@@ -28,7 +29,8 @@ Thanks for your interest in contributing! This project has achieved **enterprise
 - [🔍 Debug & Troubleshooting](#-debug--troubleshooting)
 - [🏆 Recognition & Credits](#-recognition--credits)
 
-**Want to jump to a specific section?** Use the GitHub-style anchors above or bookmark specific sections like `#testing` or `#release-automation`.
+**Want to jump to a specific section?** Use the GitHub-style anchors above or bookmark specific
+sections like `#testing` or `#release-automation`.
 
 ---
 
@@ -44,10 +46,12 @@ Thanks for your interest in contributing! This project has achieved **enterprise
 
 **Release Workflow:**
 
-- Push to `release/v0.5.0` branch triggers automatic pre-release builds
-- Push to `main` creates stable releases (when marketplace is configured)
-- Manual tags `v*` trigger official marketplace releases
-- Every release includes auto-generated changelog from git commit messages
+- **Releases are triggered by a tag, and only by a tag.** Pushing `v0.6.0` builds, packages, and
+  creates a DRAFT GitHub release. Branch pushes do not release anything.
+- A tag with a suffix (`v0.6.0-rc.1`) is a prerelease; a plain `v0.6.0` is not.
+- **Marketplace publishing is off** and cannot happen by accident - see
+  [PUBLISHING_GUIDE](PUBLISHING_GUIDE.md).
+- Careful with `npm version`: it creates a tag, and pushing that tag now fires the release pipeline.
 
 **CI/CD Monitoring:**
 
@@ -66,9 +70,17 @@ Thanks for your interest in contributing! This project has achieved **enterprise
 
 ---
 
-**Want to improve this guide?** PRs are always welcome — we keep this living document current and useful.
+**Want to improve this guide?** PRs are always welcome — we keep this living document current and
+useful.
 
-🔥 **Wilson's Note:** This is my first extension, first public repo, first devcontainer (first time even using Docker), first automated test suite, and first time using Git Bash — so I'm drinking from the firehose here and often learning as I go. That said, I **do** know how this stuff should work, and EWC3 Labs is about building it right. Our goal is an enterprise-grade DX platform for VS Code extension development. We went from manual builds to automated releases with smart versioning, multi-channel distribution, and real-time monitoring. It's modular, CI-tested, scriptable, and optimized for contributors. If you're reading this — welcome to the automation party. **From a simple commit/push to professional releases. Shit works when you work it.**
+🔥 **Wilson's Note:** This is my first extension, first public repo, first devcontainer (first time
+even using Docker), first automated test suite, and first time using Git Bash — so I'm drinking from
+the firehose here and often learning as I go. That said, I **do** know how this stuff should work,
+and EWC3 Labs is about building it right. Our goal is an enterprise-grade DX platform for VS Code
+extension development. We went from manual builds to automated releases with smart versioning,
+multi-channel distribution, and real-time monitoring. It's modular, CI-tested, scriptable, and
+optimized for contributors. If you're reading this — welcome to the automation party. **From a
+simple commit/push to professional releases. Shit works when you work it.**
 
 ---
 
@@ -134,7 +146,8 @@ cd excel-power-query-editor
 npm install
 ```
 
-Optional: use Git Bash as your default terminal for POSIX parity with Linux/macOS. This repo is fully devcontainer-compatible out of the box.
+Optional: use Git Bash as your default terminal for POSIX parity with Linux/macOS. This repo is
+fully devcontainer-compatible out of the box.
 
 > You can run everything without the container too, but it's the easiest way to mirror the CI pipeline.
 
@@ -335,6 +348,12 @@ gh pr list
 | `npm run test`         | Run test suite via `vscode-test`                |
 | `npm run watch`        | Watch build and test                            |
 | `npm run check-types`  | TypeScript compile check (no emit)              |
+| `npm run docs:fix`     | Fix everything fixable: regenerate the config reference, reformat, refresh values |
+| `npm run docs:check`   | **What CI runs.** Fails on anything `docs:fix` would change |
+| `npm run docs:config`  | Regenerate `docs/Config_Reference.md` from `package.json` |
+| `npm run docs:format`  | Rewrap prose so a source line is as wide as it renders |
+| `npm run docs:values`  | Refresh computed numbers between `<!--ewc3:name-->` markers |
+| `npm run docs:links`   | Dead links, wrong case, undefined references, orphaned documents |
 | `npm run bump-version` | **EWC3 Custom:** Analyze git commits and suggest semantic version |
 | `npm version patch/minor/major` | **NPM Native:** Immediate version bump + git commit + git tag |
 
@@ -357,9 +376,11 @@ npm run bump-version 0.6.0
 
 **When to Use Which:**
 
-- **`npm version`** - When you want to **immediately release** with git commit + tag
-- **`npm run bump-version`** - When you want to **preview/analyze** what the next version should be
-- **GitHub Actions** - Uses our script for **automated releases** from branch pushes
+- **`npm version`** - bumps, commits, AND TAGS. Pushing that tag now fires the release pipeline, so
+  this is no longer a quiet local operation.
+- **`npm run bump-version`** - sets the version in `package.json` and does nothing else. Use this
+  when you want the number changed without git touching anything.
+- **GitHub Actions** does not bump versions. The tag is the source of truth for what is released.
 
 **Manual Version Control (Native NPM):**
 ```bash
@@ -377,12 +398,43 @@ npm version preminor    # 0.5.0 → 0.6.0-0 + git commit + git tag
 npm version patch --dry-run
 ```
 
-> 🧠 **Smart Tip:** 
-> - **For preview:** Use `npm run bump-version` to see what version our script suggests
-> - **For immediate release:** Use `npm version patch/minor/major` to bump + commit + tag in one step  
-> - **For automation:** GitHub Actions uses our custom script for branch-based releases
+> 🧠 **Smart Tip:**
+> - **To change the number only:** `npm run bump-version` - no commit, no tag, nothing fires.
+> - **To release:** `npm version patch/minor/major`, then push the tag deliberately.
+> - **Remember:** the tag is what releases. Do not push one you did not mean to.
 
 </details>
+
+## Documentation tooling
+
+Documentation checks run in CI and **will fail your PR**, so it is worth knowing what they are
+before they surprise you.
+
+Most of the work is done by [@ewc3labs/docs-tools][docs-tools], which is a **devDependency** - `npm
+ci` already installed it and there is nothing extra to set up. One command fixes everything fixable:
+
+```bash
+npm run docs:fix      # regenerate, reformat, refresh values
+npm run docs:check    # exactly what CI runs
+```
+
+**Is it required?** The *checks* are, because CI enforces them. The *tool* is simply how you satisfy
+them without doing it by hand - you are welcome to handroll wrapping and count things yourself, and
+CI will judge the result identically either way.
+
+**With one exception.** If a document uses value markers:
+
+```markdown
+Quality gates: ESLint, TypeScript, <!--ewc3:tests-->119<!--/ewc3:tests--> tests (<!--ewc3:testsNeedingExcel-->5<!--/ewc3:testsNeedingExcel--> of them need Excel and skip without it, on every platform including Windows CI)
+```
+
+then the toolkit is mandatory, because only it can refresh that number - and a stale one fails
+`docs:check`. That is the trade: the number cannot silently go wrong, and in exchange the thing that
+keeps it right has to be installed. If you would rather not take that trade in a document you are
+adding, do not use markers in it.
+
+New values are declared in `.ewc3-docs.json`. Feature docs are `Title_Case_With_Underscores.md`; the
+conventions are in [Overview](Overview.md).
 
 ## 🚀 CI/CD Pipeline - Professional Automation
 
@@ -392,8 +444,9 @@ npm version patch --dry-run
 **Cross-Platform Excellence:**
 
 - **Operating Systems**: Ubuntu, Windows, macOS
-- **Node.js Versions**: 18.x, 20.x
-- **Quality Gates**: ESLint, TypeScript, 63-test validation
+- **Node.js Versions**: 22, 24
+- **Quality Gates**: ESLint, TypeScript, <!--ewc3:tests-->119<!--/ewc3:tests--> tests
+  (<!--ewc3:testsNeedingExcel-->5<!--/ewc3:testsNeedingExcel--> need Excel), documentation checks
 - **Artifact Management**: VSIX packaging with 30-day retention
 
 <details>
@@ -414,14 +467,16 @@ npm version patch --dry-run
 > 💥 Failing lint/typecheck = blocked CI. No BS allowed.
 
 **Documentation Changes:**
-- Pushes that only modify `docs/**` or `*.md` files skip the release pipeline
-- CI still runs to validate documentation quality  
-- No version bumps or releases triggered for docs-only changes
+- `ci.yml` has `paths-ignore` for `**.md` and `docs/**`, so a docs-only push does NOT run the
+  six-leg test matrix
+- Documentation is checked by its own workflow instead, `.github/workflows/docs.yml`, which runs
+  ONLY on documentation changes - `npm run docs:check` and `npm run docs:links`
+- Nothing about a docs-only change can trigger a release
 
 **View CI/CD Status:**
 
-- [![CI/CD](https://github.com/ewc3labs/excel-power-query-editor/actions/workflows/ci.yml/badge.svg)](https://github.com/ewc3labs/excel-power-query-editor/actions/workflows/ci.yml)
-- [![Tests](https://img.shields.io/badge/tests-63%20passing-brightgreen.svg)](https://github.com/ewc3labs/excel-power-query-editor/actions/workflows/ci.yml)
+- [![CI/CD][ci-cd]](https://github.com/ewc3labs/excel-power-query-editor/actions/workflows/ci.yml)
+- [![Tests][tests]](https://github.com/ewc3labs/excel-power-query-editor/actions/workflows/ci.yml)
 
 </details>
 
@@ -430,22 +485,30 @@ npm version patch --dry-run
 
 > Configured in `.github/workflows/release.yml`
 
-### **What Happens on Every Push:**
-1. **🔍 Auto-detects release type** (dev/prerelease/stable)
-2. **🔢 Smart version bumping** in `package.json` using semantic versioning
-3. **⚡ Fast optimized build** (lint + type check, skips heavy integration tests)
-4. **📦 Professional VSIX generation** with proper naming conventions
-5. **🎉 Auto-creates GitHub release** with changelog, assets, and metadata
+### **What Happens on Every Tag:**
+1. **🔍 Classifies the tag** - a suffix means prerelease, plain `x.y.z` means stable
+2. **⚡ Build** - type check and lint
+3. **📦 VSIX generation**, then a check that the package contains what it must
+4. **📝 Creates a DRAFT GitHub release** with the `.vsix` attached
+5. **🚫 Marketplace publish is skipped** unless deliberately enabled
+
+Nothing here happens on a branch push. The previous pipeline was triggered by CI finishing, via
+`workflow_run`, which executes in the DEFAULT BRANCH context - so its `refs/tags/v*` conditions were
+unreachable and it silently released nothing for a year. Tag-triggered is the fix.
 
 ### **Release Channels:**
-| Branch/Trigger | Release Type | Version Format | Auto-Publish |
-|----------------|--------------|----------------|--------------|
-| `release/**`   | Pre-release  | `v0.5.0-rc.X`  | GitHub only  |
-| `main`         | Stable       | `v0.5.0`       | GitHub + Marketplace* |
-| Manual tag `v*`| Official     | `v0.5.0`       | GitHub + Marketplace* |
-| Workflow dispatch | Emergency  | Custom         | Configurable |
+| Trigger | Release Type | Version Format | Result |
+|---------|--------------|----------------|--------|
+| tag `v0.6.0-rc.1` | Prerelease | `0.6.0` in the manifest | Draft prerelease |
+| tag `v0.6.0` | Stable | `0.6.0` | Draft release |
+| Workflow dispatch | Either | Custom | Draft, or publish if explicitly requested |
 
-*Marketplace publishing requires `VSCE_PAT` secret
+**Marketplace publishing requires a stable tag AND the repository variable `MARKETPLACE_PUBLISH` set
+to `enabled` AND a `VSCE_PAT` secret.** None of the last two exist, so the pipeline is currently
+incapable of publishing - which is what makes it safe to test with real tags.
+
+`vsce` rejects a prerelease suffix in the manifest, so `v0.6.0-rc.1` packages as version `0.6.0`.
+The tag keeps the full name; the `.vsix` inside cannot.
 
 ### **Monitoring Your Releases:**
 ```bash
@@ -468,7 +531,7 @@ gh release view v0.5.0-rc.3
 ### **Smart Version Bumping:**
 Our `scripts/bump-version.js` analyzes git commits using conventional commit patterns:
 - `feat:` → Minor version bump
-- `fix:` → Patch version bump  
+- `fix:` → Patch version bump
 - `BREAKING:` → Major version bump
 - Pre-release builds auto-increment: `rc.1`, `rc.2`, `rc.3`...
 
@@ -900,10 +963,11 @@ Brief description of changes
 
 ---
 
-**Thank you for contributing to Excel Power Query Editor!**  
-**Together, we're building the gold standard for Power Query development in VS Code.**
+**Thank you for contributing to Excel Power Query Editor!** **Together, we're building the gold
+standard for Power Query development in VS Code.**
 
-🔥 **Wilson's Note:** This platform is now CI-tested, Docker-ready, GitHub-integrated, and script-powered. First release or fiftieth — this guide's got you covered.
+🔥 **Wilson's Note:** This platform is now CI-tested, Docker-ready, GitHub-integrated, and
+script-powered. First release or fiftieth — this guide's got you covered.
 
 ---
 
@@ -913,3 +977,10 @@ Brief description of changes
 </p>
 
 **Excel Power Query Editor** – _Because Power Query development shouldn’t be painful._
+
+<!--ewc3:badgeTests-->
+[tests]: https://img.shields.io/badge/tests-119-brightgreen.svg
+<!--/ewc3:badgeTests-->
+
+[ci-cd]: https://github.com/ewc3labs/excel-power-query-editor/actions/workflows/ci.yml/badge.svg
+[docs-tools]: https://github.com/ewc3labs/ewc3-docs-tools

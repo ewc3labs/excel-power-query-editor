@@ -7,10 +7,11 @@ the newest build lives - not just betas. See [Installation](Installation.md) for
 
 ## 🚀 Quick Install
 
-[![Latest Pre-release](https://img.shields.io/github/v/release/ewc3labs/excel-power-query-editor?include_prereleases&label=latest%20beta)](https://github.com/ewc3labs/excel-power-query-editor/releases)
+[![Latest
+Pre-release][latest-pre-release]](https://github.com/ewc3labs/excel-power-query-editor/releases)
 
 **Reliable method:**
-1. Go to [Releases](https://github.com/ewc3labs/excel-power-query-editor/releases)
+1. Go to [Releases][releases]
 2. Download the latest `.vsix` file from a "Pre-release" entry
 3. Install: `code --install-extension excel-power-query-editor-*.vsix`
 
@@ -43,14 +44,14 @@ fi
 
 Beta releases include:
 - 🆕 **New Features** - Latest functionality before marketplace release
-- 🐛 **Bug Fixes** - Immediate fixes for reported issues  
+- 🐛 **Bug Fixes** - Immediate fixes for reported issues
 - ⚡ **Performance Improvements** - Speed and reliability enhancements
 - 🧪 **Experimental Features** - Try cutting-edge capabilities
 
 ## ⚠️ Beta Considerations
 
 - **Stability:** Generally stable, but may have occasional issues
-- **Feedback:** Please [report any bugs](https://github.com/ewc3labs/excel-power-query-editor/issues/new) you find!
+- **Feedback:** Please [report any bugs][report-any-bugs] you find!
 - **Updates:** New betas released automatically when code is pushed
 - **Rollback:** Keep stable version handy in case you need to revert
 
@@ -62,10 +63,10 @@ Beta releases include:
 
 ## 📞 Support
 
-Having issues with a beta? 
-- [📋 Check existing issues](https://github.com/ewc3labs/excel-power-query-editor/issues)
-- [🆕 Report new bugs](https://github.com/ewc3labs/excel-power-query-editor/issues/new)
-- [💬 Discussion forum](https://github.com/ewc3labs/excel-power-query-editor/discussions)
+Having issues with a beta?
+- [📋 Check existing issues][check-existing]
+- [🆕 Report new bugs][report-any-bugs]
+- [💬 Discussion forum][discussion-forum]
 
 ---
 
@@ -77,3 +78,9 @@ Having issues with a beta?
 ---
 
 **Happy testing!** 🧪✨
+
+[check-existing]: https://github.com/ewc3labs/excel-power-query-editor/issues
+[discussion-forum]: https://github.com/ewc3labs/excel-power-query-editor/discussions
+[latest-pre-release]: https://img.shields.io/github/v/release/ewc3labs/excel-power-query-editor?include_prereleases&label=latest%20beta
+[releases]: https://github.com/ewc3labs/excel-power-query-editor/releases
+[report-any-bugs]: https://github.com/ewc3labs/excel-power-query-editor/issues/new

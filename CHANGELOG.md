@@ -49,6 +49,26 @@ All notable changes to the "excel-power-query-editor" extension will be document
 - Logging uses a VS Code `LogOutputChannel`, so verbosity follows **Developer: Set Log Level…** and
   the log is persisted by VS Code with its own.
 - One README, used by both the repository and the Marketplace listing.
+- **The documentation was reorganized**, following [Klipper][klipper]'s model: flat files, one
+  document per feature, and references that enumerate everything. New: `Overview`, `Installation`,
+  `FAQ`, `Commands`, `Live_Sync`, `Watch_Mode`, `Backups`, `Excel_Symbols`, `Config_Reference` and
+  `Config_Changes`. `USER_GUIDE.md` is now `User_Guide.md`; `CONFIGURATION.md` was replaced by the
+  generated `Config_Reference.md`, with renamed settings moved to `Config_Changes.md`; the release
+  summary was retired in favor of this file. **A bookmark to an old filename will not resolve** —
+  start at [docs/Overview.md](docs/Overview.md).
+- `Config_Reference.md` is now generated from `package.json`, and CI fails if the two disagree, so a
+  setting cannot be added without appearing in the reference.
+
+### Internal
+
+- Documentation is checked in CI by [@ewc3labs/docs-tools][docs-tools], a small public toolkit split
+  out of this repository: prose wrapped to render width, links verified (including their **case**,
+  which Windows and macOS resolve happily and GitHub does not), and computed numbers refreshed from
+  what they count. `npm run docs:fix` does the work; `npm run docs:check` is what CI runs. See
+  [CONTRIBUTING](docs/CONTRIBUTING.md).
+- The release pipeline is triggered by the tag rather than by CI completing. The previous one used
+  `workflow_run`, which executes in the default branch context, so its `refs/tags/v*` conditions were
+  unreachable and it silently released nothing after 2025-07-21.
 
 ### Fixed
 
@@ -212,3 +232,6 @@ All notable changes to the "excel-power-query-editor" extension will be document
 - **File watching**: Auto-sync .m files to Excel when changes detected
 - **Cross-platform**: No COM dependencies, works on Windows, macOS, Linux
 - **Backup system**: Automatic backups before sync operations
+
+[docs-tools]: https://github.com/ewc3labs/ewc3-docs-tools
+[klipper]: https://github.com/Klipper3d/klipper

@@ -13,8 +13,8 @@ Dates are approximate, newest first.
 **20260815 — every setting moved into a namespace.**
 
 Thirteen settings were renamed. **Your existing values are migrated automatically the first time
-0.6.0 starts**, in whichever scope you set them: user, workspace, or folder. A value you have already
-set under the new name is never overwritten.
+0.6.0 starts**, in whichever scope you set them: user, workspace, or folder. A value you have
+already set under the new name is never overwritten.
 
 | Old | New |
 | --- | --- |
@@ -51,7 +51,7 @@ Query extension directly through its API.
 
 Nothing is written and no other extension's settings are modified. If you have an old
 `.vscode/excel-pq-symbols/` folder, or an entry pointing at one in
-`powerquery.client.additionalSymbolsDirectories`, **both are now unused and can be deleted**. Neither
-does any harm if left.
+`powerquery.client.additionalSymbolsDirectories`, **both are now unused and can be deleted**.
+Neither does any harm if left.
 
 See [Excel Symbols](Excel_Symbols.md).

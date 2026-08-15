@@ -459,10 +459,17 @@
     "lint": "eslint src",
     "test": "vscode-test",
     "docs:config": "node scripts/generate-config-reference.js",
-    "docs:check": "node scripts/generate-config-reference.js --check",
-    "docs:links": "node scripts/check-doc-links.js"
+    "docs:config:check": "node scripts/generate-config-reference.js --check",
+    "docs:format": "ewc3-docs format",
+    "docs:links": "ewc3-docs links",
+    "docs:values": "ewc3-docs values",
+    "docs:fix": "npm run docs:config && ewc3-docs format && ewc3-docs values",
+    "docs:check": "npm run docs:config:check && ewc3-docs check",
+    "test:counts": "node scripts/record-test-counts.js",
+    "test:counts:check": "node scripts/record-test-counts.js --check"
   },
   "devDependencies": {
+    "@ewc3labs/docs-tools": "github:ewc3labs/ewc3-docs-tools",
     "@types/mocha": "^10.0.10",
     "@types/node": "^20.19.1",
     "@types/vscode": "^1.101.0",

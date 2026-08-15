@@ -99,7 +99,7 @@ The two write paths currently disagree about deletion, and nobody chose that. Se
 | PQ-29 | ✅ done | USER_GUIDE.md has no mention of live sync | S | [Live_Sync](../Live_Sync.md) | feature doc written; User_Guide now carries a section pointing into it |
 | PQ-30 | ✅ done | Retire the RELEASE_SUMMARY pattern | S | — | removed; CHANGELOG and the release body are the two homes |
 | PQ-32 | ✅ done | docs: link and orphan checking in CI | S | [Overview](../Overview.md) | `npm run docs:links` found 11 dead links and 1 unreachable doc on its first run |
-| PQ-31 | ⬜ planned | bump-version: drop commit analysis, sync the README badge | S | — | keep it — `npm version` auto-tags, which now FIRES A RELEASE |
+| PQ-31 | 🟡 partial | bump-version: drop commit analysis, sync the README badge | S | [PUBLISHING_GUIDE](../PUBLISHING_GUIDE.md) | badge sync DONE by docs-tools `values`; commit analysis still there, and the `npm version` tag hazard is now documented rather than fixed |
 
 ### Data safety — the thing that must never break
 
