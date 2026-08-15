@@ -457,7 +457,7 @@
     "pretest": "npm run compile-tests && npm run compile && npm run lint",
     "check-types": "tsc --noEmit",
     "lint": "eslint src",
-    "test": "vscode-test",
+    "test": "node scripts/record-test-counts.js",
     "docs:config": "node scripts/generate-config-reference.js",
     "docs:config:check": "node scripts/generate-config-reference.js --check",
     "docs:format": "ewc3-docs format",
@@ -465,8 +465,7 @@
     "docs:values": "ewc3-docs values",
     "docs:fix": "npm run docs:config && ewc3-docs format && ewc3-docs values",
     "docs:check": "npm run docs:config:check && ewc3-docs check",
-    "test:counts": "node scripts/record-test-counts.js",
-    "test:counts:check": "node scripts/record-test-counts.js --check"
+    "test:raw": "vscode-test"
   },
   "devDependencies": {
     "@ewc3labs/docs-tools": "github:ewc3labs/ewc3-docs-tools",

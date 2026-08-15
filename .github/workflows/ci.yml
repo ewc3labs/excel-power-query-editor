@@ -74,12 +74,6 @@ jobs:
         run: npm run docs:check
         continue-on-error: false
 
-      # The recorded test total feeds the documentation. Verify it against a real run, or adding a
-      # test silently leaves the docs claiming the old number.
-      - name: Recorded test count is current
-        if: matrix.os == 'ubuntu-latest' && matrix.node-version == '24'
-        run: npm run test:counts:check
-        continue-on-error: false
 
       - name: Run tests
         uses: coactions/setup-xvfb@v1
@@ -87,6 +81,13 @@ jobs:
           run: npm test
         env:
           CI: true
+        continue-on-error: false
+
+      # `npm test` records the suite's size into test-counts.json, which the documentation reads.
+      # If running the tests changed it, the committed number was stale.
+      - name: Recorded test count is current
+        if: matrix.os == 'ubuntu-latest' && matrix.node-version == '24'
+        run: git diff --exit-code test-counts.json
         continue-on-error: false
 
       - name: Build extension
