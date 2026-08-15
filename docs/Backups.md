@@ -61,11 +61,21 @@ Be aware of what that means: workbooks are not small, and nothing will ever remo
 
 ## When no backup is taken
 
-- **Live sync.** [Live Sync](Live_Sync.md) never writes the file on disk — it asks Excel to change
-  the queries in memory. There is nothing to back up, because nothing on disk is touched. Your
-  protection there is Excel's own unsaved-changes state: close without saving and the edit is gone.
 - **Extraction.** Reading a workbook cannot damage it.
 - **`backup.autoBackupBeforeSync` set to `false`.** Then you have said you do not want them.
+
+## Live sync still takes one
+
+[Live Sync](Live_Sync.md) does not write the file on disk, so it is tempting to think a backup is
+pointless. **A backup is taken anyway, deliberately.**
+
+A live write leaves the workbook open and modified in Excel. The moment you press save - which is
+the whole point of the feature - Excel writes over the file on disk. If that is the first time the
+file has changed since you started editing, the version you had is gone and nothing preserved it.
+
+So the backup protects the on-disk state you may be about to overwrite from inside Excel, not the
+write the extension performs. You will see backup files and retention cleanup during live sync, and
+that is correct.
 
 ## Turning it off
 

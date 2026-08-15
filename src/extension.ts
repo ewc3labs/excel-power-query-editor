@@ -1897,13 +1897,20 @@ const LEGACY_RENAMES: ReadonlyArray<readonly [string, string]> = [
 
 type ScopeField = 'globalValue' | 'workspaceValue' | 'workspaceFolderValue';
 
-/** Move one scope's worth of settings. Returns how many values were carried across. */
+/**
+ * Move one scope's worth of settings.
+ *
+ * Returns both counts. `failed` matters as much as `moved`: the caller must not stamp a scope as
+ * migrated when a key failed, or that key is skipped forever on every later activation and the
+ * user's value is stranded under a name nothing reads.
+ */
 async function migrateScope(
 	config: vscode.WorkspaceConfiguration,
 	target: vscode.ConfigurationTarget,
 	field: ScopeField
-): Promise<number> {
+): Promise<{ moved: number; failed: number }> {
 	let moved = 0;
+	let failed = 0;
 
 	for (const [oldKey, newKey] of LEGACY_RENAMES) {
 		const oldInfo = config.inspect(oldKey);
@@ -1925,13 +1932,15 @@ async function migrateScope(
 
 			await config.update(oldKey, undefined, target);
 		} catch (error) {
-			// One bad key must not strand the others.
+			// One bad key must not strand the others - but it must be remembered, so this scope is
+			// left unmarked and tried again next time.
+			failed++;
 			log(`Could not migrate ${oldKey} (${field}): ${error}`, 'settingsMigration', 'warn');
 		}
 	}
 
-	moved += await migrateLogFlags(config, target, field);
-	return moved;
+	const flags = await migrateLogFlags(config, target, field);
+	return { moved: moved + flags.moved, failed: failed + flags.failed };
 }
 
 /**
@@ -1942,7 +1951,7 @@ async function migrateLogFlags(
 	config: vscode.WorkspaceConfiguration,
 	target: vscode.ConfigurationTarget,
 	field: ScopeField
-): Promise<number> {
+): Promise<{ moved: number; failed: number }> {
 	const read = (key: string): unknown => {
 		const info = config.inspect(key);
 		return info ? (info as Record<string, unknown>)[field] : undefined;
@@ -1950,9 +1959,10 @@ async function migrateLogFlags(
 
 	const debugMode = read('debugMode');
 	const verboseMode = read('verboseMode');
-	if (debugMode === undefined && verboseMode === undefined) { return 0; }
+	if (debugMode === undefined && verboseMode === undefined) { return { moved: 0, failed: 0 }; }
 
 	let moved = 0;
+	let failed = 0;
 	try {
 		if (read('log.level') === undefined) {
 			const level = debugMode === true ? 'debug' : verboseMode === true ? 'verbose' : undefined;
@@ -1966,9 +1976,10 @@ async function migrateLogFlags(
 		if (debugMode !== undefined) { await config.update('debugMode', undefined, target); }
 		if (verboseMode !== undefined) { await config.update('verboseMode', undefined, target); }
 	} catch (error) {
+		failed++;
 		log(`Could not migrate log flags (${field}): ${error}`, 'settingsMigration', 'warn');
 	}
-	return moved;
+	return { moved, failed };
 }
 
 /**
@@ -2010,18 +2021,22 @@ export async function migrateLegacySettings(): Promise<void> {
 		let moved = 0;
 
 		if (needed.global) {
-			moved += await migrateScope(root, vscode.ConfigurationTarget.Global, 'globalValue');
-			// User scope is ours to write; marking it always is harmless and saves the rescan.
-			await root.update(MARKER, SETTINGS_MIGRATION_SCHEMA, vscode.ConfigurationTarget.Global);
+			const result = await migrateScope(root, vscode.ConfigurationTarget.Global, 'globalValue');
+			moved += result.moved;
+			// Mark only a scope that fully succeeded. Stamping it after a per-key failure means that
+			// key is never retried, and the user's value stays under a name nothing reads.
+			if (result.failed === 0) {
+				await root.update(MARKER, SETTINGS_MIGRATION_SCHEMA, vscode.ConfigurationTarget.Global);
+			}
 		}
 
 		if (needed.workspace && vscode.workspace.workspaceFolders?.length) {
-			const workspaceMoved = await migrateScope(root, vscode.ConfigurationTarget.Workspace, 'workspaceValue');
-			moved += workspaceMoved;
-			// Only mark a workspace we actually changed. Writing a marker into someone's committed
-			// .vscode/settings.json for no reason puts our bookkeeping in their next git diff, and
-			// re-scanning a clean workspace costs a few inspect() calls.
-			if (workspaceMoved > 0) {
+			const result = await migrateScope(root, vscode.ConfigurationTarget.Workspace, 'workspaceValue');
+			moved += result.moved;
+			// Only mark a workspace we actually changed, and only if nothing failed. Writing a marker
+			// into someone's committed .vscode/settings.json for no reason puts our bookkeeping in
+			// their next git diff, and re-scanning a clean workspace costs a few inspect() calls.
+			if (result.moved > 0 && result.failed === 0) {
 				await root.update(MARKER, SETTINGS_MIGRATION_SCHEMA, vscode.ConfigurationTarget.Workspace);
 			}
 		}
@@ -2033,10 +2048,10 @@ export async function migrateLegacySettings(): Promise<void> {
 			const folderMarker = folderConfig.inspect(MARKER) as Record<string, unknown> | undefined;
 			if (folderMarker?.workspaceFolderValue === SETTINGS_MIGRATION_SCHEMA) { continue; }
 
-			const folderMoved = await migrateScope(
+			const result = await migrateScope(
 				folderConfig, vscode.ConfigurationTarget.WorkspaceFolder, 'workspaceFolderValue');
-			moved += folderMoved;
-			if (folderMoved > 0) {
+			moved += result.moved;
+			if (result.moved > 0 && result.failed === 0) {
 				await folderConfig.update(MARKER, SETTINGS_MIGRATION_SCHEMA, vscode.ConfigurationTarget.WorkspaceFolder);
 			}
 		}
