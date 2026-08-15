@@ -1,5 +1,9 @@
 name: CI Pipeline
 on:
+  # Manually runnable, because .github/** is in paths-ignore below - which means a change to CI
+  # cannot trigger CI. Without this there is no way to test a pipeline change except by making an
+  # unrelated source edit, which is how junk commits get made.
+  workflow_dispatch:
   push:
     branches: [main, release/**, wip/**, hotfix/**]
     tags:
