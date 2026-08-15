@@ -5,6 +5,7 @@ function openExtensionSettings() {
 // The module 'vscode' contains the VS Code extensibility API
 import * as vscode from 'vscode';
 import { parseSection, diffQueries } from './mSection';
+import { registerExcelSymbols, unregisterExcelSymbols, explainRegistration } from './powerQuerySymbols';
 import { getLiveStatus, writeLive, isLiveSyncSupported, explainInvisibleWorkbook } from './excelLive';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -350,8 +351,15 @@ export async function activate(context: vscode.ExtensionContext) {
 		// Auto-watch existing .m files if setting is enabled
 		await initializeAutoWatch();
 		
-		// Auto-install Excel symbols if enabled
-		await autoInstallSymbolsIfEnabled();
+		// Hand our Excel symbols to the Power Query language service. No file is written and no
+		// setting is changed, so there is nothing to gate behind a preference and nothing to
+		// fail when no workspace is open - which is what the old file-based version did on
+		// every CI run for a year.
+		const symbolResult = await registerExcelSymbols(context.extensionPath,
+			(m, l) => log(m, 'excelSymbols', l ?? 'info'));
+		if (!symbolResult.ok) {
+			log(`Excel symbols not registered: ${symbolResult.reason}`, 'excelSymbols', 'debug');
+		}
 		
 		log('Extension activation completed successfully', 'activate', 'success');
 	} catch (error) {
@@ -2088,161 +2096,28 @@ async function cleanupBackupsCommand(uri?: vscode.Uri): Promise<void> {
 
 // Install Excel Power Query symbols for IntelliSense
 async function installExcelSymbols(): Promise<void> {
-	try {
-		const config = getConfig();
-		const installLevel = config.get<string>('symbols.installLevel', 'workspace');
-		
-		if (installLevel === 'off') {
-			vscode.window.showInformationMessage('Excel symbols installation is disabled in settings.');
-			return;
-		}
-		
-		// Get the symbols file path from extension resources
-		const extensionPath = vscode.extensions.getExtension('ewc3labs.excel-power-query-editor')?.extensionPath;
-		if (!extensionPath) {
-			throw new Error('Could not determine extension path');
-		}
-		
-		const sourceSymbolsPath = path.join(extensionPath, 'resources', 'symbols', 'excel-pq-symbols.json');
-		
-		if (!fs.existsSync(sourceSymbolsPath)) {
-			throw new Error(`Excel symbols file not found at: ${sourceSymbolsPath}`);
-		}
-		
-		// Determine target paths based on install level
-		let targetScope: vscode.ConfigurationTarget;
-		let targetDir: string;
-		let scopeName: string;
-		
-		switch (installLevel) {
-			case 'user':
-				targetScope = vscode.ConfigurationTarget.Global;
-				// For user level, put in VS Code user directory
-				const userDataPath = process.env.APPDATA || process.env.HOME;
-				if (!userDataPath) {
-					throw new Error('Could not determine user data directory');
-				}
-				targetDir = path.join(userDataPath, 'Code', 'User', 'excel-pq-symbols');
-				scopeName = 'user (global)';
-				break;
-				
-			case 'folder':
-				targetScope = vscode.ConfigurationTarget.WorkspaceFolder;
-				const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
-				if (!workspaceFolder) {
-					throw new Error('No workspace folder is open');
-				}
-				targetDir = path.join(workspaceFolder.uri.fsPath, '.vscode', 'excel-pq-symbols');
-				scopeName = 'workspace folder';
-				break;
-				
-			case 'workspace':
-			default:
-				targetScope = vscode.ConfigurationTarget.Workspace;
-				if (!vscode.workspace.workspaceFolders?.length) {
-					throw new Error('No workspace is open. Open a folder or workspace first.');
-				}
-				targetDir = path.join(vscode.workspace.workspaceFolders[0].uri.fsPath, '.vscode', 'excel-pq-symbols');
-				scopeName = 'workspace';
-				break;
-		}
-		
-		// Create target directory if it doesn't exist
-		if (!fs.existsSync(targetDir)) {
-			fs.mkdirSync(targetDir, { recursive: true });
-			log(`Created symbols directory: ${targetDir}`, 'installExcelSymbols', 'info');
-		}
-		
-		// Copy symbols file FIRST and ensure it's completely written
-		const targetSymbolsPath = path.join(targetDir, 'excel-pq-symbols.json');
-		fs.copyFileSync(sourceSymbolsPath, targetSymbolsPath);
-		
-		// Verify the file was written correctly by reading it back
-		try {
-			const copiedContent = fs.readFileSync(targetSymbolsPath, 'utf8');
-			const parsed = JSON.parse(copiedContent);
-			if (!Array.isArray(parsed) || parsed.length === 0) {
-				throw new Error('Copied symbols file is invalid or empty');
-			}
-			log(`Verified Excel symbols file copied successfully: ${parsed.length} symbols`, 'installExcelSymbols', 'success');
-		} catch (verifyError) {
-			throw new Error(`Failed to verify copied symbols file: ${verifyError}`);
-		}
-		
-		// CRITICAL: Three-step update process to force immediate Power Query extension reload
-		// Step 1: Delete all existing Power Query symbols directory settings
-		const powerQueryConfig = vscode.workspace.getConfiguration('powerquery');
-		const existingDirs = powerQueryConfig.get<string[]>('client.additionalSymbolsDirectories', []);
-		
-		// Use forward slashes for cross-platform compatibility
-		const absoluteTargetDir = path.resolve(targetDir).replace(/\\/g, '/');
-		
-		log(`Step 1: Clearing existing Power Query symbols directories (${existingDirs.length} entries)`, 'installExcelSymbols', 'verbose');
-		await powerQueryConfig.update('client.additionalSymbolsDirectories', [], targetScope);
-		
-		// Step 2: Pause to allow the Power Query extension to process the removal
-		log(`Step 2: Pausing 1000ms for Power Query extension to reload...`, 'installExcelSymbols', 'verbose');
-		await new Promise(resolve => setTimeout(resolve, 1000));
-		
-		// Step 3: Reset with new settings (including our new directory)
-		const filteredDirs = existingDirs.filter(dir => dir !== absoluteTargetDir);
-		const updatedDirs = [...filteredDirs, absoluteTargetDir];
-		log(`Step 3: Restoring symbols directories with new Excel symbols: ${updatedDirs.length} total entries`, 'installExcelSymbols', 'verbose');
-		await powerQueryConfig.update('client.additionalSymbolsDirectories', updatedDirs, targetScope);
-		
-		log(`Power Query settings updated with delete/pause/reset sequence - Excel symbols should take immediate effect`, 'installExcelSymbols', 'info');
-		
-		// Show success message
-		vscode.window.showInformationMessage(
-			`✅ Excel Power Query symbols installed successfully!\n` +
-			`📁 Location: ${scopeName}\n` +
-			`🔧 IntelliSense for Excel.CurrentWorkbook() and other Excel-specific functions should now work in .m files.`
-		);
-		
-		log(`Excel symbols installation completed successfully in ${scopeName} scope`, 'installExcelSymbols', 'success');
-		
-	} catch (error) {
-		const errorMsg = `Failed to install Excel symbols: ${error}`;
-		vscode.window.showErrorMessage(errorMsg);
-		log(errorMsg, 'installExcelSymbols', 'error');
+	// Now a report rather than an install. The symbols are registered at activation through the
+	// Power Query extension's API; this command exists so a user can ask whether it worked, and
+	// retry if they installed the PQ extension after us.
+	const extensionPath = vscode.extensions
+		.getExtension('ewc3labs.excel-power-query-editor')?.extensionPath;
+
+	if (!extensionPath) {
+		vscode.window.showErrorMessage('Could not locate the extension directory.');
+		return;
+	}
+
+	const result = await registerExcelSymbols(extensionPath, (m, l) => log(m, 'excelSymbols', l ?? 'info'));
+	const message = explainRegistration(result);
+	log(message, 'excelSymbols', result.ok ? 'success' : 'warn');
+
+	if (result.ok) {
+		vscode.window.showInformationMessage(message);
+	} else {
+		vscode.window.showWarningMessage(message);
 	}
 }
 
-// Auto-install symbols on activation if enabled
-async function autoInstallSymbolsIfEnabled(): Promise<void> {
-	try {
-		const config = getConfig();
-		const autoInstall = config.get<boolean>('symbols.autoInstall', true);
-		const installLevel = config.get<string>('symbols.installLevel', 'workspace');
-		
-		if (!autoInstall || installLevel === 'off') {
-			log('Auto-install of Excel symbols is disabled', 'autoInstallExcelSymbols', 'verbose');
-			return;
-		}
-		
-		// Check if symbols are already installed
-		const powerQueryConfig = vscode.workspace.getConfiguration('powerquery');
-		const existingDirs = powerQueryConfig.get<string[]>('client.additionalSymbolsDirectories', []);
-		
-		// Check if any directory contains excel-pq-symbols.json
-		const hasExcelSymbols = existingDirs.some(dir => {
-			const symbolsPath = path.join(dir, 'excel-pq-symbols.json');
-			return fs.existsSync(symbolsPath);
-		});
-		
-		if (hasExcelSymbols) {
-			log('Excel symbols already installed, skipping auto-install', 'autoInstallExcelSymbols', 'verbose');
-			return;
-		}
-
-		log('Auto-installing Excel symbols...', 'autoInstallExcelSymbols', 'info');
-		await installExcelSymbols();
-		
-	} catch (error) {
-		log(`Auto-install of Excel symbols failed: ${error}`, 'autoInstallExcelSymbols', 'error');
-		// Don't show error to user for auto-install failures
-	}
-}
 
 // Debounced sync helper to prevent multiple syncs in rapid succession
 async function debouncedSyncToExcel(mFile: string): Promise<void> {
@@ -2337,6 +2212,9 @@ async function isExcelFileWritable(excelFile: string): Promise<boolean> {
 
 // This method is called when your extension is deactivated
 export function deactivate() {
+	// Take our symbols back out, so the language service is left as we found it.
+	void unregisterExcelSymbols();
+
 	// Close all file watchers
 	for (const [, watchers] of fileWatchers) {
 		watchers.chokidar.close();
