@@ -40,7 +40,7 @@ not a summary of them.
 
 | Series | Last Num | Series Description |
 | --- | --- | --- |
-| PQ | PQ-19 | Excel Power Query Editor slices and fixes |
+| PQ | PQ-21 | Excel Power Query Editor slices and fixes |
 
 `Last Num` is a cache over the Delivery Index, not a second source of truth — the IDs in the tables are
 authoritative. When minting, take the next number **and** confirm it is unused across every sub-table,
@@ -94,7 +94,9 @@ Excel serves external automation. See `design/live-sync-to-open-excel.md`.
 | PQ-10 | 🟨 coded | Converge on ONE README | S | — | merged, split files and swap scripts deleted; needs a read |
 | PQ-11 | 💨 proven | Research: does the PQ/M extension ship Excel symbols | S | excel-symbols.md | answered 2026-08-14 — it does NOT ship Excel.CurrentWorkbook |
 | PQ-18 | ⬜ planned | Symbols by command, not by writing into a workspace | M | excel-symbols.md | user picks where; we point the PQ setting at it |
-| PQ-19 | ⬜ planned | CI: macOS cannot launch VS Code for the test suite | M | — | ENOENT on Electron; every CI run has failed for a year |
+| PQ-19 | 🟨 coded | CI: get a real signal out of the matrix | M | — | fail-fast off + test timeout; windows-22 GREEN, first in a year |
+| PQ-20 | ⬜ planned | CI: macOS cannot launch VS Code at all | M | — | ENOENT on Electron, vscode-test on the ARM runner |
+| PQ-21 | ⬜ planned | CI: ubuntu fails, and PQ-18 is part of why | M | — | installExcelSymbols throws with no workspace, on every activation |
 
 ## Working Rules
 
