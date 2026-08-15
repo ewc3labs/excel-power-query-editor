@@ -1971,26 +1971,76 @@ async function migrateLogFlags(
 	return moved;
 }
 
+/**
+ * Which scopes still need migrating, given the migration marker's PER-SCOPE values.
+ *
+ * This has to be per scope, and getting it wrong is expensive. The marker is written to Global, but
+ * `get()` returns the EFFECTIVE value - global merged with workspace and folder. A guard reading
+ * `get('xtn.level')` therefore says "already migrated" in EVERY workspace as soon as the first one
+ * is done, so a second project with legacy settings in its own `.vscode/settings.json` is skipped
+ * forever. Nothing reads the old keys as a fallback, so those settings do not keep working - they
+ * silently stop applying and the defaults take over. Someone who set `backup.location` to
+ * `tempFolder` starts writing backups next to a workbook in their synced OneDrive folder instead.
+ *
+ * Exported so the decision table can be tested directly: the extension test host runs with no
+ * workspace folder open, so the workspace and folder paths cannot be exercised end to end.
+ */
+export function scopesNeedingMigration(
+	marker: { globalValue?: unknown; workspaceValue?: unknown; workspaceFolderValue?: unknown } | undefined,
+	schema: string
+): { global: boolean; workspace: boolean; folder: boolean } {
+	return {
+		global: marker?.globalValue !== schema,
+		workspace: marker?.workspaceValue !== schema,
+		folder: marker?.workspaceFolderValue !== schema
+	};
+}
+
 export async function migrateLegacySettings(): Promise<void> {
 	const extensionId = 'excel-power-query-editor';
+	const MARKER = 'xtn.level';
 
 	try {
 		const root = vscode.workspace.getConfiguration(extensionId);
-		if (root.get<string>('xtn.level', '') === SETTINGS_MIGRATION_SCHEMA) {
-			return;   // already done; do NOT re-run on every version bump
-		}
+		const needed = scopesNeedingMigration(
+			root.inspect(MARKER) as Record<string, unknown> | undefined,
+			SETTINGS_MIGRATION_SCHEMA
+		);
 
 		let moved = 0;
-		moved += await migrateScope(root, vscode.ConfigurationTarget.Global, 'globalValue');
-		moved += await migrateScope(root, vscode.ConfigurationTarget.Workspace, 'workspaceValue');
 
-		// Folder scope needs a folder-scoped configuration object to write to.
-		for (const folder of vscode.workspace.workspaceFolders ?? []) {
-			const folderConfig = vscode.workspace.getConfiguration(extensionId, folder.uri);
-			moved += await migrateScope(folderConfig, vscode.ConfigurationTarget.WorkspaceFolder, 'workspaceFolderValue');
+		if (needed.global) {
+			moved += await migrateScope(root, vscode.ConfigurationTarget.Global, 'globalValue');
+			// User scope is ours to write; marking it always is harmless and saves the rescan.
+			await root.update(MARKER, SETTINGS_MIGRATION_SCHEMA, vscode.ConfigurationTarget.Global);
 		}
 
-		await root.update('xtn.level', SETTINGS_MIGRATION_SCHEMA, vscode.ConfigurationTarget.Global);
+		if (needed.workspace && vscode.workspace.workspaceFolders?.length) {
+			const workspaceMoved = await migrateScope(root, vscode.ConfigurationTarget.Workspace, 'workspaceValue');
+			moved += workspaceMoved;
+			// Only mark a workspace we actually changed. Writing a marker into someone's committed
+			// .vscode/settings.json for no reason puts our bookkeeping in their next git diff, and
+			// re-scanning a clean workspace costs a few inspect() calls.
+			if (workspaceMoved > 0) {
+				await root.update(MARKER, SETTINGS_MIGRATION_SCHEMA, vscode.ConfigurationTarget.Workspace);
+			}
+		}
+
+		// Folder scope needs a folder-scoped configuration object to read and write through, and its
+		// own marker per folder - a multi-root workspace can have legacy settings in any of them.
+		for (const folder of vscode.workspace.workspaceFolders ?? []) {
+			const folderConfig = vscode.workspace.getConfiguration(extensionId, folder.uri);
+			const folderMarker = folderConfig.inspect(MARKER) as Record<string, unknown> | undefined;
+			if (folderMarker?.workspaceFolderValue === SETTINGS_MIGRATION_SCHEMA) { continue; }
+
+			const folderMoved = await migrateScope(
+				folderConfig, vscode.ConfigurationTarget.WorkspaceFolder, 'workspaceFolderValue');
+			moved += folderMoved;
+			if (folderMoved > 0) {
+				await folderConfig.update(MARKER, SETTINGS_MIGRATION_SCHEMA, vscode.ConfigurationTarget.WorkspaceFolder);
+			}
+		}
+
 		log(`Settings migration complete - ${moved} value(s) carried across (schema ${SETTINGS_MIGRATION_SCHEMA})`,
 			'settingsMigration', moved > 0 ? 'info' : 'debug');
 	} catch (error) {

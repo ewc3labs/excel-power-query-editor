@@ -1,0 +1,54 @@
+# Documentation checks.
+#
+# SEPARATE FROM CI ON PURPOSE. ci.yml has `paths-ignore: ['**.md', 'docs/**', ...]`, so a change that
+# touches only documentation does not trigger it - which is correct for a six-leg test matrix, and
+# exactly wrong for the docs checks, since it means they would never run on the commits they exist to
+# guard. Putting them here inverts the filter: this workflow runs ONLY on documentation changes.
+#
+# CI still runs the same two commands, so a change touching both code and docs is covered either way.
+
+name: Docs
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main, release/**, wip/**, hotfix/**]
+    paths:
+      - "**.md"
+      - "docs/**"
+      - "package.json"
+      - "scripts/generate-config-reference.js"
+      - ".ewc3-docs.json"
+      - ".github/workflows/docs.yml"
+  pull_request:
+    paths:
+      - "**.md"
+      - "docs/**"
+      - "package.json"
+      - "scripts/generate-config-reference.js"
+      - ".ewc3-docs.json"
+
+jobs:
+  docs:
+    name: Check documentation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      # Three things, all of which fail silently in real life:
+      #   - Config_Reference.md disagreeing with package.json
+      #   - prose that is not wrapped to render width, dead or wrong-case links, orphaned documents
+      #   - a computed number in the prose that no longer matches what it counts
+      #
+      # Everything except the config reference comes from @ewc3labs/docs-tools, which is a
+      # devDependency - so `npm ci` above already installed it and there is nothing extra to set up.
+      - name: Check documentation
+        run: npm run docs:check

@@ -35,8 +35,8 @@ Two routes, chosen per file:
 
 `excel-power-query-editor.syncAndDelete`
 
-Syncs, then deletes the `.m` file. For finishing with a query you extracted for one edit. Asks first,
-unless `sync.deleteAlwaysConfirm` is off.
+Syncs, then deletes the `.m` file. For finishing with a query you extracted for one edit. Asks
+first, unless `sync.deleteAlwaysConfirm` is off.
 
 ## Watching
 
@@ -67,9 +67,9 @@ Respects `backup.maxFiles`.
 
 `excel-power-query-editor.installExcelSymbols`
 
-Registers the Excel symbols with the Power Query language service and reports whether it worked. This
-happens automatically at startup, so the command is mainly useful if you installed the Power Query
-extension **after** this one and want to check. See [Excel Symbols](Excel_Symbols.md).
+Registers the Excel symbols with the Power Query language service and reports whether it worked.
+This happens automatically at startup, so the command is mainly useful if you installed the Power
+Query extension **after** this one and want to check. See [Excel Symbols](Excel_Symbols.md).
 
 ### Settings
 

@@ -28,8 +28,12 @@
 <!-- BADGES -->
 <p align="center">
   <img alt="License: MIT" src="https://img.shields.io/badge/License-MIT-yellow.svg">
+<!--ewc3:badgeVersion-->
   <img alt="Version" src="https://img.shields.io/badge/Version-0.6.0-brightgreen.svg">
-  <img alt="Tests" src="https://img.shields.io/badge/tests-115%20passing-brightgreen.svg">
+<!--/ewc3:badgeVersion-->
+<!--ewc3:badgeTestsHtml-->
+  <img alt="Tests" src="https://img.shields.io/badge/tests-119-brightgreen.svg">
+<!--/ewc3:badgeTestsHtml-->
   <a href="https://marketplace.visualstudio.com/items?itemName=ewc3labs.excel-power-query-editor"><img alt="VS Code Marketplace" src="https://img.shields.io/badge/VS_Code-Marketplace-blue.svg"></a>
   <a href="https://www.buymeacoffee.com/ewc3labs"><img alt="Buy Me a Coffee" src="https://img.shields.io/badge/Buy%20Me%20a%20Coffee-yellow?logo=buy-me-a-coffee&logoColor=white"></a>
 </p>
@@ -37,9 +41,9 @@
 
 ---
 
-Excel's Advanced Editor gives you one query at a time, in a modal dialog, with no version control and
-no real editor. This gives you your M code as files — in VS Code, with IntelliSense, multi-cursor,
-diff, blame, and everything else you already use.
+Excel's Advanced Editor gives you one query at a time, in a modal dialog, with no version control
+and no real editor. This gives you your M code as files — in VS Code, with IntelliSense,
+multi-cursor, diff, blame, and everything else you already use.
 
 It reads `.xlsx`, `.xlsm` and `.xlsb` directly. **Excel does not need to be installed**, which also
 means it works on macOS and Linux, and in CI.
@@ -50,8 +54,8 @@ The oldest complaint about tools like this: you edit your query, hit save, and g
 locked, close Excel and try again."* So you close the workbook, sync, reopen it, find your place
 again, and lose your train of thought.
 
-**Turn on `sync.liveWhenOpen` and that stops happening.** If Excel already has the workbook open, the
-change goes straight into it through Excel itself:
+**Turn on `sync.liveWhenOpen` and that stops happening.** If Excel already has the workbook open,
+the change goes straight into it through Excel itself:
 
 - The file on disk is **not touched**. Excel simply shows unsaved changes, exactly as if you'd typed
   them, and you save when you're ready.
@@ -67,19 +71,18 @@ file open. We're at peace with it.
 Everything else still needs neither. Extract, edit, bulk-extract, and sync to closed workbooks all
 work on macOS and Linux with no Excel installed, exactly as they always have.
 
-> Requested by [@namgaw](https://github.com/ewc3labs/excel-power-query-editor/discussions/3), who
+> Requested by [@namgaw][namgaw], who
 > wanted to stop closing his workbook to save his own query. Fair.
 
 > **Beta.** It works by talking to Excel through COM, and Excel varies enormously in the wild. It
 > never writes your file, so the worst case is that it declines and the normal path takes over. See
 > the [changelog](CHANGELOG.md) for what was measured to work and what has not been tried — and
-> please [report anything odd](https://github.com/ewc3labs/excel-power-query-editor/issues).
+> please [report anything odd][report-anything-odd].
 
 ## Quick start
 
-**1. Install** — from the
-[Marketplace](https://marketplace.visualstudio.com/items?itemName=ewc3labs.excel-power-query-editor),
-or `ext install ewc3labs.excel-power-query-editor`.
+**1. Install** — from the [Marketplace][marketplace], or `ext install
+ewc3labs.excel-power-query-editor`.
 
 **2. Extract** — right-click any `.xlsx` / `.xlsm` / `.xlsb` → **Extract Power Query**. You get a
 `.m` file beside it with every query in the workbook.
@@ -113,8 +116,7 @@ This extension writes to spreadsheets, and it treats that as the serious thing i
 - **No telemetry.** Nothing is collected, sent, or phoned home.
 
 If you find a case where a workbook is damaged, that is the highest-priority bug this project can
-have. [Open an issue](https://github.com/ewc3labs/excel-power-query-editor/issues) and it goes to the
-front of the queue.
+have. [Open an issue][report-anything-odd] and it goes to the front of the queue.
 
 ## Configuration
 
@@ -142,14 +144,28 @@ Full reference: [Config Reference](docs/Config_Reference.md).
 
 ## Documentation
 
+The docs are laid out the way [Klipper][klipper] lays out theirs: flat files, one document per
+feature, and a couple of references that enumerate everything. We run and mod Klipper here at EWC3
+Labs, so when our own docs needed sorting out we shamelessly ~~stole~~ borrowed a structure we
+already knew worked. Thanks, Klipper community.
+
+It earns its keep in a specific way: a feature arrives with its own document, so nobody has to edit
+a doc somebody else owns. The references don't rot either — [Config
+Reference](docs/Config_Reference.md) is generated from `package.json`, and CI fails the build on a
+dead link, a wrong-case link, or a document nothing links to.
+
 - **[Overview](docs/Overview.md)** — the documentation index
 - **[User Guide](docs/User_Guide.md)** — the full workflow
 - **[Config Reference](docs/Config_Reference.md)** — every setting
 - **[Commands](docs/Commands.md)** — every command
 - **[Live Sync](docs/Live_Sync.md)** — writing to an open workbook
 - **[Config Changes](docs/Config_Changes.md)** — read this when upgrading
-- **[Live sync design](docs/design/live-sync-to-open-excel.md)** — how writing to an open workbook
-  works, and what was measured to make it reliable
+
+The references are generated and checked in CI by [@ewc3labs/docs-tools][docs-tools], our own
+toolkit for keeping documentation from going stale. It is public, MIT, and has no dependencies, if
+you want it for your own repository.
+- **[Live sync design][live-sync-design]** — how writing to an open workbook works, and what was
+  measured to make it reliable
 - **[Contributing](docs/CONTRIBUTING.md)** · **[Changelog](CHANGELOG.md)** ·
   **[Support](SUPPORT.md)**
 
@@ -157,15 +173,16 @@ Full reference: [Config Reference](docs/Config_Reference.md).
 
 This stands on other people's work:
 
-- **[Vladinator](https://github.com/Vladinator)** —
-  [excel-datamashup](https://github.com/Vladinator/excel-datamashup), which does the genuinely hard
+- **[Vladinator][vladinator]** — [excel-datamashup][excel-datamashup], which does the genuinely hard
   part: reading and writing the DataMashup part inside a workbook.
-- **[Alexander Malanov](https://github.com/amalanov)** —
-  [EditExcelPQM](https://github.com/amalanov/EditExcelPQM), which showed this was possible.
-- **[Microsoft](https://marketplace.visualstudio.com/items?itemName=PowerQuery.vscode-powerquery)** —
-  the Power Query / M language extension that provides the language service.
+- **[Alexander Malanov][alexander-malanov]** — [EditExcelPQM][editexcelpqm], which showed this was
+  possible.
+- **[Microsoft][microsoft]** — the Power Query / M language extension that provides the language
+  service.
 - **[Ken Puls](https://excelguru.ca/)** — whose Monkey Tools proved writing to an open workbook was
   a solved problem, from the other side of the same wall.
+- **[The Klipper project][klipper]** — for a documentation structure good enough to be worth
+  copying, and for a great deal else that has nothing to do with Excel.
 
 ---
 
@@ -173,3 +190,15 @@ This stands on other people's work:
   <sub>MIT licensed · Built by <a href="https://github.com/ewc3labs">EWC3 Labs</a> ·
   <a href="https://www.buymeacoffee.com/ewc3labs">Buy me a coffee</a> if it saved you an afternoon</sub>
 </p>
+
+[alexander-malanov]: https://github.com/amalanov
+[docs-tools]: https://github.com/ewc3labs/ewc3-docs-tools
+[editexcelpqm]: https://github.com/amalanov/EditExcelPQM
+[excel-datamashup]: https://github.com/Vladinator/excel-datamashup
+[klipper]: https://github.com/Klipper3d/klipper
+[live-sync-design]: docs/design/live-sync-to-open-excel.md
+[marketplace]: https://marketplace.visualstudio.com/items?itemName=ewc3labs.excel-power-query-editor
+[microsoft]: https://marketplace.visualstudio.com/items?itemName=PowerQuery.vscode-powerquery
+[namgaw]: https://github.com/ewc3labs/excel-power-query-editor/discussions/3
+[report-anything-odd]: https://github.com/ewc3labs/excel-power-query-editor/issues
+[vladinator]: https://github.com/Vladinator

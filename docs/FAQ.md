@@ -14,8 +14,8 @@ live sync to Excel. Naturally.
 ### Can I extract while the workbook is open?
 
 Yes. Reading a workbook is never blocked, and extraction does not disturb Excel or your file. It is
-only *writing* a file Excel holds open that the lock prevents — and [Live Sync](Live_Sync.md) removes
-that too.
+only *writing* a file Excel holds open that the lock prevents — and [Live Sync](Live_Sync.md)
+removes that too.
 
 ### Does syncing overwrite queries I did not touch?
 
@@ -45,12 +45,12 @@ query, and why syncing considers all of them.
 
 ### Can I edit just one query?
 
-Today, a sync considers the whole section document — which is also what makes it predictable. Work on
-the one query you care about and leave the rest of the file alone; unchanged queries are not
+Today, a sync considers the whole section document — which is also what makes it predictable. Work
+on the one query you care about and leave the rest of the file alone; unchanged queries are not
 rewritten, so the effect is the same.
 
 Editing a subset explicitly is designed but not yet built —
-[design/selective-extract-and-sync-authority.md](design/selective-extract-and-sync-authority.md).
+[design/selective-extract-and-sync-authority.md][design-selective].
 
 ### Is my workbook safe?
 
@@ -63,8 +63,8 @@ queries in memory, so the workbook shows unsaved changes and you decide whether 
 ### Live sync is not doing anything.
 
 Set `log.level` to `debug`, open **View → Output → Excel Power Query Editor**, and find the line
-beginning `Excel file is locked; live sync CAN/cannot handle it`. That one line says which branch was
-taken and why.
+beginning `Excel file is locked; live sync CAN/cannot handle it`. That one line says which branch
+was taken and why.
 
 The most common cause is elevation: if VS Code and Excel are running at different privilege levels,
 COM cannot see across them. Run both normally. [Live Sync](Live_Sync.md) has the full table.
@@ -80,11 +80,13 @@ is missing, run **Install Excel Symbol Definitions**, which reports what is actu
 Yes, including live sync — a synced workbook is registered by Excel under its cloud URL rather than
 the local path you see, and matching accounts for that.
 
-One suggestion: set `backup.location` to `tempFolder` for cloud-synced workbooks, or every backup you
-make gets uploaded.
+One suggestion: set `backup.location` to `tempFolder` for cloud-synced workbooks, or every backup
+you make gets uploaded.
 
 ### Something is wrong and this page did not cover it.
 
-Set `log.level` to `debug`, reproduce it, and
-[open an issue](https://github.com/ewc3labs/excel-power-query-editor/issues) with the output. The log
-is written to be readable by whoever is holding the problem, not just by us.
+Set `log.level` to `debug`, reproduce it, and [open an issue][open-an-issue] with the output. The
+log is written to be readable by whoever is holding the problem, not just by us.
+
+[design-selective]: design/selective-extract-and-sync-authority.md
+[open-an-issue]: https://github.com/ewc3labs/excel-power-query-editor/issues

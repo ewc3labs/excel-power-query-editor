@@ -21,14 +21,14 @@ already has open — and that is Windows-only, because it drives Excel through C
 ext install ewc3labs.excel-power-query-editor
 ```
 
-Or search for "Excel Power Query Editor" in the Extensions view, or use the
-[Marketplace listing](https://marketplace.visualstudio.com/items?itemName=ewc3labs.excel-power-query-editor).
+Or search for "Excel Power Query Editor" in the Extensions view, or use the [Marketplace
+listing][marketplace-listing].
 
 ## From a release VSIX
 
 The Marketplace listing currently lags the repository — automatic publishing is deliberately
-switched off while the current run of changes settles. **The newest build is on the
-[releases page](https://github.com/ewc3labs/excel-power-query-editor/releases)**, as a `.vsix` file.
+switched off while the current run of changes settles. **The newest build is on the [releases
+page][releases-page]**, as a `.vsix` file.
 
 Download it, then either:
 
@@ -44,11 +44,10 @@ the other produces a confusing half-hour.
 
 ## Recommended companion
 
-Install Microsoft's
-[Power Query / M Language](https://marketplace.visualstudio.com/items?itemName=PowerQuery.vscode-powerquery)
-extension as well. It provides syntax highlighting, formatting and IntelliSense for the `.m` files
-this extension produces, and this extension adds the Excel-specific symbols that it is missing — see
-[Excel Symbols](Excel_Symbols.md).
+Install Microsoft's [Power Query / M Language][power-query-m] extension as well. It provides syntax
+highlighting, formatting and IntelliSense for the `.m` files this extension produces, and this
+extension adds the Excel-specific symbols that it is missing — see [Excel
+Symbols](Excel_Symbols.md).
 
 Not required. Without it you edit M as plain text.
 
@@ -76,3 +75,7 @@ want them gone.
 ---
 
 Next: [User Guide](User_Guide.md).
+
+[marketplace-listing]: https://marketplace.visualstudio.com/items?itemName=ewc3labs.excel-power-query-editor
+[power-query-m]: https://marketplace.visualstudio.com/items?itemName=PowerQuery.vscode-powerquery
+[releases-page]: https://github.com/ewc3labs/excel-power-query-editor/releases

@@ -285,7 +285,7 @@ suite('Utils Tests', () => {
 // vscode.workspace.getConfiguration - so they asserted on values the code under test never saw.
 // They also used the key names `log.debugMode` and `log.verboseMode`, which have never existed in
 // any shipped version; the v0.5.0 names were `debugMode` and `verboseMode`.
-import { migrateLegacySettings } from '../src/extension';
+import { migrateLegacySettings, scopesNeedingMigration } from '../src/extension';
 
 const SECTION = 'excel-power-query-editor';
 const MARKER = 'xtn.level';
@@ -306,6 +306,37 @@ function globalValue(key: string): unknown {
 	const info = vscode.workspace.getConfiguration(SECTION).inspect(key);
 	return info ? (info as Record<string, unknown>).globalValue : undefined;
 }
+
+suite('Migration scope guard', () => {
+	// The bug this pins: the marker is written to Global, but the old guard read the EFFECTIVE
+	// value, which merges global over workspace and folder. Once any one workspace was migrated,
+	// every other workspace was skipped forever - and since nothing reads the old keys as a
+	// fallback, those users' settings silently stopped applying and the defaults took over.
+	const SCHEMA = '1';
+
+	test('a fresh install needs every scope', () => {
+		const needed = scopesNeedingMigration(undefined, SCHEMA);
+		assert.deepStrictEqual(needed, { global: true, workspace: true, folder: true });
+	});
+
+	test('a migrated GLOBAL scope must NOT skip workspace or folder', () => {
+		const needed = scopesNeedingMigration({ globalValue: SCHEMA }, SCHEMA);
+		assert.strictEqual(needed.global, false, 'global is done');
+		assert.strictEqual(needed.workspace, true, 'a second workspace must still migrate');
+		assert.strictEqual(needed.folder, true, 'a folder in it must still migrate');
+	});
+
+	test('each scope is judged only by its own marker', () => {
+		const needed = scopesNeedingMigration(
+			{ globalValue: SCHEMA, workspaceValue: SCHEMA, workspaceFolderValue: undefined }, SCHEMA);
+		assert.deepStrictEqual(needed, { global: false, workspace: false, folder: true });
+	});
+
+	test('a marker from an older schema re-migrates that scope', () => {
+		const needed = scopesNeedingMigration({ globalValue: '0' }, SCHEMA);
+		assert.strictEqual(needed.global, true, 'schema bump must re-run');
+	});
+});
 
 suite('Legacy Settings Migration', () => {
 	const touched = [

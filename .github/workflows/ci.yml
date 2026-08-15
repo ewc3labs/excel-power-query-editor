@@ -71,9 +71,14 @@ jobs:
         continue-on-error: false
 
       - name: Check documentation
-        run: |
-          npm run docs:check
-          npm run docs:links
+        run: npm run docs:check
+        continue-on-error: false
+
+      # The recorded test total feeds the documentation. Verify it against a real run, or adding a
+      # test silently leaves the docs claiming the old number.
+      - name: Recorded test count is current
+        if: matrix.os == 'ubuntu-latest' && matrix.node-version == '24'
+        run: npm run test:counts:check
         continue-on-error: false
 
       - name: Run tests

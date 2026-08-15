@@ -2,10 +2,9 @@
 
 Documentation for the Excel Power Query Editor extension.
 
-The structure follows [Klipper](https://github.com/Klipper3d/klipper/tree/master/docs): flat files,
-one document per feature, and two references that list everything. A feature arrives with its own
-document and an entry in the references, so adding one does not mean editing a doc somebody else
-owns.
+The structure follows [Klipper][klipper]: flat files, one document per feature, and two references
+that list everything. A feature arrives with its own document and an entry in the references, so
+adding one does not mean editing a doc somebody else owns.
 
 ## Getting started
 
@@ -44,19 +43,26 @@ If you are adding a feature:
 
 1. Write `Your_Feature.md` — what it does, how to turn it on, and how it fails.
 2. Add a line to the **Features** list above.
-3. Settings appear in [Config Reference](Config_Reference.md) automatically; run
-   `npm run docs:config` after changing `package.json`.
+3. Settings appear in [Config Reference](Config_Reference.md) automatically; run `npm run
+   docs:config` after changing `package.json`.
 4. Commands go in [Commands](Commands.md) by hand.
-5. If you renamed or removed a setting, add a dated entry to
-   [Config Changes](Config_Changes.md).
+5. If you renamed or removed a setting, add a dated entry to [Config Changes](Config_Changes.md).
 
 Titles are `Title_Case_With_Underscores.md`. Keep documents about one thing; a document that needs
 two titles is two documents.
+
+**Except the SHOUTING ones.** `README.md`, `CHANGELOG.md`, `LICENSE`, `SUPPORT.md`,
+`CONTRIBUTING.md` and `PUBLISHING_GUIDE.md` keep their all-caps names. Those are "how we work here"
+documents rather than documentation of a feature - the convention is older than this repository,
+GitHub gives some of them special treatment, and people look for them by that name. Feature docs get
+title case; institutional docs shout.
 
 `npm run docs:links` checks two things, and CI runs it alongside `npm run docs:check`:
 
 - **Every link resolves**, with the case it was written in. Case matters because Windows and macOS
   resolve a wrong-case link happily and GitHub does not, so it works on every machine that could
   catch it and breaks for every reader.
-- **Every document is reachable.** A file nothing links to is invisible, and stays correct and unread
-  until it quietly goes stale. Link it here, or delete it.
+- **Every document is reachable.** A file nothing links to is invisible, and stays correct and
+  unread until it quietly goes stale. Link it here, or delete it.
+
+[klipper]: https://github.com/Klipper3d/klipper/tree/master/docs
