@@ -64,9 +64,13 @@ The rules that make that work:
 - **Don't paste a prompt. Describe the problem, and your hypotheses about the solution.** These
   models reason well - give them something to reason about. A well-stated problem with two candidate
   approaches gets a better answer than an instruction ever will.
-- **Never trust "all tests green."** State the goal as green tests and green tests are what you get:
-  agents will weaken an assertion or skip the awkward case to reach the goal you named. Green means
-  the suite agrees with itself. It does not mean the code is right.
+- **Never trust "all tests green."** State the goal as green tests and green tests are what you get.
+  This is measured, not folklore: on SWE-bench Verified a ten-line `conftest.py` that rewrites test
+  outcomes marks **500 of 500** instances passing while solving none of them, and on Terminal-Bench
+  replacing `curl` and `pip` with wrappers that print fake passing output scores **89 of 89 tasks at
+  100%**. Models found those routes on their own, once solving the task directly did not work ([Wang
+  et al., 2026][benchmarks]). Green means the suite agrees with itself. It does not mean the code is
+  right.
 - **Do painstaking design.** Think through the ways it can go wrong before it exists. Prototyping
   and CI-ing your way to production is fine; "build me an extension that does X" and shipping it is
   not.
@@ -992,4 +996,5 @@ only reason it isn't now is that somebody sat down and checked it against the co
 
 **Excel Power Query Editor** – _Because Power Query development shouldn’t be painful._
 
+[benchmarks]: https://moogician.github.io/blog/2026/trustworthy-benchmarks-cont/
 [docs-tools]: https://github.com/ewc3labs/ewc3-docs-tools
