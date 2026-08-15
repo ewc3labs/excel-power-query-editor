@@ -40,68 +40,112 @@ about the whole workbook.
 
 ## The design
 
-### 1. The `.m` records its own scope
+**The document declares its own scope, and that declaration is the authority.** Not a setting: scope
+is a property of the file, and a user with a hundred toolkit workbooks should not be flipping a
+global preference between operations. A setting only enables the feature and the extra menu command.
 
-The extraction header already exists and is already ignored by the writer, which strips everything
-above `section`. Make it machine-readable:
-
-```
-// Power Query extracted from: Toolkit.xlsx
-// Extracted: all (29 queries)
-```
+### The manifest
 
 ```
-// Power Query extracted from: Toolkit.xlsx
-// Extracted: subset (2 of 29) — fGetNamedRange, FinalTable
+// Queries: ALL
 ```
 
-A missing header means "unknown", and unknown is treated as a subset — the conservative reading,
-because a hand-written `.m` is far more likely to be a fragment than a faithful copy of a workbook.
-
-### 2. One setting, one meaning, both paths
-
-```jsonc
-"excel-power-query-editor.sync.authority": "merge" | "replace"
+```
+// Queries:
+//   fGetNamedRange
+//   Sales, EMEA
+//   FinalTable
 ```
 
-- **`merge`** *(proposed default)* — update what matches, add what is new, **never remove**. Today's
-  live behaviour.
-- **`replace`** — the document is the truth: queries absent from it are removed. Today's file
-  behaviour, and what mass-modify-and-tear-out workflows want.
+`ALL` is case-insensitive, so `all` and `All` are equally valid for hand-rolling.
 
-Applied to **both** paths, so the answer no longer depends on whether Excel is open. Live sync can
-honour `replace` — `WorkbookQuery` exposes `Delete()` — and the file path can honour `merge` by
-splitting the existing section, applying the incoming queries over it, and writing the union back.
+**A block list rather than a CSV**, for two reasons that only show up in real data:
 
-### 3. `replace` on a subset is refused
+- **M query names can contain commas.** `#"Sales, EMEA"` is a legal name, and a comma-separated
+  manifest cannot represent it without quoting rules that people writing by hand will get wrong.
+  One name per line has no separator to escape.
+- **A hundred names on one line is unreadable**, and word wrap is off by default in VS Code. A
+  manifest nobody can read is a manifest nobody will maintain.
 
-The two rules together:
+### What each scope licenses
 
-| document scope | `merge` | `replace` |
-| --- | --- | --- |
-| **all** | update + add | update + add + **remove missing** |
-| **subset** | update + add | **scoped to the named queries only** — never removes anything outside them |
-| **unknown** | update + add | **refuse, and say why** |
+| manifest | update | add | remove |
+| --- | --- | --- | --- |
+| `ALL` | yes | yes | **yes** — the document is the whole truth |
+| a list | yes | yes | **only queries named in the list** |
+| absent | yes | yes | **yes** — see below |
 
-A subset under `replace` does the honest thing: it is authoritative *over the queries it names* and
-silent about the rest. That is what somebody pulling one query out of a hundred means, and it is
-never what "delete the other 99" means.
+### Absent means ALL, and that is not a compromise
 
-### 4. Removal is confirmed, once
+The obvious instinct is that an unrecognised document should refuse to delete anything. It is wrong
+here, for a reason that only matters because this extension already has users:
 
-Whatever the mode, deleting queries is the one action here that destroys work not recoverable from
-the `.m` file. It gets a confirmation naming the queries and the count, in the same spirit as the
-backup that already happens before every write. A setting can suppress it for people who do this
-all day, and the default is to ask.
+**Every `.m` file in existence right now has no manifest**, and today's file sync already replaces
+the whole document. Treating "absent" as anything other than `ALL` changes the behaviour of every
+existing file on its next sync — either silently, which is worse, or by refusing, which breaks a
+workflow thousands of people use daily.
 
-## Why the default should be `merge`
+So absent means `ALL`, which is exactly what those files already do. The manifest is how you ask for
+*less* authority than the default, and adding one is opt-in.
 
-It is the safer half of a behaviour users cannot currently predict, and the cost of being wrong is
-asymmetric: `merge` leaves a stale query in a workbook, which is visible and fixable; `replace`
-deletes work, which may not be noticed until the workbook is opened weeks later.
+### Menu commands, not a mode
 
-Changing the file path's default from today's implicit `replace` is a behaviour change and belongs
-in a minor version with a changelog entry that says so plainly.
+- **Extract All Power Queries from Excel** — writes `Queries: ALL`
+- **Extract Selected Power Queries from Excel** — a picker; writes the block list
+
+Two commands rather than a mode, so the common case costs nobody an extra decision, and the manifest
+that lands in the file is a consequence of the command they chose rather than a setting they have to
+remember.
+
+## Edge cases worth deciding before building
+
+### A stale `ALL` deletes queries the user has never seen
+
+Extract with `Queries: ALL`. Somebody adds a query in Excel next week. Sync: the document claims to
+be the whole truth, so the new query is deleted — and it was never in VS Code, so its removal is
+invisible in the diff the user reviewed.
+
+This is the strongest argument for confirming removals (`PQ-25`), and it says something about the
+wording: the prompt must name what is about to be **removed**, not summarise what will be written.
+"Sync 29 queries?" hides it. "Remove 1 query: NewThing?" does not.
+
+### The manifest and the document can disagree
+
+`Queries: A, B` but the document only contains `shared A`. Two readings: the user deliberately
+deleted B, or the manifest is stale.
+
+**Rule: the document says what to write, the manifest says what may be removed.** B is named in the
+manifest and absent from the document, so B is deleted. That makes deleting a query the same gesture
+as deleting it from the file, which is what someone editing M in an editor expects — and it means
+the manifest never needs hand-editing to remove something.
+
+The reverse - `shared C` present but C not named in the manifest - is a query being **added**, which
+is always allowed and never needs authority.
+
+### Renaming is a delete plus an add
+
+Rename `shared A` to `shared A2` and the document no longer contains A. Under `ALL`, or under a list
+naming A, that removes A and adds A2 — losing anything Excel held against A that is not in the M,
+and breaking any query referencing A by name.
+
+This is correct and it is also surprising. Worth a specific line in the confirmation when a removal
+and an addition happen in the same sync, because that pattern is far more often a rename than two
+separate intentions.
+
+### `ALL` on a workbook with queries that cannot round-trip
+
+If any query in the workbook fails to extract - an unsupported construct, a corrupt DataMashup - and
+the document then claims `ALL`, syncing deletes what could not be read. **Extraction must therefore
+refuse to write `Queries: ALL` if it did not successfully extract every query it saw**, and downgrade
+to a list of the ones it got. A partial extract that lies about being complete is the worst failure
+available here.
+
+### Case, whitespace, and hand-rolling
+
+`Queries:ALL`, `queries: all`, `// Queries : ALL` should all work. People will type all of them, and
+being strict buys nothing. The one thing worth rejecting is a manifest that parses to zero named
+queries while not saying `ALL` - that is a typo, not an instruction, and it should say so rather than
+silently authorising nothing.
 
 ## Slices
 
