@@ -110,10 +110,29 @@ try {
 }
 
 if ($null -eq $book) {
-    # The ordinary answer, and not an error: nobody has this file open, so the caller should use
-    # the on-disk writer. Excel may not even be running; we deliberately do not distinguish,
-    # because the caller does the same thing either way.
-    Respond @{ ok = $true; open = $false }
+    # Usually the ordinary answer: nobody has this file open, so use the on-disk writer.
+    #
+    # But there is a failure that LOOKS identical and is not. COM's Running Object Table is
+    # partitioned by integrity level as well as by session, so an ELEVATED process cannot see the
+    # registrations of a normal one. Run VS Code as administrator with Excel started normally (or
+    # the reverse) and every workbook is invisible: live sync reports "not open" while the user is
+    # staring at the file, and nothing in the message hints why.
+    #
+    # Measured here: an elevated shell saw zero ROT entries while Excel was plainly running.
+    #
+    # So when nothing matched, check whether Excel is running at all. If it is, say so - the caller
+    # can tell the user something useful instead of "not open".
+    $processes = @(Get-Process EXCEL -ErrorAction SilentlyContinue).Count
+    $elevated = ([Security.Principal.WindowsPrincipal] `
+        [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole(
+            [Security.Principal.WindowsBuiltInRole]::Administrator)
+
+    Respond @{
+        ok             = $true
+        open           = $false
+        excelProcesses = $processes
+        elevated       = [bool]$elevated
+    }
 }
 
 # A ROT entry under a workbook path should be a Workbook, but a hostile or unexpected registration

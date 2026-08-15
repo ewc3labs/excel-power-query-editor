@@ -5,7 +5,7 @@ function openExtensionSettings() {
 // The module 'vscode' contains the VS Code extensibility API
 import * as vscode from 'vscode';
 import { parseSection, diffQueries } from './mSection';
-import { getLiveStatus, writeLive, isLiveSyncSupported } from './excelLive';
+import { getLiveStatus, writeLive, isLiveSyncSupported, explainInvisibleWorkbook } from './excelLive';
 import * as fs from 'fs';
 import * as path from 'path';
 import { watch, FSWatcher } from 'chokidar';
@@ -722,9 +722,42 @@ async function syncToExcel(uri?: vscode.Uri, uris?: vscode.Uri[]): Promise<void>
 			}
 		}
 
+		// Read once, up here: the lock check below now consults a setting, and so does the live
+		// sync fork further down.
+		const config = getConfig();
+
 		// Check if Excel file is writable (not locked by Excel or another process)
+		//
+		// "Locked" is exactly the case live sync exists to handle, so ask whether we can go through
+		// Excel BEFORE telling the user to close it. Without this the check fires first and returns,
+		// and live sync never gets a look in - which is precisely what happened on the first real
+		// attempt: the setting was on, the plumbing worked, and the user still got "close Excel".
 		const isWritable = await isExcelFileWritable(excelFile);
-		if (!isWritable) {
+		let liveSyncPossible = false;
+
+		if (!isWritable && config.get<boolean>('sync.liveWhenOpen', false) && isLiveSyncSupported()) {
+			const extensionPath = vscode.extensions
+				.getExtension('ewc3labs.excel-power-query-editor')?.extensionPath;
+			if (extensionPath) {
+				const probe = await getLiveStatus(excelFile, extensionPath);
+				liveSyncPossible = probe.open;
+				log(`Excel file is locked; live sync ${probe.open ? 'CAN' : 'cannot'} handle it ` +
+					`(available=${probe.available}${probe.reason ? ', ' + probe.reason : ''}` +
+					`${probe.excelProcesses ? ', excelProcesses=' + probe.excelProcesses : ''})`,
+					'syncToExcel', 'info');
+
+				// The file is locked AND Excel is running AND we cannot see the workbook. That is
+				// not "not open" - something is hiding it, and the user deserves to know what.
+				const explanation = explainInvisibleWorkbook(probe);
+				if (explanation) {
+					log(explanation, 'syncToExcel', 'warn');
+					vscode.window.showWarningMessage(explanation);
+					return;
+				}
+			}
+		}
+
+		if (!isWritable && !liveSyncPossible) {
 			const fileName = path.basename(excelFile);
 			const retry = await vscode.window.showWarningMessage(
 				`Excel file "${fileName}" appears to be locked (possibly open in Excel). Close the file and try again.`,
@@ -762,7 +795,6 @@ async function syncToExcel(uri?: vscode.Uri, uris?: vscode.Uri[]): Promise<void>
 		}
 		
 		// Create backup of Excel file if enabled
-		const config = getConfig();
 		
 		if (config.get<boolean>('backup.autoBackupBeforeSync', true)) {
 			const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
