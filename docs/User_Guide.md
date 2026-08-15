@@ -108,6 +108,28 @@ my-data-analysis.xlsx  ← Right-click here
 3. **Excel Update**: Replaces Power Query content in Excel's DataMashup
 4. **Verification**: Confirms successful write operation
 
+## 🔄 Syncing While the Workbook Is Open
+
+Everything above assumes the usual constraint: Excel holds an open workbook with an exclusive write
+lock, so syncing means closing the workbook first, syncing, and reopening it.
+
+**Live sync removes that step.** Turn it on:
+
+```jsonc
+"excel-power-query-editor.sync.liveWhenOpen": true
+```
+
+Then sync exactly as you already do. The extension decides per file, every time — workbook closed,
+the file is rewritten as before; workbook open in Excel, the change goes through Excel's own object
+model and the file on disk is never touched. Excel shows unsaved changes, and you save when you are
+ready.
+
+There is no mode to remember being in and nothing else to configure.
+
+Windows and Excel only, and currently beta — Excel varies wildly in the wild. The full picture,
+including what has not been tried and how to read the log when it declines, is in
+[Live Sync](Live_Sync.md).
+
 ## 🛠️ Advanced Features & Configuration
 
 ### Smart Defaults (v0.5.0)

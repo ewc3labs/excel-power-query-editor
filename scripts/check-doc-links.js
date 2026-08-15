@@ -52,6 +52,7 @@ function existsWithExactCase(target) {
 }
 
 const problems = [];
+const linked = new Set();
 let checked = 0;
 
 for (const file of markdownFiles(ROOT)) {
@@ -73,6 +74,8 @@ for (const file of markdownFiles(ROOT)) {
 		const resolved = path.resolve(dir, decodeURIComponent(target));
 		const where = path.relative(ROOT, file).replace(/\\/g, '/');
 
+		linked.add(resolved.toLowerCase());
+
 		if (!fs.existsSync(resolved)) {
 			problems.push({ file: where, target: raw, why: 'does not exist' });
 		} else if (!existsWithExactCase(resolved)) {
@@ -83,7 +86,30 @@ for (const file of markdownFiles(ROOT)) {
 	}
 }
 
+// The mirror-image failure: a document that exists, is correct, and cannot be reached from anywhere.
+// A broken link is loud; an orphan is silent, which is how one sat in docs/ unreferenced for a year.
+//
+// A link to a DIRECTORY (Overview.md points at design/ and analysis/ rather than listing every file
+// in them) makes everything under it reachable. Only the feature documents are indexed individually.
+const orphans = markdownFiles(path.join(ROOT, 'docs'))
+	.filter(f => {
+		let current = f;
+		while (current !== ROOT) {
+			if (linked.has(current.toLowerCase())) { return false; }
+			current = path.dirname(current);
+		}
+		return true;
+	})
+	.map(f => path.relative(ROOT, f).replace(/\\/g, '/'));
+
 console.log(`Checked ${checked} relative links across the docs.`);
+
+if (orphans.length > 0) {
+	console.error(`\n${orphans.length} document(s) are not linked from anywhere:\n`);
+	for (const o of orphans) { console.error(`  ${o}`); }
+	console.error('\nLink them from docs/Overview.md, or delete them.');
+	process.exitCode = 1;
+}
 
 if (problems.length > 0) {
 	console.error(`\n${problems.length} link(s) point at something that does not exist:\n`);

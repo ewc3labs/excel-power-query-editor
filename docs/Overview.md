@@ -12,6 +12,7 @@ owns.
 - [Installation](Installation.md): installing the extension and what it needs.
 - [User Guide](User_Guide.md): extracting, editing and syncing — the whole workflow.
 - [FAQ](FAQ.md): the questions that come up most.
+- [Beta Downloads](Beta_Downloads.md): pre-release builds, ahead of the Marketplace.
 
 ## Configuration and reference
 
@@ -34,6 +35,8 @@ owns.
 - [Publishing](PUBLISHING_GUIDE.md): how a release is cut.
 - [Design notes](design/): why things work the way they do, and what was rejected.
 - [Analysis](analysis/): measurements, and the findings behind particular decisions.
+- [Project](project/): the roadmap, the slice registry, and the check-in punchlist.
+- [RAG sessions](RAG_Sessions/): worked sessions kept for their reasoning, not their conclusions.
 
 ## Adding documentation
 
@@ -50,6 +53,10 @@ If you are adding a feature:
 Titles are `Title_Case_With_Underscores.md`. Keep documents about one thing; a document that needs
 two titles is two documents.
 
-`npm run docs:links` checks that every link in the docs points at a file that exists, with the case
-it was written in — a link that works on Windows and breaks on GitHub is the one that gets missed.
-CI runs it alongside `npm run docs:check`.
+`npm run docs:links` checks two things, and CI runs it alongside `npm run docs:check`:
+
+- **Every link resolves**, with the case it was written in. Case matters because Windows and macOS
+  resolve a wrong-case link happily and GitHub does not, so it works on every machine that could
+  catch it and breaks for every reader.
+- **Every document is reachable.** A file nothing links to is invisible, and stays correct and unread
+  until it quietly goes stale. Link it here, or delete it.
