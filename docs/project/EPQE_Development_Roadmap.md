@@ -40,7 +40,7 @@ not a summary of them.
 
 | Series | Last Num | Series Description |
 | --- | --- | --- |
-| PQ | PQ-21 | Excel Power Query Editor slices and fixes |
+| PQ | PQ-25 | Excel Power Query Editor slices and fixes |
 
 `Last Num` is a cache over the Delivery Index, not a second source of truth — the IDs in the tables are
 authoritative. When minting, take the next number **and** confirm it is unused across every sub-table,
@@ -76,6 +76,18 @@ Excel serves external automation. See `design/live-sync-to-open-excel.md`.
 | PQ-15 | 💨 proven | Round-trip test: section -> N formulas -> Excel -> section | M | live-sync-to-open-excel.md | proven 2026-08-14 — byte-identical through a real Excel |
 | PQ-16 | ⬜ planned | Reply to namgaw, and reach out to Ken Puls | S | — | he asked in Oct 2025 and suggested the contact |
 | PQ-17 | 💨 proven | Wire live sync into the sync command and settings | M | live-sync-to-open-excel.md | proven 2026-08-14 — real 29-query workbook in a OneDrive folder |
+
+### Selective extract, and who is authoritative
+
+The two write paths currently disagree about deletion, and nobody chose that. See
+`design/selective-extract-and-sync-authority.md`.
+
+| ID | State | Slice | Est | Doc | Status |
+| --- | --- | --- | --- | --- | --- |
+| PQ-22 | ⬜ planned | The .m records what it contains: all, subset, or unknown | M | selective-extract-and-sync-authority.md | gates the rest — no scope, no safe rule |
+| PQ-23 | ⬜ planned | `sync.authority`: merge or replace, SAME on both paths | L | selective-extract-and-sync-authority.md | file path deletes today, live path never does |
+| PQ-24 | ⬜ planned | Selective extract: pick queries, record the subset | M | selective-extract-and-sync-authority.md | one query out of a hundred-query toolkit |
+| PQ-25 | ⬜ planned | Confirm before removing queries | S | selective-extract-and-sync-authority.md | the one action that destroys unrecoverable work |
 
 ### Data safety — the thing that must never break
 
