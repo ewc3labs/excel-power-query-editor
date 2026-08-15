@@ -899,7 +899,7 @@ async function syncToExcel(uri?: vscode.Uri, uris?: vscode.Uri[]): Promise<void>
 						if (result.failures.length > 0) {
 							const detail = result.failures.map(f => `${f.name}: ${f.message}`).join('; ');
 							vscode.window.showWarningMessage(
-								`Synced to open workbook with ${result.failures.length} problem(s): ${detail}`);
+								`Synced to the open workbook, but ${result.failures.length} query(s) FAILED: ${detail}`);
 						}
 
 						const parts: string[] = [];
@@ -913,10 +913,21 @@ async function syncToExcel(uri?: vscode.Uri, uris?: vscode.Uri[]): Promise<void>
 						const saveNote = result.dirty
 							? ' — the workbook now has unsaved changes in Excel, save it there.'
 							: ' — nothing needed changing.';
-						const summary = `Synced to the open workbook (${parts.join(', ') || 'no changes'})${saveNote}`;
 
-						log(summary, 'syncToExcel', 'success');
-						vscode.window.showInformationMessage(summary);
+						// A sync where some queries failed is NOT a success, and must not be announced
+						// as one. The warning above names the failures, but the message that arrives
+						// second is the one that stays on screen and the level that gets logged is the
+						// one someone triaging an issue will read. Both have to tell the same story.
+						const partial = result.failures.length > 0;
+						const summary = partial
+							? `Synced to the open workbook with ${result.failures.length} failure(s) ` +
+							  `(${parts.join(', ') || 'no changes'})${saveNote}`
+							: `Synced to the open workbook (${parts.join(', ') || 'no changes'})${saveNote}`;
+
+						log(summary, 'syncToExcel', partial ? 'warn' : 'success');
+						if (!partial) {
+							vscode.window.showInformationMessage(summary);
+						}
 
 						if (diff.missingFromDocument.length > 0) {
 							// Never deleted, only reported - see diffQueries.
