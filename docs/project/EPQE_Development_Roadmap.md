@@ -88,7 +88,7 @@ The two write paths currently disagree about deletion, and nobody chose that. Se
 | PQ-23 | ⬜ planned | Honour the manifest on both paths; `ALL` untouched | L | selective-extract-and-sync-authority.md | file+ALL stays setFormula(document); live must MATCH its outcome |
 | PQ-24 | ⬜ planned | "Extract Selected" command, writing the manifest | M | selective-extract-and-sync-authority.md | second menu item, so extracting all costs nobody a decision |
 | PQ-26 | ⬜ planned | Never write `Queries: ALL` after a partial extraction | S | selective-extract-and-sync-authority.md | a document that lies about being complete deletes what it could not read |
-| PQ-25 | ⬜ planned | Confirm before removing queries | S | selective-extract-and-sync-authority.md | DECISION NEEDED — default on for new paths, off for `ALL`? |
+| PQ-25 | ⬜ planned | `sync.confirmQueryRemoval`, defaulted ON | S | selective-extract-and-sync-authority.md | changes `ALL` behaviour on purpose — changelog must say so |
 | PQ-27 | ⬜ planned | Manifest vs document mismatch is an error, not a guess | S | selective-extract-and-sync-authority.md | name the discrepancy, refuse, let a human resolve it |
 
 ### Data safety — the thing that must never break

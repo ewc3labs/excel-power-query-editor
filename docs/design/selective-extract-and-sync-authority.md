@@ -146,35 +146,57 @@ something.
 which the manifest does not name. Add it?" - as long as it asks. Worth building only after the error
 exists and people complain about it, which is the honest way to find out whether they mind.
 
-## The unresolved tension: confirming removals under `ALL`
+## Confirming removals: a setting, defaulted ON
 
-Confirming removals and leaving `ALL` untouched cannot both be fully true, and this needs a decision
-rather than a compromise invented in code.
+Not inferred, not "on for the new paths and off for the old". The user is asked once, in a setting,
+and the answer applies everywhere. Turning it **off** is a statement of intent — *my repository is
+the source of truth, and I mean to squash whatever Johnny User hand-edited in the workbook* — and
+that is a legitimate thing to want and an illegitimate thing to guess.
 
-Today, `ALL` on the file path removes queries **silently**, because it does not diff and therefore
-does not know what is being removed. Adding a confirmation means diffing - which is affordable, since
-the existing DataMashup is already parsed - but it introduces a prompt where there has never been
-one, for thousands of people, on a workflow they run daily.
+```jsonc
+"excel-power-query-editor.sync.confirmQueryRemoval": true
+```
 
-Three options, in order of preference:
+> Ask before removing queries from the workbook that are not in the `.m` file. This happens when the
+> manifest says `Queries: ALL` (or there is no manifest) and the workbook contains a query your file
+> does not. **Turn this off** if your `.m` files are the source of truth and you intend to overwrite
+> whatever is in the workbook — the original EPQE behaviour.
 
-1. **Confirmation defaults ON for what is new, OFF for what is not.** A list manifest and live sync
-   are both new, so they may prompt from day one. `ALL` on the file path keeps its current silence
-   unless the user opts in. Nothing anybody relies on changes, and the risky new paths are guarded.
-2. **On everywhere, with a setting to silence it.** Safer for the stale-`ALL` case, but it changes a
-   daily workflow for every existing user and will be experienced as the extension becoming naggy.
-3. **Off everywhere by default.** Consistent and cheap, and gives up the protection that made the
-   confirmation worth having.
+### On the name, because there is already a trap here
 
-Recommending (1). It respects the rule that `ALL` behaves as it always has, while not shipping a new
-delete-capable path with no brakes.
+`excel-power-query-editor.sync.deleteAlwaysConfirm` exists and means something else entirely: confirm
+before deleting **the `.m` file** during sync-and-delete. Two settings under `sync.`, both about
+deleting and confirming, sorted next to each other in the settings UI.
+
+So the obvious `sync.deleteQueriesAlwaysConfirm` is the one name to avoid. It is a single word away
+from an existing setting, and the failure mode is a user flipping the wrong one and losing the wrong
+thing. `confirmQueryRemoval` breaks the pattern deliberately: different verb, different noun, sorts
+apart, and reads unambiguously next to its neighbour.
+
+**Positive phrasing, so `true` is the safe state.** `deleteWithoutConfirmation: false` is the same
+setting spelled as a double negative, and every reader has to think twice about what unchecking it
+does. Nobody should have to reason about polarity to avoid deleting their own queries.
+
+**Boolean, not an enum.** A third state like "ask when it looks unexpected" is the inference this
+whole design rejects — it would mean the extension deciding what surprises you.
+
+### This does change existing behaviour, deliberately
+
+`ALL` on the file path currently removes queries silently, and with this defaulted on it will ask.
+That is a real change for existing users and it belongs in the changelog in those words, not buried.
+
+The case for it: the removal that most needs a prompt is the one nobody can see coming — a query
+added in Excel last week, absent from a `.m` extracted before it existed, deleted on the next sync
+without ever appearing in the diff the user reviewed. Silence there is not the old behaviour being
+respected, it is a data-loss path with no brakes. One checkbox turns it back off, permanently, for
+anybody who wants it.
 
 ## Slices
 
 - `PQ-22` — the `Queries:` manifest, and reading it. **Gates the rest.**
 - `PQ-23` — honour it on both paths, with `ALL` on the file path left exactly as it is
 - `PQ-24` — "Extract Selected Power Queries", writing the manifest
-- `PQ-25` — confirm removals; see the tension above before choosing a default
+- `PQ-25` — `sync.confirmQueryRemoval`, defaulted on; changelog must say it changes `ALL`
 - `PQ-26` — never write `ALL` after a partial extraction
 - `PQ-27` — error, do not guess, when manifest and document disagree
 
