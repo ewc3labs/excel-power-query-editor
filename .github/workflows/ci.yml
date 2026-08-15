@@ -70,6 +70,12 @@ jobs:
         run: npm run check-types
         continue-on-error: false
 
+      - name: Check documentation
+        run: |
+          npm run docs:check
+          npm run docs:links
+        continue-on-error: false
+
       - name: Run tests
         uses: coactions/setup-xvfb@v1
         with:
