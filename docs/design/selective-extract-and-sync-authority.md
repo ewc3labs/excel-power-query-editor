@@ -97,61 +97,85 @@ Two commands rather than a mode, so the common case costs nobody an extra decisi
 that lands in the file is a consequence of the command they chose rather than a setting they have to
 remember.
 
-## Edge cases worth deciding before building
+## `ALL` means exactly what it means today
 
-### A stale `ALL` deletes queries the user has never seen
+The single hardest requirement here, and it constrains everything else:
 
-Extract with `Queries: ALL`. Somebody adds a query in Excel next week. Sync: the document claims to
-be the whole truth, so the new query is deleted — and it was never in VS Code, so its removal is
-invisible in the diff the user reviewed.
+> **Under `ALL`, the file path does what it does now: `setFormula(wholeDocument)`.**
 
-This is the strongest argument for confirming removals (`PQ-25`), and it says something about the
-wording: the prompt must name what is about to be **removed**, not summarise what will be written.
-"Sync 29 queries?" hides it. "Remove 1 query: NewThing?" does not.
+No diffing, no per-query reasoning, no interpretation. Thousands of people rely on "replace the
+DataMashup with what is in this file", it is simple and predictable, and every clever thing added to
+it is a new way for it to be wrong. The manifest feature is **additive**: it introduces a way to ask
+for *less*, and changes nothing about asking for everything.
 
-### The manifest and the document can disagree
+That kills a piece of the earlier design outright. **There is no rename detection.** Under `ALL`, a
+rename is not a rename — it is a document that no longer contains `A` and now contains `A2`, and the
+whole document is written. That is already the behaviour, it is correct, and inferring "this looks
+like a rename" would be exactly the second-guessing this rule exists to prevent.
 
-`Queries: A, B` but the document only contains `shared A`. Two readings: the user deliberately
-deleted B, or the manifest is stale.
+### The live path has to emulate it
 
-**Rule: the document says what to write, the manifest says what may be removed.** B is named in the
-manifest and absent from the document, so B is deleted. That makes deleting a query the same gesture
-as deleting it from the file, which is what someone editing M in an editor expects — and it means
-the manifest never needs hand-editing to remove something.
+The object model has no whole-document write, so `ALL` on the live path is necessarily update-every-
+query, add-missing, remove-extra. **The requirement is equivalence of outcome, not of mechanism**: a
+workbook synced live under `ALL` must end up holding what it would have held had the file been
+closed. That is testable the same way the round trip in `PQ-15` is testable, and it should be tested,
+because it is the one place where "the same command did two different things" could come back.
 
-The reverse - `shared C` present but C not named in the manifest - is a query being **added**, which
-is always allowed and never needs authority.
+## A manifest that disagrees with the document is an ERROR
 
-### Renaming is a delete plus an add
+Not a guess. If the manifest names a query the document does not define, or the document defines a
+query the manifest does not name, **stop and say so**.
 
-Rename `shared A` to `shared A2` and the document no longer contains A. Under `ALL`, or under a list
-naming A, that removes A and adds A2 — losing anything Excel held against A that is not in the M,
-and breaking any query referencing A by name.
+The earlier proposal - treat a name in the manifest but absent from the document as a deliberate
+deletion - was inference dressed up as a rule. Both readings are plausible (deliberate deletion, or
+stale manifest), the cost of choosing wrong is deleting somebody's query, and there is a third option
+that costs nothing: refuse, name the discrepancy, and let a human resolve it.
 
-This is correct and it is also surprising. Worth a specific line in the confirmation when a removal
-and an addition happen in the same sync, because that pattern is far more often a rename than two
-separate intentions.
+```
+Manifest and document disagree.
+  In the manifest but not defined:  RawInput
+  Defined but not in the manifest:  FinalTable
+Fix the manifest or the document, then sync.
+```
 
-### `ALL` on a workbook with queries that cannot round-trip
+This costs the hand-roller one accurate list, which is a fair price for never guessing at intent, and
+it makes the manifest self-checking: a typo is caught the first time rather than the day it deletes
+something.
 
-If any query in the workbook fails to extract - an unsupported construct, a corrupt DataMashup - and
-the document then claims `ALL`, syncing deletes what could not be read. **Extraction must therefore
-refuse to write `Queries: ALL` if it did not successfully extract every query it saw**, and downgrade
-to a list of the ones it got. A partial extract that lies about being complete is the worst failure
-available here.
+**Offering to fix it is not guessing** and would be a kindness - "the document defines `FinalTable`,
+which the manifest does not name. Add it?" - as long as it asks. Worth building only after the error
+exists and people complain about it, which is the honest way to find out whether they mind.
 
-### Case, whitespace, and hand-rolling
+## The unresolved tension: confirming removals under `ALL`
 
-`Queries:ALL`, `queries: all`, `// Queries : ALL` should all work. People will type all of them, and
-being strict buys nothing. The one thing worth rejecting is a manifest that parses to zero named
-queries while not saying `ALL` - that is a typo, not an instruction, and it should say so rather than
-silently authorising nothing.
+Confirming removals and leaving `ALL` untouched cannot both be fully true, and this needs a decision
+rather than a compromise invented in code.
+
+Today, `ALL` on the file path removes queries **silently**, because it does not diff and therefore
+does not know what is being removed. Adding a confirmation means diffing - which is affordable, since
+the existing DataMashup is already parsed - but it introduces a prompt where there has never been
+one, for thousands of people, on a workflow they run daily.
+
+Three options, in order of preference:
+
+1. **Confirmation defaults ON for what is new, OFF for what is not.** A list manifest and live sync
+   are both new, so they may prompt from day one. `ALL` on the file path keeps its current silence
+   unless the user opts in. Nothing anybody relies on changes, and the risky new paths are guarded.
+2. **On everywhere, with a setting to silence it.** Safer for the stale-`ALL` case, but it changes a
+   daily workflow for every existing user and will be experienced as the extension becoming naggy.
+3. **Off everywhere by default.** Consistent and cheap, and gives up the protection that made the
+   confirmation worth having.
+
+Recommending (1). It respects the rule that `ALL` behaves as it always has, while not shipping a new
+delete-capable path with no brakes.
 
 ## Slices
 
-- `PQ-22` — extraction header records scope; the writer reads it
-- `PQ-23` — `sync.authority`, honoured identically by both write paths
-- `PQ-24` — selective extract: choose queries, and record the subset
-- `PQ-25` — confirmation before removing queries, with a setting to suppress it
+- `PQ-22` — the `Queries:` manifest, and reading it. **Gates the rest.**
+- `PQ-23` — honour it on both paths, with `ALL` on the file path left exactly as it is
+- `PQ-24` — "Extract Selected Power Queries", writing the manifest
+- `PQ-25` — confirm removals; see the tension above before choosing a default
+- `PQ-26` — never write `ALL` after a partial extraction
+- `PQ-27` — error, do not guess, when manifest and document disagree
 
-`PQ-22` gates the rest: without a scope in the document, no other rule here can be enforced safely.
+Nothing here changes what `ALL` does. If a slice starts to, it is the slice that is wrong.
