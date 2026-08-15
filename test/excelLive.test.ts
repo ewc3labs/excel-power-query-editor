@@ -12,7 +12,12 @@ import { isLiveSyncSupported, getLiveStatus, writeLive } from '../src/excelLive'
  * The COM behaviour itself is verified by hand against a running Excel; see
  * docs/design/live-sync-to-open-excel.md for what was measured.
  */
-suite('Live sync', () => {
+suite('Live sync', function () {
+	// Not the 2s default. Every call here spawns powershell.exe, which runs Add-Type and COMPILES
+	// C# at runtime - a few hundred milliseconds on a warm machine and several seconds on a cold CI
+	// runner. These passed locally and failed in CI purely on that, with one of the passing ones
+	// taking 1842ms of the 2000ms allowed.
+	this.timeout(30_000);
 
 	const extensionPath = path.join(__dirname, '..', '..');
 
