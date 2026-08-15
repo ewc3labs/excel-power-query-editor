@@ -42,8 +42,10 @@ Welcome to the **Excel Power Query Editor** documentation! This is your navigati
 Some documents have multiple versions for different platforms:
 
 ### **README Variants**
-- **[GitHub README](README.gh.md)** - For repository display
-- **[VS Marketplace README](README.vsmarketplace.md)** - For extension listing
+- **[README](../README.md)** - one README, used by both the repository and the Marketplace listing.
+  There were once two, kept in step by a pair of swap scripts; they drifted, both source files were
+  emptied by an unrelated commit and nobody noticed for a year. `vsce` publishes the root README, so
+  one file it is.
 - **Main README** automatically switches between these via automation scripts
 
 ### **Archive**
