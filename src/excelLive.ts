@@ -40,6 +40,15 @@ export interface LiveStatus {
 	workbook?: string;
 	/** Machine-readable reason when `available` is false. */
 	reason?: string;
+	/**
+	 * Excel processes running while this workbook was NOT found in the Running Object Table.
+	 *
+	 * A non-zero value with `open: false` is suspicious rather than normal - most often an
+	 * integrity-level mismatch, which makes every workbook invisible without saying so.
+	 */
+	excelProcesses?: number;
+	/** Whether the helper itself ran elevated. Half of the mismatch above. */
+	elevated?: boolean;
 }
 
 export interface LiveWriteResult {
@@ -130,7 +139,9 @@ export async function getLiveStatus(workbookPath: string, extensionPath: string)
 			open: r.open === true,
 			queries: Array.isArray(r.queries) ? (r.queries as string[]) : [],
 			excelVersion: r.excelVersion as string | undefined,
-			workbook: r.workbook as string | undefined
+			workbook: r.workbook as string | undefined,
+			excelProcesses: typeof r.excelProcesses === 'number' ? r.excelProcesses : undefined,
+			elevated: typeof r.elevated === 'boolean' ? r.elevated : undefined
 		};
 	} catch (e) {
 		return {
@@ -185,4 +196,17 @@ export async function writeLive(
 	} catch (e) {
 		return { ...empty, reason: e instanceof Error ? e.message : String(e) };
 	}
+}
+
+/**
+ * A human-readable explanation for "Excel is clearly running, but we cannot see the workbook".
+ *
+ * Returns undefined when there is nothing suspicious to explain.
+ */
+export function explainInvisibleWorkbook(status: LiveStatus): string | undefined {
+	if (status.open || !status.excelProcesses) { return undefined; }
+	return 'Excel is running but this workbook is not visible to the extension. '
+		+ 'This usually means one of them is elevated and the other is not - '
+		+ 'COM hides running objects across integrity levels. '
+		+ 'Run VS Code and Excel the same way (normally, for preference) and try again.';
 }
