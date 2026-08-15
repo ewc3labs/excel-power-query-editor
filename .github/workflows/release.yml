@@ -35,6 +35,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.meta.outputs.version }}
+      base: ${{ steps.meta.outputs.base }}
       is_prerelease: ${{ steps.meta.outputs.is_prerelease }}
     steps:
       - uses: actions/checkout@v4
@@ -70,21 +71,27 @@ jobs:
             echo "is_prerelease=true"  >> "$GITHUB_OUTPUT"
           fi
 
-          # The tag and package.json must agree. A mismatch means somebody tagged without
-          # bumping, and the .vsix would carry a version nobody asked for.
-          if [[ "$VERSION" != "$PKG" ]]; then
-            echo "::error::Tag $TAG says $VERSION but package.json says $PKG. Bump one of them."
+          # The tag and package.json must agree, comparing BASE versions.
+          #
+          # A VS Code extension version must be plain x.y.z - vsce rejects a prerelease suffix - so
+          # package.json can never literally equal a tag like v0.6.0-rc.1. Compare v0.6.0-rc.1
+          # against 0.6.0 and the intent is preserved: a tag that names a version nobody bumped to
+          # still fails loudly, and release candidates can still be cut.
+          BASE="${VERSION%%-*}"
+          if [[ "$BASE" != "$PKG" ]]; then
+            echo "::error::Tag $TAG resolves to $BASE but package.json says $PKG. Bump one of them."
             exit 1
           fi
+          echo "base=$BASE" >> "$GITHUB_OUTPUT"
 
       - name: Package the .vsix
         run: |
           npm install -g @vscode/vsce
-          vsce package --out "excel-power-query-editor-${{ steps.meta.outputs.version }}.vsix"
+          vsce package --out "excel-power-query-editor-${{ steps.meta.outputs.base }}.vsix"
 
       - name: Check the package contains what it must
         run: |
-          FILE="excel-power-query-editor-${{ steps.meta.outputs.version }}.vsix"
+          FILE="excel-power-query-editor-${{ steps.meta.outputs.base }}.vsix"
           unzip -l "$FILE" > /tmp/contents.txt
           for required in \
             "extension/dist/extension.js" \
