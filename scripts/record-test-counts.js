@@ -54,12 +54,12 @@ child.on('close', code => {
 		process.exit(code || 1);
 	}
 
-	const counts = { total, passing, pending, failing };
-	const next = JSON.stringify(counts, null, 2) + '\n';
+	// ONLY `total` is written. passing/pending depend on whether the machine has Excel - this rig
+	// reports 119 passing and 0 pending, every CI runner reports 114 and 5 - so persisting them makes
+	// the file differ by machine, and any check comparing it fails for everyone but its author.
+	// `total` is the same everywhere, which is the whole reason it is the number we publish.
+	const next = JSON.stringify({ total }, null, 2) + '\n';
 	const previous = fs.existsSync(OUT) ? fs.readFileSync(OUT, 'utf8') : '';
-
-	// Only `total` is portable. Comparing passing/pending across machines would fail on any rig whose
-	// Excel situation differs from whoever last recorded them.
 	const recordedTotal = previous ? (JSON.parse(previous).total || 0) : 0;
 
 	if (check) {
