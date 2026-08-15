@@ -198,6 +198,37 @@ the response reports `matchedHow` so a surprising match is visible in the log ra
 This was listed as an untested case in an earlier revision of this document. It was not
 hypothetical; it was the first thing to break on a real machine.
 
+## What we have not seen
+
+Everything below is untested, not known-broken. Recording it because "we never tried it" and "it
+works" look identical in a bug report, and Excel in the wild is far more varied than one developer's
+machine.
+
+- **Protected View.** A workbook from an email or the internet opens sandboxed. Whether it registers
+  in the Running Object Table at all is unknown, and whether `Queries` is reachable if it does is a
+  second unknown.
+- **Workbooks opened from a web link**, where Excel may hold a temp copy rather than the path the
+  user believes they are editing.
+- **Co-authoring with AutoSave on.** Someone else may be editing the same workbook, and Excel may
+  reconcile a query change in ways nothing here anticipates.
+- **`excel.exe /x`**, which starts a deliberately separate instance. The ROT lookup should not care,
+  which is exactly the sort of confidence that turns out to be wrong.
+- **Managed environments.** Group policy can disable automation, and macro/add-in restrictions vary
+  by tenant. The requester lost his previous tool to precisely this.
+- **Excel on a different update channel.** `Workbook.Queries` has been present since 2016, but its
+  behavior on Semi-Annual versus Current channel is unverified.
+
+Two things make this less alarming than it reads. Live sync **never writes the file**, so the worst
+plausible failure is that it declines and the on-disk path takes over — which is what would have
+happened anyway. And every failure mode reports a machine-readable reason in the log rather than
+guessing, so a bug report can say which branch was taken instead of "it didn't work".
+
+The single line worth asking a reporter for:
+
+```
+Excel file is locked; live sync CAN/cannot handle it (available=…, excelProcesses=…)
+```
+
 ## Open questions for the slices
 
 1. How does a `.m` file map to a query name — filename convention, a header comment, or a stored map?
