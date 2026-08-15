@@ -55,7 +55,7 @@ const SHARED_BINDING = /^[ \t]*shared[ \t]+(?:#"((?:[^"]|"")*)"|([A-Za-z_][\w.]*
  * Split a section document into its queries.
  *
  * Returns `queries: []` for anything that has no `shared` bindings, which is the honest answer for
- * an empty or unrecognised document - the caller decides whether that is an error.
+ * an empty or unrecognized document - the caller decides whether that is an error.
  */
 export function parseSection(document: string): MSection {
 	const matches: { index: number; end: number; name: string; quoted: boolean }[] = [];
