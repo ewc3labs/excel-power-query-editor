@@ -29,7 +29,7 @@
 <p align="center">
   <img alt="License: MIT" src="https://img.shields.io/badge/License-MIT-yellow.svg">
   <img alt="Version" src="https://img.shields.io/badge/Version-0.6.0-brightgreen.svg">
-  <img alt="Tests" src="https://img.shields.io/badge/tests-108%20passing-brightgreen.svg">
+  <img alt="Tests" src="https://img.shields.io/badge/tests-115%20passing-brightgreen.svg">
   <a href="https://marketplace.visualstudio.com/items?itemName=ewc3labs.excel-power-query-editor"><img alt="VS Code Marketplace" src="https://img.shields.io/badge/VS_Code-Marketplace-blue.svg"></a>
   <a href="https://www.buymeacoffee.com/ewc3labs"><img alt="Buy Me a Coffee" src="https://img.shields.io/badge/Buy%20Me%20a%20Coffee-yellow?logo=buy-me-a-coffee&logoColor=white"></a>
 </p>
@@ -60,8 +60,12 @@ change goes straight into it through Excel itself:
 - A query in the workbook that isn't in your `.m` file is **reported, never deleted**.
 - Workbook closed? It writes to the file as it always has. One decision, made per file, per save.
 
-Windows and Excel only — it talks to Excel's object model. Everything else in this extension, this
-feature included in its absence, still needs neither.
+Live sync needs Windows and Excel, because it works by asking Excel to make the change. Yes: the
+extension that famously doesn't require Excel requires Excel to write to Excel while Excel has the
+file open. We're at peace with it.
+
+Everything else still needs neither. Extract, edit, bulk-extract, and sync to closed workbooks all
+work on macOS and Linux with no Excel installed, exactly as they always have.
 
 > Requested by [@namgaw](https://github.com/ewc3labs/excel-power-query-editor/discussions/3), who
 > wanted to stop closing his workbook to save his own query. Fair.
@@ -86,6 +90,7 @@ That's the whole workflow. Nothing to configure to get started.
 | --- | --- |
 | **Edit M as files** | Full VS Code editing, IntelliSense, and your own git history |
 | **No Excel required** | Reads the file format directly — Windows, macOS, Linux, CI |
+| **Excel required** | ...only for live sync, obviously. It's in the name |
 | **Live sync** | Write into a workbook Excel has open, without closing it *(Windows)* |
 | **Watch mode** | Sync on save, with a configurable debounce |
 | **Automatic backups** | Every write is backed up first, with configurable retention |
@@ -126,7 +131,7 @@ Everything works out of the box. Common ones:
 
 Full reference: [CONFIGURATION.md](docs/CONFIGURATION.md).
 
-> **Upgrading from 0.5.x?** The settings were reorganised into namespaces (`watchAlways` →
+> **Upgrading from 0.5.x?** The settings were reorganized into namespaces (`watchAlways` →
 > `watch.always`, and so on). **Your existing settings are migrated automatically** the first time
 > 0.6.0 starts, and the old names remain documented as deprecated for a release.
 

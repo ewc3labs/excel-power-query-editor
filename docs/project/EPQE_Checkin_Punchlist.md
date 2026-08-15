@@ -87,7 +87,7 @@ receipts**. Before minting a new slice, check whether an existing one already co
       script does not live beside the extension source.
 
 - [x] No `AGENTS.md` and no line-ending policy in the repo that every other repo is told to copy.
-      Added, and 33 tracked files renormalised from CRLF.
+      Added, and 33 tracked files renormalized from CRLF.
 - [ ] `release.yml:260` contains a corrupted byte — `EF BF BD` (replacement character) in a step name.
       Cosmetic on its own; a fair signal about how carefully the file has been reviewed. [PQ-04]
 - [ ] Three `.vsix` files sit in the repo root. Untracked and gitignored, so harmless, but they are

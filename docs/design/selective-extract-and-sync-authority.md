@@ -77,7 +77,7 @@ global preference between operations. A setting only enables the feature and the
 
 ### Absent means ALL, and that is not a compromise
 
-The obvious instinct is that an unrecognised document should refuse to delete anything. It is wrong
+The obvious instinct is that an unrecognized document should refuse to delete anything. It is wrong
 here, for a reason that only matters because this extension already has users:
 
 **Every `.m` file in existence right now has no manifest**, and today's file sync already replaces
