@@ -31,9 +31,13 @@ suite('Watch Tests', () => {
 
 	suite('Watch Command Registration', () => {
 		test('Watch commands are registered and callable', async () => {
-			// Add small delay to ensure extension activation is complete on all platforms
-			await new Promise(resolve => setTimeout(resolve, 100));
-			
+			// WAIT for activation rather than sleeping through it. This used to be a 100ms timer with
+			// the comment "ensure extension activation is complete", which is a hope, not a wait:
+			// activation registers commands after an await, so anything that slows it down - a
+			// settings migration writing configuration on first run, a loaded CI runner - lands after
+			// the timer and the commands are genuinely absent when the assertion reads them.
+			await vscode.extensions.getExtension('ewc3labs.excel-power-query-editor')?.activate();
+
 			const commands = await vscode.commands.getCommands(true);
 			
 			const watchCommands = [
