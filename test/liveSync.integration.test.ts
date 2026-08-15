@@ -40,6 +40,8 @@ suite('Live sync against a real Excel', function () {
 	this.timeout(180_000);
 
 	const available = excelInstalled();
+	// Only an Excel this suite started may be quit by this suite.
+	let startedExcel = false;
 	const workdir = path.join(os.tmpdir(), 'epqe-live-integration');
 	const workbook = path.join(workdir, 'live-integration.xlsx');
 	let extensionPath = '';
@@ -47,6 +49,23 @@ suite('Live sync against a real Excel', function () {
 	suiteSetup(function () {
 		if (!available) {
 			console.log('    [skipped] Excel is not available on this machine');
+			this.skip();
+			return;
+		}
+
+		// REFUSE TO RUN IF EXCEL IS ALREADY OPEN.
+		//
+		// This suite drives a real Excel and has to clean up after itself. There is no way to do that
+		// safely alongside a developer's own session: COM hands out the one running instance, so any
+		// cleanup we perform lands on THEIR workbooks. An earlier version of this teardown closed
+		// every open workbook with SaveChanges=$false and quit Excel - which, on any machine with
+		// Excel installed, is exactly the silent data loss this extension exists to avoid.
+		//
+		// So: if Excel is already running, skip. A skipped test costs a line of output. The other
+		// outcome costs someone their morning.
+		const running = Number(ps('@(Get-Process EXCEL -ErrorAction SilentlyContinue).Count')) || 0;
+		if (running > 0) {
+			console.log('    [skipped] Excel is already running - close it to run the live sync suite');
 			this.skip();
 			return;
 		}
@@ -62,6 +81,7 @@ suite('Live sync against a real Excel', function () {
 
 		// Open it the way a user does, then wait for Excel to register it in the ROT.
 		ps(`Start-Process '${workbook}'`);
+		startedExcel = true;
 		const deadline = Date.now() + 90_000;
 		while (Date.now() < deadline) {
 			const listed = ps(
@@ -75,10 +95,21 @@ suite('Live sync against a real Excel', function () {
 	});
 
 	suiteTeardown(() => {
-		if (!available) { return; }
+		if (!available || !startedExcel) { return; }
 		try {
-			ps('try { $xl = [Runtime.InteropServices.Marshal]::GetActiveObject("Excel.Application"); ' +
-				'foreach ($w in @($xl.Workbooks)) { $w.Close($false) }; $xl.Quit() } catch { }');
+			// Close ONLY the workbooks this suite opened, matched by full name, and only then quit.
+			// Never iterate the whole Workbooks collection: on a machine where someone reattached to
+			// Excel mid-run, that is their unsaved work being discarded.
+			ps(
+				'try {' +
+				'  $xl = [Runtime.InteropServices.Marshal]::GetActiveObject("Excel.Application");' +
+				`  $ours = @('${workbook.replace(/\\/g, '\\\\')}');` +
+				'  foreach ($w in @($xl.Workbooks)) {' +
+				'    if ($ours -contains $w.FullName) { $w.Close($false) }' +
+				'  }' +
+				'  if (@($xl.Workbooks).Count -eq 0) { $xl.Quit() }' +
+				'} catch { }'
+			);
 		} catch { /* best effort */ }
 		try { fs.rmSync(workdir, { recursive: true, force: true }); } catch { /* best effort */ }
 	});
