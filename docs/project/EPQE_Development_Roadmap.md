@@ -40,7 +40,7 @@ not a summary of them.
 
 | Series | Last Num | Series Description |
 | --- | --- | --- |
-| PQ | PQ-27 | Excel Power Query Editor slices and fixes |
+| PQ | PQ-31 | Excel Power Query Editor slices and fixes |
 
 `Last Num` is a cache over the Delivery Index, not a second source of truth — the IDs in the tables are
 authoritative. When minting, take the next number **and** confirm it is unused across every sub-table,
@@ -90,6 +90,15 @@ The two write paths currently disagree about deletion, and nobody chose that. Se
 | PQ-26 | ⬜ planned | Never write `Queries: ALL` after a partial extraction | S | selective-extract-and-sync-authority.md | a document that lies about being complete deletes what it could not read |
 | PQ-25 | ⬜ planned | `sync.confirmQueryRemoval`, defaulted ON | S | selective-extract-and-sync-authority.md | changes `ALL` behavior on purpose — changelog must say so |
 | PQ-27 | ⬜ planned | Manifest vs document mismatch is an error, not a guess | S | selective-extract-and-sync-authority.md | name the discrepancy, refuse, let a human resolve it |
+
+### Docs
+
+| ID | State | Slice | Est | Doc | Status |
+| --- | --- | --- | --- | --- | --- |
+| PQ-28 | ⬜ planned | CONFIGURATION.md still documents 13 renamed settings | S | — | a user following it sets keys that no longer exist |
+| PQ-29 | ⬜ planned | USER_GUIDE.md has no mention of live sync | S | — | the headline 0.6.0 feature is undocumented for users |
+| PQ-30 | ⬜ planned | Retire the RELEASE_SUMMARY pattern | S | — | duplicates CHANGELOG and the GitHub release body |
+| PQ-31 | ⬜ planned | bump-version: drop commit analysis, sync the README badge | S | — | keep it — `npm version` auto-tags, which now FIRES A RELEASE |
 
 ### Data safety — the thing that must never break
 

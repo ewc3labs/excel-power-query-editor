@@ -70,33 +70,10 @@ work on macOS and Linux with no Excel installed, exactly as they always have.
 > Requested by [@namgaw](https://github.com/ewc3labs/excel-power-query-editor/discussions/3), who
 > wanted to stop closing his workbook to save his own query. Fair.
 
-### This one is new, and Excel is a big place
-
-Live sync is off by default and should be treated as **beta**. Not because it is flaky here — it is
-well tested, and the file it writes through is never touched on disk — but because it talks to Excel
-through COM, and Excel in the wild is far more varied than any one machine can represent. Versions,
-update channels, add-ins, group policy, Protected View, co-authoring, and the perennial mystery of
-whether double-clicking a file opens it in the Excel you already have running or spawns a new one.
-
-Things we know it handles, because they were measured rather than assumed:
-
-- **Several Excel instances at once.** Workbooks are found through the Running Object Table, so it
-  does not matter which instance has yours — the case that defeats most automation, and the reason
-  you cannot always copy between two open workbooks.
-- **OneDrive and SharePoint.** A synced workbook is registered under its cloud URL rather than the
-  path you see, and matching accounts for that.
-- **Excel being busy.** Modal dialogs, recalculation and cell-edit mode all make COM calls fail;
-  those are retried rather than reported as errors.
-
-Things we have not seen and would like to: Protected View, workbooks opened from a web link,
-co-authored files with AutoSave on, Excel started with `/x`, and whatever your IT department has
-done to Office.
-
-**If it declines to work, that is a bug report worth filing.** Set
-`"excel-power-query-editor.log.level": "debug"`, reproduce it, and paste the line beginning
-`Excel file is locked; live sync ...` from the **Excel Power Query Editor** output channel. That one
-line says which branch it took and why, and it usually identifies the problem outright.
-[Open an issue](https://github.com/ewc3labs/excel-power-query-editor/issues).
+> **Beta.** It works by talking to Excel through COM, and Excel varies enormously in the wild. It
+> never writes your file, so the worst case is that it declines and the normal path takes over. See
+> the [changelog](CHANGELOG.md) for what was measured to work and what has not been tried — and
+> please [report anything odd](https://github.com/ewc3labs/excel-power-query-editor/issues).
 
 ## Quick start
 
