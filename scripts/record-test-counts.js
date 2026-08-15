@@ -39,9 +39,14 @@ child.stdout.on('data', chunk => {
 
 child.on('close', code => {
 	const read = word => {
-		// Mocha's summary. Take the LAST match: the fixture logs contain the word "passing" too.
-		const matches = [...output.matchAll(new RegExp(`(\\d+)\\s+${word}\\b`, 'g'))];
-		return matches.length ? Number(matches[matches.length - 1][1]) : 0;
+		// SUM the summaries, do not take the last one. There is more than one test host now - a
+		// default one and a second with a workspace folder open - so mocha prints a summary per
+		// config, and reading only the last would report the size of whichever ran last.
+		//
+		// The patterns are anchored to a whole line so fixture logs containing the word "passing"
+		// cannot be mistaken for a summary.
+		const re = new RegExp(`^\\s*(\\d+)\\s+${word}\\b.*$`, 'gm');
+		return [...output.matchAll(re)].reduce((total, m) => total + Number(m[1]), 0);
 	};
 
 	const passing = read('passing');

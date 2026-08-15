@@ -207,7 +207,7 @@ fully devcontainer-compatible out of the box.
 
 ### Test Architecture
 
-The suite has <!--ewc3:tests-->119<!--/ewc3:tests--> tests, organized by area:
+The suite has <!--ewc3:tests-->124<!--/ewc3:tests--> tests, organized by area:
 
 - **Commands** - extension command functionality
 - **Integration** - end-to-end Excel workflows against real workbooks
@@ -215,6 +215,17 @@ The suite has <!--ewc3:tests-->119<!--/ewc3:tests--> tests, organized by area:
 - **Watch** - file monitoring and auto-sync
 - **Backup** - backup creation, retention, and cleanup
 - **Live sync** - writing through Excel; these skip when Excel is absent
+
+**There are two test hosts**, defined in `.vscode-test.mjs`:
+
+- **`unit`** - the default host, with no folder open.
+- **`workspace`** - opens `test/fixtures/migration-workspace`, so `ConfigurationTarget.Workspace`
+  and `WorkspaceFolder` can actually be written.
+
+That split is not cosmetic. Anything asserting on workspace-scoped configuration has to live in
+`test/workspace/`, because in the default host those scopes cannot be set at all - which is exactly
+how a settings-migration bug that only affected them passed a full suite, a six-way CI matrix, and a
+review. Run one with `npx vscode-test --label workspace`.
 
 Per-area counts are deliberately not listed. They were wrong every time anyone checked, and a
 feature adds tests by the dozen - so the only number worth stating is the total, and it comes from
@@ -462,7 +473,7 @@ CI will judge the result identically either way.
 **With one exception.** If a document uses value markers:
 
 ```markdown
-Quality gates: ESLint, TypeScript, <!--ewc3:tests-->119<!--/ewc3:tests--> tests (<!--ewc3:testsNeedingExcel-->5<!--/ewc3:testsNeedingExcel--> of them need Excel and skip without it, on every platform including Windows CI)
+Quality gates: ESLint, TypeScript, <!--ewc3:tests-->124<!--/ewc3:tests--> tests (<!--ewc3:testsNeedingExcel-->5<!--/ewc3:testsNeedingExcel--> of them need Excel and skip without it, on every platform including Windows CI)
 ```
 
 then the toolkit is mandatory, because only it can refresh that number - and a stale one fails
@@ -481,7 +492,7 @@ conventions are in [Overview](Overview.md).
 
 - **Operating Systems**: Ubuntu, Windows, macOS
 - **Node.js Versions**: 22, 24
-- **Quality Gates**: ESLint, TypeScript, <!--ewc3:tests-->119<!--/ewc3:tests--> tests
+- **Quality Gates**: ESLint, TypeScript, <!--ewc3:tests-->124<!--/ewc3:tests--> tests
   (<!--ewc3:testsNeedingExcel-->5<!--/ewc3:testsNeedingExcel--> need Excel), documentation checks
 - **Artifact Management**: VSIX packaging with 30-day retention
 
