@@ -23,9 +23,11 @@ last succeeded in July 2025, and a finished version that never shipped because o
 
 **v0.6.0 = live sync to an open workbook.** The mechanism is proven (`PQ-12`); the rest is product.
 
-1. `PQ-17` — smoke the wired command by hand; everything under it is proven
-2. `PQ-01` — the release pipeline, still the thing blocking any of this reaching a user
-3. `PQ-16` — reply to namgaw, who asked for this in October 2025
+**Live sync works on a real workbook.** What is left is getting it to the person who asked.
+
+1. `PQ-01` — the release pipeline, broken since July 2025 and the only thing between this and a user
+2. `PQ-16` — reply to namgaw, who asked for this in October 2025
+3. `PQ-10` — one README, before the marketplace page is republished
 2. `PQ-01` — the pipeline; nothing can be released until it works
 3. `PQ-10` — one README, before the marketplace page is republished
 
@@ -71,7 +73,7 @@ Excel serves external automation. See `design/live-sync-to-open-excel.md`.
 | PQ-14 | 💨 proven | Split a section document and match queries by name | M | live-sync-to-open-excel.md | proven 2026-08-14 — 3 fixtures round-trip byte for byte |
 | PQ-15 | 💨 proven | Round-trip test: section -> N formulas -> Excel -> section | M | live-sync-to-open-excel.md | proven 2026-08-14 — byte-identical through a real Excel |
 | PQ-16 | ⬜ planned | Reply to namgaw, and reach out to Ken Puls | S | — | he asked in Oct 2025 and suggested the contact |
-| PQ-17 | 🟨 coded | Wire live sync into the sync command and settings | M | live-sync-to-open-excel.md | sync.liveWhenOpen, default OFF; needs a human to press Sync |
+| PQ-17 | 💨 proven | Wire live sync into the sync command and settings | M | live-sync-to-open-excel.md | proven 2026-08-14 — real 29-query workbook in a OneDrive folder |
 
 ### Data safety — the thing that must never break
 
