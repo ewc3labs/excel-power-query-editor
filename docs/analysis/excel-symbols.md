@@ -44,7 +44,32 @@ Two problems, and the second is the one that matters:
    Auto-installing on activation means the extension creates a file in a repo the user did not ask
    us to touch, which may then be committed, reviewed, and wondered about by their colleagues.
 
-## The design (`PQ-18`)
+## There is an API for this, and it is the answer
+
+`microsoft/vscode-powerquery#206` points at it: the Power Query extension exposes a public API for
+exactly this, which the PQ SDK itself uses to push in connector symbols.
+
+```ts
+export interface PowerQueryApi {
+    readonly onModuleLibraryUpdated: (workspaceUriPath: string, library: LibraryJson) => void;
+    readonly addLibrarySymbols: (librarySymbols: ReadonlyMap<string, LibraryJson>) => Promise<void>;
+    readonly removeLibrarySymbols: (librariesToRemove: ReadonlyArray<string>) => Promise<void>;
+}
+```
+
+So the whole problem dissolves. Hand it a `Map` of our two symbols at activation and remove them on
+deactivate. **No file is written, no workspace is required, and no other extension's settings are
+edited.** All three objections below disappear at once, and 156 lines of file-and-setting machinery
+went with them.
+
+Our JSON needed no conversion: checked against the entry the language server holds for
+`Excel.Workbook`, the shape is already right — `completionItemKind` and `type`, not the
+`completionItemType`/`dataType` an older revision of the API declaration suggested. The data was
+always correct; only the delivery was wrong.
+
+## The old design, and why it was wrong
+
+
 
 Make it a **command** rather than something that happens to you:
 

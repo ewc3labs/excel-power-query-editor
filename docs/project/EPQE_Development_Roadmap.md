@@ -93,10 +93,10 @@ Excel serves external automation. See `design/live-sync-to-open-excel.md`.
 | PQ-09 | 💨 proven | Replace the settings WIPE with a real migration | M | settings-migration.md | proven 2026-08-14 — 7 legacy values migrated on a real install |
 | PQ-10 | 🟨 coded | Converge on ONE README | S | — | merged, split files and swap scripts deleted; needs a read |
 | PQ-11 | 💨 proven | Research: does the PQ/M extension ship Excel symbols | S | excel-symbols.md | answered 2026-08-14 — it does NOT ship Excel.CurrentWorkbook |
-| PQ-18 | ⬜ planned | Symbols by command, not by writing into a workspace | M | excel-symbols.md | user picks where; we point the PQ setting at it |
+| PQ-18 | 🟨 coded | Push symbols through the Power Query API | M | excel-symbols.md | no file, no workspace, no setting — 156 lines deleted |
 | PQ-19 | 🟨 coded | CI: get a real signal out of the matrix | M | — | fail-fast off + test timeout; windows-22 GREEN, first in a year |
 | PQ-20 | ⬜ planned | CI: macOS cannot launch VS Code at all | M | — | ENOENT on Electron, vscode-test on the ARM runner |
-| PQ-21 | ⬜ planned | CI: ubuntu fails, and PQ-18 is part of why | M | — | installExcelSymbols throws with no workspace, on every activation |
+| PQ-21 | 🟨 coded | CI: ubuntu fails, and PQ-18 was part of why | M | — | 'No workspace is open' gone; needs a CI run to confirm |
 
 ## Working Rules
 
