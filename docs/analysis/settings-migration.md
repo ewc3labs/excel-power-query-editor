@@ -35,7 +35,7 @@ then deleted the old names from `contributes.configuration` in `package.json`.
 **That is the trap.** VS Code will only let an extension write a configuration key that is
 *registered*. Once a key is gone from `contributes.configuration`, `config.update(oldKey, undefined,
 scope)` fails — the key is no longer known, so it cannot be cleared. The old value stays in the user's
-`settings.json` forever, greyed out as an unknown setting, and there is no API to remove it.
+`settings.json` forever, grayed out as an unknown setting, and there is no API to remove it.
 
 So the sequence "rename the settings, then migrate" cannot work in that order. The rename removes the
 very handle the migration needs.

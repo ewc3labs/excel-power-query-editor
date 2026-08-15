@@ -1,6 +1,6 @@
 # Excel symbols and the Power Query language service
 
-**Question:** does Microsoft's Power Query / M extension now recognise the Excel functions on its
+**Question:** does Microsoft's Power Query / M extension now recognize the Excel functions on its
 own, so we can stop shipping `excel-pq-symbols.json`?
 
 **Answer, measured 2026-08-14 against `powerquery.vscode-powerquery` 1.0.0:** no.

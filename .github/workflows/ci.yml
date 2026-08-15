@@ -26,7 +26,7 @@ jobs:
     strategy:
       # fail-fast: false, so ONE flaky leg does not cancel the other five.
       #
-      # With the default, a macOS runner failing to launch VS Code cancelled ubuntu and windows
+      # With the default, a macOS runner failing to launch VS Code canceled ubuntu and windows
       # before they reported, so every run said "CI failed" and none of them said what actually
       # works. A matrix that cannot tell you which platform broke is not telling you anything.
       fail-fast: false
