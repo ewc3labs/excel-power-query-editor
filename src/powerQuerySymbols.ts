@@ -142,3 +142,46 @@ export function explainRegistration(result: SymbolRegistrationResult): string {
 			return `Could not register Excel symbols: ${result.reason}`;
 	}
 }
+
+/**
+ * Keep the symbols registered when the Power Query extension comes and goes.
+ *
+ * Registering once at activation is not enough. VS Code loads extensions in an order nobody
+ * controls, and a user can install, enable, disable or update the Power Query extension long after
+ * we started. In every one of those cases our symbols are either never delivered or quietly
+ * dropped, and the failure is invisible: `Excel.CurrentWorkbook()` simply goes back to being an
+ * unknown identifier and the user has no reason to connect that to an extension they just touched.
+ *
+ * `extensions.onDidChange` fires for install, uninstall, enable and disable. Re-registering is
+ * cheap and idempotent - the same library id replaces the previous entry - so the safe move is to
+ * try again whenever the set of extensions changes at all.
+ */
+export function watchForPowerQueryExtension(
+	extensionPath: string,
+	log: (message: string, level?: string) => void
+): vscode.Disposable {
+	let lastKnownPresent = vscode.extensions.getExtension(POWER_QUERY_EXTENSION) !== undefined;
+
+	return vscode.extensions.onDidChange(async () => {
+		const presentNow = vscode.extensions.getExtension(POWER_QUERY_EXTENSION) !== undefined;
+
+		// It went away. Nothing to do - it took our symbols with it, and it will get them back if
+		// it returns.
+		if (!presentNow) {
+			if (lastKnownPresent) {
+				log('Power Query extension is gone; Excel symbols went with it', 'debug');
+			}
+			lastKnownPresent = false;
+			return;
+		}
+
+		lastKnownPresent = true;
+
+		const result = await registerExcelSymbols(extensionPath, log);
+		if (result.ok) {
+			log('Power Query extension changed; Excel symbols re-registered', 'info');
+		} else if (result.reason !== 'power-query-extension-not-installed') {
+			log(`Power Query extension changed but symbols did not register: ${result.reason}`, 'debug');
+		}
+	});
+}

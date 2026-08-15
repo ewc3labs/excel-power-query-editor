@@ -5,7 +5,7 @@ function openExtensionSettings() {
 // The module 'vscode' contains the VS Code extensibility API
 import * as vscode from 'vscode';
 import { parseSection, diffQueries } from './mSection';
-import { registerExcelSymbols, unregisterExcelSymbols, explainRegistration } from './powerQuerySymbols';
+import { registerExcelSymbols, unregisterExcelSymbols, explainRegistration, watchForPowerQueryExtension } from './powerQuerySymbols';
 import { getLiveStatus, writeLive, isLiveSyncSupported, explainInvisibleWorkbook } from './excelLive';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -360,6 +360,14 @@ export async function activate(context: vscode.ExtensionContext) {
 		if (!symbolResult.ok) {
 			log(`Excel symbols not registered: ${symbolResult.reason}`, 'excelSymbols', 'debug');
 		}
+
+		// And keep them registered. The Power Query extension can be installed, enabled or updated
+		// after we start, and in each case symbols registered at activation are never delivered or
+		// are silently dropped.
+		context.subscriptions.push(
+			watchForPowerQueryExtension(context.extensionPath,
+				(m, l) => log(m, 'excelSymbols', l ?? 'info'))
+		);
 		
 		log('Extension activation completed successfully', 'activate', 'success');
 	} catch (error) {
