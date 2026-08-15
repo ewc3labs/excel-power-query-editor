@@ -9,7 +9,7 @@ import { isLiveSyncSupported, getLiveStatus, writeLive } from '../src/excelLive'
  * cover the contract that matters when those things are ABSENT: every path returns a value the
  * caller can fall back on, and nothing throws.
  *
- * The COM behaviour itself is verified by hand against a running Excel; see
+ * The COM behavior itself is verified by hand against a running Excel; see
  * docs/design/live-sync-to-open-excel.md for what was measured.
  */
 suite('Live sync', function () {

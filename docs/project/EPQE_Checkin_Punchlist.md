@@ -33,7 +33,7 @@ receipts**. Before minting a new slice, check whether an existing one already co
 - [ ] **The two write paths disagree about deletion and nothing says so.** File sync replaces the
       whole section document, so a query absent from the .m is deleted. Live sync diffs per query and
       never deletes. Same command, same file, opposite outcome depending on whether Excel happens to
-      be open. Neither behaviour is documented and neither was chosen. [PQ-23]
+      be open. Neither behavior is documented and neither was chosen. [PQ-23]
 
 - [ ] **The dev loop produces false negatives.** Reinstalling the extension does not affect a
       RUNNING VS Code: the extension host keeps executing whatever it loaded at startup, so a fix can

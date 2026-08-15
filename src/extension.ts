@@ -309,7 +309,7 @@ export async function activate(context: vscode.ExtensionContext) {
 	try {
 		// Initialize output channel first (before any logging)
 		// `{ log: true }` makes this a LogOutputChannel - what VS Code expects an extension to
-		// use. It carries a level per message, honours the user's own log-level control
+		// use. It carries a level per message, honors the user's own log-level control
 		// ("Developer: Set Log Level..."), and VS Code PERSISTS IT TO DISK itself, under
 		// the window's exthost log folder. That is what makes a bug report legible.
 		//

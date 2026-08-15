@@ -141,7 +141,7 @@ So the live path cannot simply hand the file's contents to Excel. It has to:
 
 > section document → split → N × `Formula` → save → extract → section document
 
-must return the original text. Anything else — reordering, whitespace normalisation, a lost trailing
+must return the original text. Anything else — reordering, whitespace normalization, a lost trailing
 semicolon — is drift, and drift means two sources of truth in a tool whose whole job is not corrupting
 workbooks. That is `PQ-15`, and it should be a test with real fixtures before `PQ-13` ships.
 

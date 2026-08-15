@@ -248,7 +248,7 @@ try {
     # NOT @(... | ConvertFrom-Json). ConvertFrom-Json emits a JSON array as ONE pipeline object, so
     # @() wraps it into a single-element array holding the array; the loop then runs once with the
     # whole array bound, and $item.name becomes a COLLECTION of every name. That produced a query
-    # literally called "StudentResults BrandNewQuery". Convert first, normalise shape second.
+    # literally called "StudentResults BrandNewQuery". Convert first, normalize shape second.
     $payload = ConvertFrom-Json $raw
     if ($null -eq $payload) { $payload = @() }
     elseif ($payload -isnot [object[]]) { $payload = @($payload) }

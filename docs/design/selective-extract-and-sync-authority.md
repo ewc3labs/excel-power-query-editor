@@ -4,7 +4,7 @@
 
 ## The asymmetry we already shipped
 
-The two write paths have **opposite semantics**, and neither is labelled:
+The two write paths have **opposite semantics**, and neither is labeled:
 
 | | a query in the workbook but NOT in the `.m` file |
 | --- | --- |
@@ -12,7 +12,7 @@ The two write paths have **opposite semantics**, and neither is labelled:
 | **Live sync** (per-query diff through Excel) | **reported, never touched** |
 
 Same command, same file, opposite outcome — decided by whether Excel happens to have the workbook
-open at that moment. A user who learns one behaviour will be surprised by the other, and the
+open at that moment. A user who learns one behavior will be surprised by the other, and the
 surprise is silent in both directions: one deletes work they meant to keep, the other leaves a query
 they meant to remove.
 
@@ -81,7 +81,7 @@ The obvious instinct is that an unrecognised document should refuse to delete an
 here, for a reason that only matters because this extension already has users:
 
 **Every `.m` file in existence right now has no manifest**, and today's file sync already replaces
-the whole document. Treating "absent" as anything other than `ALL` changes the behaviour of every
+the whole document. Treating "absent" as anything other than `ALL` changes the behavior of every
 existing file on its next sync — either silently, which is worse, or by refusing, which breaks a
 workflow thousands of people use daily.
 
@@ -110,7 +110,7 @@ for *less*, and changes nothing about asking for everything.
 
 That kills a piece of the earlier design outright. **There is no rename detection.** Under `ALL`, a
 rename is not a rename — it is a document that no longer contains `A` and now contains `A2`, and the
-whole document is written. That is already the behaviour, it is correct, and inferring "this looks
+whole document is written. That is already the behavior, it is correct, and inferring "this looks
 like a rename" would be exactly the second-guessing this rule exists to prevent.
 
 ### The live path has to emulate it
@@ -160,7 +160,7 @@ that is a legitimate thing to want and an illegitimate thing to guess.
 > Ask before removing queries from the workbook that are not in the `.m` file. This happens when the
 > manifest says `Queries: ALL` (or there is no manifest) and the workbook contains a query your file
 > does not. **Turn this off** if your `.m` files are the source of truth and you intend to overwrite
-> whatever is in the workbook — the original EPQE behaviour.
+> whatever is in the workbook — the original EPQE behavior.
 
 ### On the name, because there is already a trap here
 
@@ -180,21 +180,21 @@ does. Nobody should have to reason about polarity to avoid deleting their own qu
 **Boolean, not an enum.** A third state like "ask when it looks unexpected" is the inference this
 whole design rejects — it would mean the extension deciding what surprises you.
 
-### This does change existing behaviour, deliberately
+### This does change existing behavior, deliberately
 
 `ALL` on the file path currently removes queries silently, and with this defaulted on it will ask.
 That is a real change for existing users and it belongs in the changelog in those words, not buried.
 
 The case for it: the removal that most needs a prompt is the one nobody can see coming — a query
 added in Excel last week, absent from a `.m` extracted before it existed, deleted on the next sync
-without ever appearing in the diff the user reviewed. Silence there is not the old behaviour being
+without ever appearing in the diff the user reviewed. Silence there is not the old behavior being
 respected, it is a data-loss path with no brakes. One checkbox turns it back off, permanently, for
 anybody who wants it.
 
 ## Slices
 
 - `PQ-22` — the `Queries:` manifest, and reading it. **Gates the rest.**
-- `PQ-23` — honour it on both paths, with `ALL` on the file path left exactly as it is
+- `PQ-23` — honor it on both paths, with `ALL` on the file path left exactly as it is
 - `PQ-24` — "Extract Selected Power Queries", writing the manifest
 - `PQ-25` — `sync.confirmQueryRemoval`, defaulted on; changelog must say it changes `ALL`
 - `PQ-26` — never write `ALL` after a partial extraction
