@@ -121,13 +121,13 @@ jobs:
             echo "" >> $GITHUB_STEP_SUMMARY
             echo "### Test Coverage Areas:" >> $GITHUB_STEP_SUMMARY
             echo "- ✅ Extension lifecycle and activation" >> $GITHUB_STEP_SUMMARY
-            echo "- ✅ Command registration and execution (10 tests)" >> $GITHUB_STEP_SUMMARY
-            echo "- ✅ Integration with real Excel files (11 tests)" >> $GITHUB_STEP_SUMMARY
-            echo "- ✅ Utility functions and configuration (11 tests)" >> $GITHUB_STEP_SUMMARY
-            echo "- ✅ File watching and auto-sync (11 tests)" >> $GITHUB_STEP_SUMMARY
-            echo "- ✅ Backup creation and management (19 tests)" >> $GITHUB_STEP_SUMMARY
+            echo "- ✅ Command registration and execution" >> $GITHUB_STEP_SUMMARY
+            echo "- ✅ Integration with real Excel files" >> $GITHUB_STEP_SUMMARY
+            echo "- ✅ Utility functions and configuration" >> $GITHUB_STEP_SUMMARY
+            echo "- ✅ File watching and auto-sync" >> $GITHUB_STEP_SUMMARY
+            echo "- ✅ Backup creation and management" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
-            echo "**Total: 63 comprehensive tests covering all v0.5.0 features!**" >> $GITHUB_STEP_SUMMARY
+            echo "**Total: $(node -p "require('./test-counts.json').total") tests.**" >> $GITHUB_STEP_SUMMARY
           else
             echo "❌ **Tests failed.** Please check the test results above." >> $GITHUB_STEP_SUMMARY
           fi
