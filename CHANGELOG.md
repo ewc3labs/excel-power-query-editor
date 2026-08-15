@@ -11,6 +11,55 @@ All notable changes to the "excel-power-query-editor" extension will be document
 ---
 
 
+## [0.6.0] - 2026-08-15
+
+### Added
+
+- **Live sync: write to a workbook Excel already has open.** Editing a `.m` file and syncing no
+  longer requires closing the workbook. When Excel has it open, the change is made through Excel
+  itself, the file on disk is untouched, and the workbook is left with unsaved changes for you to
+  review and save. Off by default — set `excel-power-query-editor.sync.liveWhenOpen` to `true`.
+
+  Requested in [discussion #3](https://github.com/ewc3labs/excel-power-query-editor/discussions/3).
+
+  **This is beta, and Excel is a big place.** It works by talking to Excel through COM, and Excel
+  varies enormously between versions, update channels and managed environments. What was measured
+  to work: several Excel instances at once (workbooks are found through the Running Object Table,
+  so it does not matter which instance has yours), OneDrive and SharePoint (a synced workbook is
+  registered under its cloud URL rather than the path you see), and Excel being busy (modal
+  dialogs and recalculation fail COM calls, and are retried).
+
+  What has **not** been tried: Protected View, workbooks opened from a web link, co-authored files
+  with AutoSave, `excel.exe /x`, and environments where group policy restricts automation.
+
+  If it declines to work, that is worth reporting. Set `log.level` to `debug`, reproduce, and send
+  the line beginning `Excel file is locked; live sync ...` from the output channel — it says which
+  branch was taken and why.
+
+- **Excel symbols now register through the Power Query extension's API** rather than being written
+  into your workspace. Nothing is added to `.vscode/`, no other extension's settings are edited,
+  and it works with no folder open. They are re-registered automatically if the Power Query
+  extension is installed or updated after this one.
+
+### Changed
+
+- **Settings are namespaced** — `watchAlways` → `watch.always`, `logLevel` → `log.level`, and so
+  on. **Your existing settings are migrated automatically** on first run. The old names remain
+  declared and deprecated for at least one release, so a user skipping a version still migrates.
+- Logging uses a VS Code `LogOutputChannel`, so verbosity follows **Developer: Set Log Level…** and
+  the log is persisted by VS Code with its own.
+- One README, used by both the repository and the Marketplace listing.
+
+### Fixed
+
+- **`migrateLegacySettings` deleted settings rather than migrating them.** The previous
+  implementation set every key in scope to `undefined` in both User and Workspace scope, preserving
+  nothing, and re-ran on every version bump. It never shipped. If you ran a development build
+  between 0.5.0 and now and lost your configuration, this was why.
+- Extraction no longer fails when no folder is open.
+- The release pipeline builds again. It had not succeeded since July 2025, which is why 0.5.1 and
+  0.5.2 were never published.
+
 ## [0.5.0] - 2025-07-20
 
 ### 🎯 Marketplace Release - Professional Logging, Auto-Watch Enhancements, Symbols, and Legacy Settings Migration
