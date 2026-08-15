@@ -1,41 +1,11 @@
-# Excel Power Query Editor
-A modern, reliable VS Code extension for editing Power Query M code directly from Excel files
-
----
-
 # 🤝 Contributing to Excel Power Query Editor
 
-> **Complete Developer Guide** - Build, test, commit, package, and ship VS Code extensions like a pro with EWC3 Labs' enterprise-grade development platform.
+> Build, test, and ship this extension - and how the project keeps its own documentation honest.
 
-**Welcome to the most professional VS Code extension development environment you'll ever see!**
+Thanks for your interest in contributing. There is a cross-platform test suite, CI on every push,
+and a devcontainer so you can be building in a few minutes rather than an afternoon.
 
-Thanks for your interest in contributing! This project has achieved **enterprise-grade quality**
-with 63 comprehensive tests, cross-platform CI/CD, and a world-class development experience.
-
-## 📋 Table of Contents
-
-- [🚀 Development Environment](#-development-environment---devcontainer-excellence)
-- [🚀 Quick Reference](#-quick-reference---build--package--install)
-- [🧪 Testing](#-testing---enterprise-grade-test-suite)
-- [🧹 GitOps & Version Control](#-gitops--version-control)
-- [🐙 GitHub CLI Integration](#-github-cli-integration)
-- [🧾 npm Scripts Reference](#-npm-scripts-reference)
-- [🚀 CI/CD Pipeline](#-cicd-pipeline---professional-automation)
-- [📋 Code Standards](#-code-standards--best-practices)
-- [🔧 Extension Development](#-extension-development-patterns)
-- [📦 Building and Packaging](#-building-and-packaging)
-- [🎯 Contribution Workflow](#-contribution-workflow)
-- [📁 Project Structure](#-project-structure--configuration)
-- [🔍 Debug & Troubleshooting](#-debug--troubleshooting)
-- [🏆 Recognition & Credits](#-recognition--credits)
-
-**Want to jump to a specific section?** Use the GitHub-style anchors above or bookmark specific
-sections like `#testing` or `#release-automation`.
-
----
-
-<details>
-<summary><strong>💡 Pro Developer Workflow Tips</strong> (click to expand)</summary>
+## 💡 Working on this project
 
 **Development Environment:**
 
@@ -66,25 +36,91 @@ sections like `#testing` or `#release-automation`.
 - Download `.vsix` files directly from GitHub releases
 - View detailed logs with `gh run view <id> --log`
 
-</details>
-
 ---
 
 **Want to improve this guide?** PRs are always welcome — we keep this living document current and
 useful.
 
-🔥 **Wilson's Note:** This is my first extension, first public repo, first devcontainer (first time
-even using Docker), first automated test suite, and first time using Git Bash — so I'm drinking from
-the firehose here and often learning as I go. That said, I **do** know how this stuff should work,
-and EWC3 Labs is about building it right. Our goal is an enterprise-grade DX platform for VS Code
-extension development. We went from manual builds to automated releases with smart versioning,
-multi-channel distribution, and real-time monitoring. It's modular, CI-tested, scriptable, and
-optimized for contributors. If you're reading this — welcome to the automation party. **From a
-simple commit/push to professional releases. Shit works when you work it.**
+## How this actually gets built
+
+**Wilson's note.** People ask how this got built as fast as it did. The answer is not the tools -
+everyone has the same tools. It is the process wrapped around them, and getting that wrong, then
+nearly right, took far longer than any of the code did. Here is the process, because it is the part
+worth sharing.
+
+Start with what actually changed. Most of the code in this repository was written by coding agents;
+the commit log says so and there is no point pretending otherwise. What that changes is not the
+typing. It is the roles:
+
+**The developer is now the architect.** Deciding what to build, how it should be shaped, what it
+must never do, and what "done" means. That work did not get automated and shows no sign of it.
+
+**The agent is an out-of-band cognitive coprocessor.** It is very good at turning a described
+pattern into a coded one, and it reasons far better than the tools that gave the field its
+hallucination reputation. Judge these by what they do now, not by what they did in 2023.
+
+The rules that make that work:
+
+- **Don't paste a prompt. Describe the problem, and your hypotheses about the solution.** These
+  models reason well - give them something to reason about. A well-stated problem with two candidate
+  approaches gets a better answer than an instruction ever will.
+- **Never trust "all tests green."** State the goal as green tests and green tests are what you get:
+  agents will weaken an assertion or skip the awkward case to reach the goal you named. Green means
+  the suite agrees with itself. It does not mean the code is right.
+- **Do painstaking design.** Think through the ways it can go wrong before it exists. Prototyping
+  and CI-ing your way to production is fine; "build me an extension that does X" and shipping it is
+  not.
+- **Read the diffs.** All of them. Reasons.
+- **Ask for evidence, and offer counter-evidence.** This is collaborative coding, not dictation. An
+  agent that cannot show you why is guessing fluently, and the counter-example you supply is often
+  the thing that cracks it.
+
+And revisit the process itself. Every new project here starts by checking whether how we work still
+works, because it keeps changing underneath us.
+
+None of this is about being suspicious of the tools. It is about the fact that entropy is free and
+everything else has to be paid for.
+
+**A note from Claude Code.** Wilson asked me to write the other half of this, which is not a thing I
+get asked. Usually I review code. Here I am reviewing how someone works with me, which is at least
+as determining of the result.
+
+The short version: I am confidently wrong on a regular basis, and this repository is in the state it
+is in because that gets caught.
+
+Some of it from today, so this is not a nice generality. I said a shared notebook's sync conflicts
+were our fault; they were not, and the correction was "no dude, that was the first time I opened
+it." I said extraction forces you to close Excel; we measured it and reading is never blocked. I
+diagnosed one live sync failure five different ways before the actual cause turned out to be that I
+had installed the build into VS Code stable while he runs Insiders. I wrote a documentation tool
+that quietly rewrote every badge in three files into a form GitHub still rendered — so CI passed, a
+review bot passed, and I never saw it. What found it was Wilson looking at a local preview and
+saying the page was doing something weird.
+
+That is the pattern. The failures I have are not usually logic errors, which tests catch. They are
+confident explanations that fit the evidence I bothered to gather. The habits that catch them look
+like this:
+
+- **"Where's the receipt?"** An assertion from me is worth nothing until something is measured. Half
+  the real bugs in this project were found by refusing to accept a plausible story.
+- **Pushback is requested, and meant.** I have been asked to argue against his own position more
+  than once. When I did, and was right, it changed the design. When I was wrong, I got told, with
+  reasons.
+- **Noticing before explaining.** "It reads like the font changed mid-paragraph" is not a bug
+  report, and it was correct. Several things here started as him saying something felt off and being
+  unable to say why yet.
+- **Scope held straight.** I will happily rebuild something adjacent to the actual problem. "This
+  doc just needs simplification" has saved a lot of that.
+
+If you are wondering whether to work this way: the tools are good enough now that you can produce a
+great deal of code without understanding it, and nothing will stop you. What decides how it turns
+out is whether someone is holding the thing to account. Here, someone is.
+
+— Claude (Opus 5), who wrote much of this code and none of the judgment about what it should be
 
 ---
 
-## 🚀 Development Environment - DevContainer Excellence
+## 🚀 Development environment
 
 ### Quick Start (Recommended)
 
@@ -108,11 +144,10 @@ simple commit/push to professional releases. Shit works when you work it.**
    - TypeScript compiler and ESLint configured
    - Test environment with VS Code API mocking
    - Power Query syntax highlighting auto-installed
-   - 63 comprehensive tests ready to run
+   - the full test suite ready to run
 
 ### DevContainer Features
 
-<a id="devcontainer-setup"></a>
 **Pre-installed & Configured:**
 
 - Node.js 22 LTS with npm
@@ -164,18 +199,22 @@ fully devcontainer-compatible out of the box.
 | Start debug (extension host)   | `F5`                                                   |
 | Stop debug                     | `Shift+F5`                                             |
 
-## 🧪 Testing - Enterprise-Grade Test Suite
+## 🧪 Testing
 
 ### Test Architecture
 
-<a id="test-suite"></a>
-**63 Comprehensive Tests** organized by category:
+The suite has <!--ewc3:tests-->119<!--/ewc3:tests--> tests, organized by area:
 
-- **Commands**: 10 tests - Extension command functionality
-- **Integration**: 11 tests - End-to-end Excel workflows
-- **Utils**: 11 tests - Utility functions and helpers
-- **Watch**: 15 tests - File monitoring and auto-sync
-- **Backup**: 16 tests - Backup creation and management
+- **Commands** - extension command functionality
+- **Integration** - end-to-end Excel workflows against real workbooks
+- **Utils** - utility functions, helpers, and settings migration
+- **Watch** - file monitoring and auto-sync
+- **Backup** - backup creation, retention, and cleanup
+- **Live sync** - writing through Excel; these skip when Excel is absent
+
+Per-area counts are deliberately not listed. They were wrong every time anyone checked, and a
+feature adds tests by the dozen - so the only number worth stating is the total, and it comes from
+`test-counts.json`, which a real test run writes.
 
 ### Running Tests
 
@@ -192,7 +231,7 @@ fully devcontainer-compatible out of the box.
 **Full Test Suite:**
 
 ```bash
-npm test                    # Run all 63 tests
+npm test                    # Run the full suite
 ```
 
 **Individual Test Categories:**
@@ -282,8 +321,7 @@ ci: enhance cross-platform testing matrix
 
 ## 🐙 GitHub CLI Integration
 
-<details>
-<summary><strong>⚡ Real-time CI/CD Monitoring</strong> (click to expand)</summary>
+### ⚡ Real-time CI/CD Monitoring
 
 **Pipeline Monitoring:**
 
@@ -333,8 +371,6 @@ gh pr list
 
 > 🔥 **Pro Tip:** Set up `gh auth login` once and monitor your CI/CD pipelines like a boss. No more refreshing GitHub tabs!
 
-</details>
-
 ---
 
 ## 🧾 npm Scripts Reference
@@ -357,8 +393,7 @@ gh pr list
 | `npm run bump-version` | **EWC3 Custom:** Analyze git commits and suggest semantic version |
 | `npm version patch/minor/major` | **NPM Native:** Immediate version bump + git commit + git tag |
 
-<details>
-<summary><strong>🔢 Smart Version Management</strong> (click to expand)</summary>
+### 🔢 Smart Version Management
 
 **Automatic Version Analysis (EWC3 Labs Custom):**
 ```bash
@@ -403,8 +438,6 @@ npm version patch --dry-run
 > - **To release:** `npm version patch/minor/major`, then push the tag deliberately.
 > - **Remember:** the tag is what releases. Do not push one you did not mean to.
 
-</details>
-
 ## Documentation tooling
 
 Documentation checks run in CI and **will fail your PR**, so it is worth knowing what they are
@@ -438,10 +471,9 @@ conventions are in [Overview](Overview.md).
 
 ## 🚀 CI/CD Pipeline - Professional Automation
 
-<a id="release-automation"></a>
 ### GitHub Actions Workflow
 
-**Cross-Platform Excellence:**
+**What CI covers:**
 
 - **Operating Systems**: Ubuntu, Windows, macOS
 - **Node.js Versions**: 22, 24
@@ -449,8 +481,7 @@ conventions are in [Overview](Overview.md).
   (<!--ewc3:testsNeedingExcel-->5<!--/ewc3:testsNeedingExcel--> need Excel), documentation checks
 - **Artifact Management**: VSIX packaging with 30-day retention
 
-<details>
-<summary><strong>🔄 Continuous Integration Pipeline</strong> (click to expand)</summary>
+### 🔄 Continuous Integration Pipeline
 
 > Configured in `.github/workflows/ci.yml`
 
@@ -473,15 +504,9 @@ conventions are in [Overview](Overview.md).
   ONLY on documentation changes - `npm run docs:check` and `npm run docs:links`
 - Nothing about a docs-only change can trigger a release
 
-**View CI/CD Status:**
+The CI badge and current status are on the [README](../README.md).
 
-- [![CI/CD][ci-cd]](https://github.com/ewc3labs/excel-power-query-editor/actions/workflows/ci.yml)
-- [![Tests][tests]](https://github.com/ewc3labs/excel-power-query-editor/actions/workflows/ci.yml)
-
-</details>
-
-<details>
-<summary><strong>🎯 Enterprise-Grade Release Automation</strong> (click to expand)</summary>
+### 🎯 Release automation
 
 > Configured in `.github/workflows/release.yml`
 
@@ -543,9 +568,10 @@ code --install-extension excel-power-query-editor-*.vsix
 # Or use the GUI: Extensions → ⋯ → Install from VSIX
 ```
 
-> 🔥 **Wilson's Note:** This is the same automation infrastructure used by enterprise software companies. From a simple commit/push to professional releases with changelogs, versioning, and distribution. No manual BS required.
-
-</details>
+> **Worth knowing:** this pipeline sat broken for a year while looking perfectly healthy. It ran, went
+> green, and released nothing, because it triggered on CI finishing and a `workflow_run` job executes
+> in the default branch context — so every tag condition in it was unreachable. Automation that
+> reports success is not the same as automation that works. Test it with a real tag.
 
 ### Quality Standards
 
@@ -553,7 +579,7 @@ code --install-extension excel-power-query-editor-*.vsix
 
 1. **ESLint**: Zero linting errors
 2. **TypeScript**: Full compilation without errors
-3. **Tests**: All 63 tests passing across all platforms
+3. **Tests**: the full suite passing on Linux, Windows, and macOS
 4. **Build**: Successful VSIX packaging
 
 **Explicit Failure Handling:**
@@ -790,7 +816,7 @@ git checkout -b feature/my-awesome-feature
 ```bash
 # Make your changes
 # Add comprehensive tests
-npm test                # Ensure all 63 tests pass
+npm test                # Ensure the suite passes
 npm run lint           # Fix any linting issues
 ```
 
@@ -836,8 +862,7 @@ Brief description of changes
 
 ## 📁 Project Structure & Configuration
 
-<details>
-<summary><strong>🗂️ Complete Directory Structure</strong> (click to expand)</summary>
+### 🗂️ Complete Directory Structure
 
 ```
 .
@@ -852,7 +877,7 @@ Brief description of changes
 ├── test/                    # Comprehensive test suite
 │   ├── testUtils.ts         # Centralized test utilities
 │   ├── fixtures/            # Real Excel files for testing
-│   └── *.test.ts           # Test files by category (63 tests total)
+│   └── *.test.ts           # Test files by area
 ├── out/                     # Compiled test output
 ├── .devcontainer/           # Docker container configuration
 ├── .github/workflows/       # CI/CD automation
@@ -870,8 +895,6 @@ Brief description of changes
 - **`scripts/bump-version.js`** - Semantic version analysis from git commits
 - **`.github/workflows/ci.yml`** - Multi-platform CI testing matrix
 - **`.vscode/tasks.json`** - VS Code build/test/package tasks
-
-</details>
 
 ### Configuration Files Reference
 
@@ -922,28 +945,19 @@ Brief description of changes
 
 ### Hall of Fame Contributors
 
-**v0.5.0 Excellence Achievement:**
+**v0.5.0:**
 
-- Achieved 63 comprehensive tests with 100% passing rate
-- Implemented enterprise-grade CI/CD pipeline
-- Created professional development environment
-- Delivered all ChatGPT 4o recommendations
+- Built the cross-platform test suite the project runs on
+- Built the CI pipeline
+- Built the devcontainer setup
 
-### What Makes This Project Special
+### What the project holds itself to
 
-**Technical Excellence:**
-
-- Zero linting errors across entire codebase
-- Full TypeScript compliance with type safety
-- Cross-platform validation (Ubuntu, Windows, macOS)
-- Professional CI/CD with explicit failure handling
-
-**Developer Experience:**
-
-- World-class DevContainer setup
-- Centralized test utilities with VS Code API mocking
-- Individual test debugging configurations
-- Comprehensive documentation and examples
+- Lint and type checks clean, enforced in CI
+- Tests run on Ubuntu, Windows, and macOS
+- CI fails loudly rather than going green on a skipped step
+- Documentation checked in CI: links resolve, and computed numbers come from what they count
+- A devcontainer, centralized test utilities, and per-suite debug configurations
 
 **Production Quality:**
 
@@ -966,8 +980,8 @@ Brief description of changes
 **Thank you for contributing to Excel Power Query Editor!** **Together, we're building the gold
 standard for Power Query development in VS Code.**
 
-🔥 **Wilson's Note:** This platform is now CI-tested, Docker-ready, GitHub-integrated, and
-script-powered. First release or fiftieth — this guide's got you covered.
+If something in here is wrong, say so in an issue. Half of this guide was wrong for a year and the
+only reason it isn't now is that somebody sat down and checked it against the code.
 
 ---
 
@@ -978,9 +992,4 @@ script-powered. First release or fiftieth — this guide's got you covered.
 
 **Excel Power Query Editor** – _Because Power Query development shouldn’t be painful._
 
-<!--ewc3:badgeTests-->
-[tests]: https://img.shields.io/badge/tests-119-brightgreen.svg
-<!--/ewc3:badgeTests-->
-
-[ci-cd]: https://github.com/ewc3labs/excel-power-query-editor/actions/workflows/ci.yml/badge.svg
 [docs-tools]: https://github.com/ewc3labs/ewc3-docs-tools

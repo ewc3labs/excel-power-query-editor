@@ -38,11 +38,6 @@
         "path": "engines.vscode"
       }
     },
-    "badgeTests": {
-      "template": {
-        "text": "\n[tests]: https://img.shields.io/badge/tests-${tests}-brightgreen.svg\n"
-      }
-    },
     "badgeVersion": {
       "template": {
         "text": "<img alt=\"Version\" src=\"https://img.shields.io/badge/Version-${version}-brightgreen.svg\">"

@@ -4,7 +4,8 @@
 
 If the Excel Power Query Editor extension is helpful to you, consider supporting its development:
 
-[![Buy Me a Coffee][buy-me-a-coffee]](https://www.buymeacoffee.com/ewc3labs)
+[![Buy Me a
+Coffee](https://img.shields.io/badge/-Buy%20Me%20a%20Coffee-ffdd00?style=for-the-badge&logo=buy-me-a-coffee&logoColor=black)](https://www.buymeacoffee.com/ewc3labs)
 
 ## Why Support?
 
@@ -64,5 +65,3 @@ For technical support and questions:
 ---
 
 *Every contribution, no matter how small, helps make this extension better for everyone.*
-
-[buy-me-a-coffee]: https://img.shields.io/badge/-Buy%20Me%20a%20Coffee-ffdd00?style=for-the-badge&logo=buy-me-a-coffee&logoColor=black
