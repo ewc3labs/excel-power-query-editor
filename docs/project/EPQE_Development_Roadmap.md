@@ -40,7 +40,7 @@ not a summary of them.
 
 | Series | Last Num | Series Description |
 | --- | --- | --- |
-| PQ | PQ-26 | Excel Power Query Editor slices and fixes |
+| PQ | PQ-27 | Excel Power Query Editor slices and fixes |
 
 `Last Num` is a cache over the Delivery Index, not a second source of truth — the IDs in the tables are
 authoritative. When minting, take the next number **and** confirm it is unused across every sub-table,
@@ -85,10 +85,11 @@ The two write paths currently disagree about deletion, and nobody chose that. Se
 | ID | State | Slice | Est | Doc | Status |
 | --- | --- | --- | --- | --- | --- |
 | PQ-22 | ⬜ planned | `Queries:` manifest in the .m header, ALL or a block list | M | selective-extract-and-sync-authority.md | gates the rest; absent means ALL, matching every existing file |
-| PQ-23 | ⬜ planned | Honour the manifest identically on both write paths | L | selective-extract-and-sync-authority.md | Queries.Delete() verified to work on an open workbook |
+| PQ-23 | ⬜ planned | Honour the manifest on both paths; `ALL` untouched | L | selective-extract-and-sync-authority.md | file+ALL stays setFormula(document); live must MATCH its outcome |
 | PQ-24 | ⬜ planned | "Extract Selected" command, writing the manifest | M | selective-extract-and-sync-authority.md | second menu item, so extracting all costs nobody a decision |
 | PQ-26 | ⬜ planned | Never write `Queries: ALL` after a partial extraction | S | selective-extract-and-sync-authority.md | a document that lies about being complete deletes what it could not read |
-| PQ-25 | ⬜ planned | Confirm before removing queries | S | selective-extract-and-sync-authority.md | the one action that destroys unrecoverable work |
+| PQ-25 | ⬜ planned | Confirm before removing queries | S | selective-extract-and-sync-authority.md | DECISION NEEDED — default on for new paths, off for `ALL`? |
+| PQ-27 | ⬜ planned | Manifest vs document mismatch is an error, not a guess | S | selective-extract-and-sync-authority.md | name the discrepancy, refuse, let a human resolve it |
 
 ### Data safety — the thing that must never break
 
