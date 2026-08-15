@@ -16,9 +16,17 @@
     "README.md",
     "CHANGELOG.md",
     "LICENSE",
-    "docs/USER_GUIDE.md",
-    "docs/CONFIGURATION.md",
-    "docs/RELEASE_SUMMARY_v0.5.0.md"
+    "docs/Overview.md",
+    "docs/Installation.md",
+    "docs/User_Guide.md",
+    "docs/FAQ.md",
+    "docs/Config_Reference.md",
+    "docs/Config_Changes.md",
+    "docs/Commands.md",
+    "docs/Live_Sync.md",
+    "docs/Watch_Mode.md",
+    "docs/Backups.md",
+    "docs/Excel_Symbols.md"
   ],
   "bugs": {
     "url": "https://github.com/ewc3labs/excel-power-query-editor/issues"
