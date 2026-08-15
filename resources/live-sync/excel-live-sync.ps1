@@ -70,7 +70,12 @@ $script:BusyHResults = @(0x80010001, 0x8001010A, 0x80010005)
 function Invoke-WithRetry {
     param([Parameter(Mandatory)][scriptblock] $Action, [int] $Attempts = 5)
 
-    for ($i = 1; $i -le $Attempts; $i++) {
+    # $__retryAttempt, not $i. PowerShell resolves variables in a scriptblock through the SCOPE
+    # CHAIN AT INVOCATION, so a loop variable in here SHADOWS the caller's variable of the same
+    # name. With a plain $i, every `Invoke-WithRetry { $book.Queries.Item($i).Name }` read
+    # Item(1) - a 29-query workbook reported the same query 29 times, which would then have been
+    # diffed as 28 missing queries and fed to Queries.Add on names that already existed.
+    for ($__retryAttempt = 1; $__retryAttempt -le $Attempts; $__retryAttempt++) {
         try {
             return & $Action
         } catch {
@@ -81,8 +86,8 @@ function Invoke-WithRetry {
                 $ex = $ex.InnerException
             }
             $busy = $hr -ne $null -and ($script:BusyHResults -contains ([uint32]$hr))
-            if (-not $busy -or $i -eq $Attempts) { throw }
-            Start-Sleep -Milliseconds (150 * $i)   # 150, 300, 450, 600 - Excel dialogs are brief
+            if (-not $busy -or $__retryAttempt -eq $Attempts) { throw }
+            Start-Sleep -Milliseconds (150 * $__retryAttempt)   # 150, 300, 450, 600 - Excel dialogs are brief
         }
     }
 }
@@ -102,9 +107,73 @@ try {
     Fail 'bad-path' $_.Exception.Message
 }
 
+# A workbook synced from OneDrive or SharePoint is NOT registered under the local path the user
+# sees. Measured on a real machine:
+#
+#   the user's file : D:\OneDrive - medarms.com\Scripts\PowerQuery\PowerQueryFunctions.xlsx
+#   the ROT entry   : https://<tenant>-my.sharepoint.com/personal/<user>/Documents/Scripts/
+#                     PowerQuery/PowerQueryFunctions.xlsx
+#
+# Excel knows the file by its cloud identity; Explorer and VS Code know it by the synced path.
+# An exact string match can never join those, so live sync silently declined for every file in a
+# synced folder - which for a lot of people is every file they own.
+#
+# There is no API that maps one to the other, so match on what the two forms genuinely share: the
+# trailing path segments. Score each candidate by how many segments agree from the right, require
+# the filename itself to agree, and refuse a tie rather than guess at somebody's workbook.
+function Resolve-Workbook {
+    param([Parameter(Mandatory)][string] $FullPath)
+
+    $exact = [RunningObjects]::Get($FullPath)
+    if ($null -ne $exact) { return @{ book = $exact; how = 'exact' } }
+
+    $wantSegments = ($FullPath -split '[\\/]') | Where-Object { $_ }
+    if ($wantSegments.Count -eq 0) { return $null }
+    $wantFile = $wantSegments[-1]
+
+    $best = $null; $bestScore = 0; $tied = $false
+
+    foreach ($name in [RunningObjects]::Names()) {
+        # Only things that look like a document; skip the !CLSID service registrations.
+        if ($name -notmatch '\.xls[xmb]?$') { continue }
+
+        $haveSegments = ($name -split '[\\/]') | Where-Object { $_ }
+        if ($haveSegments.Count -eq 0) { continue }
+        if (-not [string]::Equals($haveSegments[-1], $wantFile, 'OrdinalIgnoreCase')) { continue }
+
+        $score = 0
+        $max = [Math]::Min($wantSegments.Count, $haveSegments.Count)
+        for ($i = 1; $i -le $max; $i++) {
+            if ([string]::Equals($wantSegments[-$i], $haveSegments[-$i], 'OrdinalIgnoreCase')) { $score++ }
+            else { break }
+        }
+
+        if ($score -gt $bestScore) { $bestScore = $score; $best = $name; $tied = $false }
+        elseif ($score -eq $bestScore -and $score -gt 0 -and $best -ne $name) { $tied = $true }
+    }
+
+    if ($tied) { return @{ ambiguous = $true } }
+    if ($null -eq $best) { return $null }
+
+    $obj = [RunningObjects]::Get($best)
+    if ($null -eq $obj) { return $null }
+    return @{ book = $obj; how = "matched-by-path-tail:$bestScore"; registeredAs = $best }
+}
+
 $book = $null
+$matchedHow = 'exact'
+$registeredAs = $null
 try {
-    $book = Invoke-WithRetry { [RunningObjects]::Get($wanted) }
+    $resolved = Invoke-WithRetry { Resolve-Workbook -FullPath $wanted }
+    if ($null -ne $resolved -and $resolved.ambiguous) {
+        Fail 'ambiguous-workbook' ("More than one open workbook matches this file name equally well. " +
+            "Refusing to guess which one you meant.")
+    }
+    if ($null -ne $resolved) {
+        $book = $resolved.book
+        $matchedHow = $resolved.how
+        $registeredAs = $resolved.registeredAs
+    }
 } catch {
     Fail 'lookup-failed' $_.Exception.Message
 }
@@ -152,12 +221,14 @@ if ($Action -eq 'status') {
             $names += (Invoke-WithRetry { $book.Queries.Item($i).Name })
         }
         Respond @{
-            ok       = $true
-            open     = $true
-            workbook = (Invoke-WithRetry { $book.Name })
-            fullName = (Invoke-WithRetry { $book.FullName })
-            saved    = [bool](Invoke-WithRetry { $book.Saved })
-            queries  = $names
+            ok           = $true
+            open         = $true
+            workbook     = (Invoke-WithRetry { $book.Name })
+            fullName     = (Invoke-WithRetry { $book.FullName })
+            saved        = [bool](Invoke-WithRetry { $book.Saved })
+            queries      = $names
+            matchedHow   = $matchedHow
+            registeredAs = $registeredAs
         }
     } catch {
         Fail 'status-failed' $_.Exception.Message
@@ -230,9 +301,10 @@ foreach ($item in $payload) {
 }
 
 Respond @{
-    ok        = ($failures.Count -eq 0)
-    open      = $true
-    workbook  = (Invoke-WithRetry { $book.Name })
+    ok         = ($failures.Count -eq 0)
+    open       = $true
+    matchedHow = $matchedHow
+    workbook   = (Invoke-WithRetry { $book.Name })
     updated   = $updated
     added     = $added
     unchanged = $skipped

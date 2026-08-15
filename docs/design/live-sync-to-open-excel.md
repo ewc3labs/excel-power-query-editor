@@ -170,6 +170,34 @@ through COM when it is open.** One decision, made per file, at write time.
 Note the `customXml/item1.xml` part is **UTF-16LE** with a BOM. Read it as a buffer and sniff, which
 is what the extension already does; decoding it as UTF-8 yields mojibake and `DataMashupNotFound`.
 
+## A synced workbook is registered under its CLOUD path, not the one you see
+
+The single most important real-world finding, and it only appeared on a real user's file.
+
+A workbook in a OneDrive- or SharePoint-synced folder is registered in the Running Object Table
+under its **cloud URL**:
+
+```
+the user's file : D:\OneDrive - medarms.com\Scripts\PowerQuery\PowerQueryFunctions.xlsx
+the ROT entry   : https://<tenant>-my.sharepoint.com/personal/<user>/Documents/
+                  Scripts/PowerQuery/PowerQueryFunctions.xlsx
+```
+
+`Workbook.FullName` returns the URL too. Excel knows the file by its cloud identity; Explorer and
+VS Code know it by the synced local path, and **no API maps one to the other**.
+
+An exact string match therefore fails for every file in a synced folder - which, for a lot of
+people, is every file they own. The symptom is live sync silently declining while the user stares
+at the open workbook, which is indistinguishable from "not open".
+
+**Matching is now on the trailing path segments.** Candidates must agree on the file name, are
+scored by how many segments agree from the right, and a tie is refused rather than guessed at.
+The user's file matched on three segments (`Scripts/PowerQuery/PowerQueryFunctions.xlsx`), and
+the response reports `matchedHow` so a surprising match is visible in the log rather than silent.
+
+This was listed as an untested case in an earlier revision of this document. It was not
+hypothetical; it was the first thing to break on a real machine.
+
 ## Open questions for the slices
 
 1. How does a `.m` file map to a query name — filename convention, a header comment, or a stored map?
