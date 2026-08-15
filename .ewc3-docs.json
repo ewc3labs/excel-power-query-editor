@@ -45,12 +45,12 @@
     },
     "badgeVersion": {
       "template": {
-        "text": "\n  <img alt=\"Version\" src=\"https://img.shields.io/badge/Version-${version}-brightgreen.svg\">\n"
+        "text": "<img alt=\"Version\" src=\"https://img.shields.io/badge/Version-${version}-brightgreen.svg\">"
       }
     },
     "badgeTestsHtml": {
       "template": {
-        "text": "\n  <img alt=\"Tests\" src=\"https://img.shields.io/badge/tests-${tests}-brightgreen.svg\">\n"
+        "text": "<img alt=\"Tests\" src=\"https://img.shields.io/badge/tests-${tests}-brightgreen.svg\">"
       }
     },
     "testsNeedingExcel": {
