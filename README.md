@@ -27,15 +27,7 @@
 
 <!-- BADGES -->
 <p align="center">
-  <img alt="License: MIT" src="https://img.shields.io/badge/License-MIT-yellow.svg">
-<!--ewc3:badgeVersion-->
-  <img alt="Version" src="https://img.shields.io/badge/Version-0.6.0-brightgreen.svg">
-<!--/ewc3:badgeVersion-->
-<!--ewc3:badgeTestsHtml-->
-  <img alt="Tests" src="https://img.shields.io/badge/tests-119-brightgreen.svg">
-<!--/ewc3:badgeTestsHtml-->
-  <a href="https://marketplace.visualstudio.com/items?itemName=ewc3labs.excel-power-query-editor"><img alt="VS Code Marketplace" src="https://img.shields.io/badge/VS_Code-Marketplace-blue.svg"></a>
-  <a href="https://www.buymeacoffee.com/ewc3labs"><img alt="Buy Me a Coffee" src="https://img.shields.io/badge/Buy%20Me%20a%20Coffee-yellow?logo=buy-me-a-coffee&logoColor=white"></a>
+<img alt="License: MIT" src="https://img.shields.io/badge/License-MIT-yellow.svg">&nbsp;<!--ewc3:badgeVersion--><img alt="Version" src="https://img.shields.io/badge/Version-0.6.0-brightgreen.svg"><!--/ewc3:badgeVersion-->&nbsp;<!--ewc3:badgeTestsHtml--><img alt="Tests" src="https://img.shields.io/badge/tests-119-brightgreen.svg"><!--/ewc3:badgeTestsHtml-->&nbsp;<a href="https://marketplace.visualstudio.com/items?itemName=ewc3labs.excel-power-query-editor"><img alt="VS Code Marketplace" src="https://img.shields.io/badge/VS_Code-Marketplace-blue.svg"></a>&nbsp;<a href="https://www.buymeacoffee.com/ewc3labs"><img alt="Buy Me a Coffee" src="https://img.shields.io/badge/Buy%20Me%20a%20Coffee-yellow?logo=buy-me-a-coffee&logoColor=white"></a>
 </p>
 <!-- /BADGES -->
 
