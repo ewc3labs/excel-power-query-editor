@@ -30,6 +30,16 @@ receipts**. Before minting a new slice, check whether an existing one already co
 
 **Items:**
 
+- [ ] **The dev loop produces false negatives.** Reinstalling the extension does not affect a
+      RUNNING VS Code: the extension host keeps executing whatever it loaded at startup, so a fix can
+      be built, packaged, installed and verified on disk while the editor still runs the old code.
+      That cost a full debugging cycle on live sync - the code was correct and the symptom said
+      otherwise. Worse, `package.json` stays at the same version through dozens of dev installs, and
+      VS Code keys the extension folder by version, so same-version reinstalls are not reliably a
+      clean replace either. `npm run bump-version` exists and is not being used in the loop.
+      Wanted: a dev-install script that bumps a prerelease number, packages, installs, and either
+      reloads the window or says plainly that a reload is required.
+
 - [x] **What is 0.5.2?** A settings refactor. Every setting was moved into a namespace:
       `watchAlways` -> `watch.always`, `logLevel` -> `log.level`, `syncTimeout` -> `sync.timeout`,
       and so on — **13 of 19 renamed or removed**, with `debugMode` and `verboseMode` gone entirely.
