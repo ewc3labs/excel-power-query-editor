@@ -39,6 +39,13 @@ receipts**. Before minting a new slice, check whether an existing one already co
       clean replace either. `npm run bump-version` exists and is not being used in the loop.
       Wanted: a dev-install script that bumps a prerelease number, packages, installs, and either
       reloads the window or says plainly that a reload is required.
+- [ ] **And it must install into the editor that is actually RUNNING.** `code` and `code-insiders`
+      are separate installs with separate extension folders. A whole debugging session went into
+      live sync "not working" while every build was landing in stable VS Code and the developer was
+      running Insiders, which still had 0.5.1 and no live-sync helper at all. Four real bugs were
+      found and fixed underneath that, each of which looked like the cause and none of which was.
+      The dev-install script should detect the running variant (or install to both) and print which
+      folder it wrote to.
 
 - [x] **What is 0.5.2?** A settings refactor. Every setting was moved into a namespace:
       `watchAlways` -> `watch.always`, `logLevel` -> `log.level`, `syncTimeout` -> `sync.timeout`,
