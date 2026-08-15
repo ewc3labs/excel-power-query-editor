@@ -38,7 +38,7 @@ not a summary of them.
 
 | Series | Last Num | Series Description |
 | --- | --- | --- |
-| PQ | PQ-17 | Excel Power Query Editor slices and fixes |
+| PQ | PQ-18 | Excel Power Query Editor slices and fixes |
 
 `Last Num` is a cache over the Delivery Index, not a second source of truth — the IDs in the tables are
 authoritative. When minting, take the next number **and** confirm it is unused across every sub-table,
@@ -90,7 +90,8 @@ Excel serves external automation. See `design/live-sync-to-open-excel.md`.
 | PQ-08 | ⬜ planned | Settings deprecation policy | S | — | 18 public settings; renaming one breaks configs silently |
 | PQ-09 | 💨 proven | Replace the settings WIPE with a real migration | M | settings-migration.md | proven 2026-08-14 — 7 legacy values migrated on a real install |
 | PQ-10 | ⬜ planned | Converge on ONE README | S | — | Wilson's call; also tone down the Microsoft sarcasm |
-| PQ-11 | ⬜ planned | Research: does the PQ/M extension now ship Excel symbols | S | — | if so, stop writing excel-pq-symbols.json into workspaces |
+| PQ-11 | 💨 proven | Research: does the PQ/M extension ship Excel symbols | S | excel-symbols.md | answered 2026-08-14 — it does NOT ship Excel.CurrentWorkbook |
+| PQ-18 | ⬜ planned | Symbols by command, not by writing into a workspace | M | excel-symbols.md | user picks where; we point the PQ setting at it |
 
 ## Working Rules
 
