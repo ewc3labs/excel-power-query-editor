@@ -1,11 +1,9 @@
-# Excel Power Query Editor
-A modern, reliable VS Code extension for editing Power Query M code directly from Excel files
+# Beta Downloads
 
----
+Pre-release builds, ahead of the Marketplace.
 
-# 🧪 Beta Downloads & Nightly Builds
-
-Get early access to the latest features and fixes before they hit the VS Code Marketplace!
+**Automatic publishing to the Marketplace is currently switched off**, so the releases page is where
+the newest build lives - not just betas. See [Installation](Installation.md) for the ordinary route.
 
 ## 🚀 Quick Install
 
@@ -58,7 +56,7 @@ Beta releases include:
 
 ## 🔗 Beta Release Channels
 
-- **🏷️ Release Candidates (RC):** `v0.5.0-rc.1`, `v0.5.0-rc.2` - Near-final versions
+- **🏷️ Release Candidates (RC):** `v0.6.0-rc.1`, `v0.6.0-rc.2` - near-final versions
 - **🌙 Nightly Builds:** Automatic builds from latest `release/` branch commits
 - **🔥 Hotfixes:** Critical fixes released immediately as needed
 

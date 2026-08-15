@@ -95,9 +95,10 @@ The two write paths currently disagree about deletion, and nobody chose that. Se
 
 | ID | State | Slice | Est | Doc | Status |
 | --- | --- | --- | --- | --- | --- |
-| PQ-28 | ⬜ planned | CONFIGURATION.md still documents 13 renamed settings | S | — | a user following it sets keys that no longer exist |
-| PQ-29 | ⬜ planned | USER_GUIDE.md has no mention of live sync | S | — | the headline 0.6.0 feature is undocumented for users |
-| PQ-30 | ⬜ planned | Retire the RELEASE_SUMMARY pattern | S | — | duplicates CHANGELOG and the GitHub release body |
+| PQ-28 | ✅ done | CONFIGURATION.md still documents 13 renamed settings | S | [Config_Reference](../Config_Reference.md) | replaced by a reference generated from package.json; renames moved to Config_Changes |
+| PQ-29 | ✅ done | USER_GUIDE.md has no mention of live sync | S | [Live_Sync](../Live_Sync.md) | feature doc written; User_Guide now carries a section pointing into it |
+| PQ-30 | ✅ done | Retire the RELEASE_SUMMARY pattern | S | — | removed; CHANGELOG and the release body are the two homes |
+| PQ-32 | ✅ done | docs: link and orphan checking in CI | S | [Overview](../Overview.md) | `npm run docs:links` found 11 dead links and 1 unreachable doc on its first run |
 | PQ-31 | ⬜ planned | bump-version: drop commit analysis, sync the README badge | S | — | keep it — `npm version` auto-tags, which now FIRES A RELEASE |
 
 ### Data safety — the thing that must never break
