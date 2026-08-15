@@ -8,7 +8,6 @@ import { parseSection, diffQueries } from './mSection';
 import { getLiveStatus, writeLive, isLiveSyncSupported, explainInvisibleWorkbook } from './excelLive';
 import * as fs from 'fs';
 import * as path from 'path';
-import * as os from 'os';
 import { watch, FSWatcher } from 'chokidar';
 import { getConfig } from './configHelper';
 
@@ -32,7 +31,7 @@ const recentExtractions = new Set<string>(); // Track recently extracted files t
 const debounceTimers = new Map<string, NodeJS.Timeout>();
 
 // Output channel for verbose logging
-let outputChannel: vscode.OutputChannel;
+let outputChannel: vscode.LogOutputChannel;
 
 // Status bar item for watch status
 let statusBarItem: vscode.StatusBarItem;
@@ -196,49 +195,17 @@ function log(message: string, context: string = '', level: string = 'info'): voi
 	const fullMessage = `${logPrefix} ${message}`;
 	console.log(fullMessage);
 	
-	// Only append to output channel if it's initialized
 	if (outputChannel) {
-		outputChannel.appendLine(fullMessage);
-	}
-
-	appendToLogFile(fullMessage);
-}
-
-/**
- * Also write the log to a FILE.
- *
- * An Output channel is fine for a user who is already looking at it, and useless for everything
- * else: a bug report cannot attach it, a maintainer cannot read it, and an agent helping debug is
- * blind. A whole evening went into "live sync is not working" while the answer - the build was
- * being installed into the VS Code that was not running - was one log line away and unreadable.
- *
- * Same folder shape as the sibling project, which solved several problems tonight purely because
- * its log was a file somebody could open.
- *
- * Rolls at 1 MB keeping one previous file, so it cannot grow without bound in somebody's profile.
- * Never throws: logging must not be able to break the extension.
- */
-function appendToLogFile(line: string): void {
-	try {
-		const dir = path.join(
-			process.env.LOCALAPPDATA || os.tmpdir(),
-			'EWC3 Labs', 'excel-power-query-editor'
-		);
-		if (!fs.existsSync(dir)) { fs.mkdirSync(dir, { recursive: true }); }
-
-		const file = path.join(dir, 'excel-power-query-editor.log');
-		try {
-			const stat = fs.statSync(file);
-			if (stat.size > 1024 * 1024) {
-				const previous = file + '.1';
-				if (fs.existsSync(previous)) { fs.unlinkSync(previous); }
-				fs.renameSync(file, previous);
-			}
-		} catch { /* no file yet */ }
-
-		fs.appendFileSync(file, line + os.EOL, 'utf8');
-	} catch {
-		// A failure to log is never worth surfacing.
+		// Level-specific methods, so VS Code can filter and persist correctly. `message`
+		// rather than `fullMessage`: the channel supplies its own timestamp and level.
+		const line = context ? `[${context}] ${message}` : message;
+		switch (messageLevel) {
+			case 'error': outputChannel.error(line); break;
+			case 'warn': outputChannel.warn(line); break;
+			case 'debug': outputChannel.debug(line); break;
+			case 'verbose': outputChannel.trace(line); break;
+			default: outputChannel.info(line); break;
+		}
 	}
 }
 
@@ -340,7 +307,16 @@ async function initializeAutoWatch(): Promise<void> {
 export async function activate(context: vscode.ExtensionContext) {
 	try {
 		// Initialize output channel first (before any logging)
-		outputChannel = vscode.window.createOutputChannel('Excel Power Query Editor');
+		// `{ log: true }` makes this a LogOutputChannel - what VS Code expects an extension to
+		// use. It carries a level per message, honours the user's own log-level control
+		// ("Developer: Set Log Level..."), and VS Code PERSISTS IT TO DISK itself, under
+		// the window's exthost log folder. That is what makes a bug report legible.
+		//
+		// An earlier attempt here wrote a log file by hand into %LOCALAPPDATA%. That is a
+		// desktop-application pattern: extensions do not own folders in a user's profile,
+		// and it meant reimplementing rolling and cleanup VS Code already does. If a real
+		// file is ever needed, `context.logUri` is the sanctioned place.
+		outputChannel = vscode.window.createOutputChannel('Excel Power Query Editor', { log: true });
 		
 		const self = vscode.extensions.getExtension('ewc3labs.excel-power-query-editor');
 		log(`Excel Power Query Editor active - version ${self?.packageJSON?.version ?? 'unknown'}, `
