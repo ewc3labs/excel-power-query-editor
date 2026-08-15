@@ -165,11 +165,14 @@ export async function writeLive(
 ): Promise<LiveWriteResult> {
 	const empty: LiveWriteResult = { ok: false, open: false, updated: [], added: [], unchanged: [], failures: [] };
 
-	if (!isLiveSyncSupported()) {
-		return { ...empty, reason: 'not-windows' };
-	}
+	// Nothing to write succeeds everywhere. There is nothing platform-specific about doing
+	// nothing, and reporting 'not-windows' for an empty request made Linux CI fail on a call
+	// that had asked for no work at all.
 	if (queries.length === 0) {
 		return { ok: true, open: true, updated: [], added: [], unchanged: [], failures: [] };
+	}
+	if (!isLiveSyncSupported()) {
+		return { ...empty, reason: 'not-windows' };
 	}
 
 	try {

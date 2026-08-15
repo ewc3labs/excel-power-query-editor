@@ -36,6 +36,19 @@ jobs:
 
     runs-on: ${{ matrix.os }}
 
+    # macOS is allowed to fail without failing the run.
+    #
+    # vscode-test cannot launch VS Code on the ARM runner at all - spawn .../Visual Studio
+    # Code.app/Contents/MacOS/Electron ENOENT - which is a harness problem rather than anything
+    # in this extension. Nobody here has a Mac to reproduce it on, and the overlap between "does
+    # deep Power Query work in Excel 365" and "on a Mac" is thin.
+    #
+    # It still RUNS, so the day it starts working we will see it, and a Mac user who solves it is
+    # welcome to send a PR. What it must not do is keep the whole matrix red, because a
+    # permanently failing CI is one nobody reads - which is exactly how this pipeline went a year
+    # without anyone noticing it had stopped.
+    continue-on-error: ${{ matrix.os == 'macos-latest' }}
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
