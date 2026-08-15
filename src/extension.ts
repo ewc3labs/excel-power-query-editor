@@ -684,7 +684,20 @@ in
 	}
 }
 
-async function syncToExcel(uri?: vscode.Uri, uris?: vscode.Uri[]): Promise<void> {
+/**
+ * What a sync actually did.
+ *
+ * `syncToExcel` used to communicate by throwing or not throwing, which cannot express "some of it
+ * worked". A partial live sync warned the user and returned normally, and `syncAndDelete` read that
+ * as success and deleted the .m file - destroying the source while the workbook was still missing
+ * queries. A destructive caller must be able to require `success` explicitly.
+ */
+export type SyncOutcome =
+	| { status: 'success' }
+	| { status: 'partial'; failures: { name: string; message: string }[] }
+	| { status: 'aborted' };
+
+async function syncToExcel(uri?: vscode.Uri, uris?: vscode.Uri[]): Promise<SyncOutcome> {
 	let backupPath: string | null = null;
 	
 	try {
@@ -706,10 +719,14 @@ async function syncToExcel(uri?: vscode.Uri, uris?: vscode.Uri[]): Promise<void>
 				}
 			}
 			
-			const resultMsg = `✅ Batch sync completed: ${successCount} successful, ${errorCount} failed`;
-			log(resultMsg, 'syncToExcel', 'success');
-			vscode.window.showInformationMessage(resultMsg);
-			return;
+			const resultMsg = `Batch sync completed: ${successCount} successful, ${errorCount} failed`;
+			log(resultMsg, 'syncToExcel', errorCount > 0 ? 'warn' : 'success');
+			if (errorCount > 0) {
+				vscode.window.showWarningMessage(`⚠️ ${resultMsg}`);
+				return { status: 'partial', failures: [] };
+			}
+			vscode.window.showInformationMessage(`✅ ${resultMsg}`);
+			return { status: 'success' };
 		}
 		
 		const mFile = uri?.fsPath || vscode.window.activeTextEditor?.document.fileName;
@@ -736,7 +753,7 @@ async function syncToExcel(uri?: vscode.Uri, uris?: vscode.Uri[]): Promise<void>
 				}
 				if (!excelFile) {
 					log('Test environment: No Excel fixtures found, skipping sync', 'syncToExcel', 'info');
-					return;
+					return { status: 'aborted' };
 				}
 			} else {
 				// SAFETY: Hard fail instead of dangerous file picker
@@ -754,7 +771,7 @@ async function syncToExcel(uri?: vscode.Uri, uris?: vscode.Uri[]): Promise<void>
 					`Extension will NOT offer to select a different file to protect your data.`
 				);
 				log(`SAFETY STOP: Refusing to sync ${mFileName} - corresponding Excel file not found`, 'syncToExcel', 'error');
-				return; // HARD STOP - no file picker
+				return { status: 'aborted' }; // HARD STOP - no file picker
 			}
 		}
 
@@ -788,7 +805,7 @@ async function syncToExcel(uri?: vscode.Uri, uris?: vscode.Uri[]): Promise<void>
 				if (explanation) {
 					log(explanation, 'syncToExcel', 'warn');
 					vscode.window.showWarningMessage(explanation);
-					return;
+					return { status: 'aborted' };
 				}
 			}
 		}
@@ -803,7 +820,7 @@ async function syncToExcel(uri?: vscode.Uri, uris?: vscode.Uri[]): Promise<void>
 				// Retry after a short delay
 				setTimeout(() => syncToExcel(uri), 1000);
 			}
-			return;
+			return { status: 'aborted' };
 		}
 
 		// Read the .m file content
@@ -827,7 +844,7 @@ async function syncToExcel(uri?: vscode.Uri, uris?: vscode.Uri[]): Promise<void>
 		
 		if (!cleanMCode) {
 			vscode.window.showErrorMessage('No Power Query M code found in file.');
-			return;
+			return { status: 'aborted' };
 		}
 		
 		// Create backup of Excel file if enabled
@@ -935,7 +952,9 @@ async function syncToExcel(uri?: vscode.Uri, uris?: vscode.Uri[]): Promise<void>
 							log(`Left alone (present in the workbook, absent from the .m file): ${names}`,
 								'syncToExcel', 'info');
 						}
-						return;
+						return partial
+							? { status: 'partial', failures: result.failures }
+							: { status: 'success' };
 					}
 				}
 			}
@@ -1003,7 +1022,7 @@ async function syncToExcel(uri?: vscode.Uri, uris?: vscode.Uri[]): Promise<void>
 		
 		if (!dataMashupFile) {
 			vscode.window.showErrorMessage('No DataMashup found in Excel file. This file may not contain Power Query.');
-			return;
+			return { status: 'aborted' };
 		}
 		
 		// Read and decode the DataMashup XML
@@ -1023,7 +1042,7 @@ async function syncToExcel(uri?: vscode.Uri, uris?: vscode.Uri[]): Promise<void>
 		
 		if (!dataMashupXml.includes('DataMashup')) {
 			vscode.window.showErrorMessage('Invalid DataMashup format in Excel file.');
-			return;
+			return { status: 'aborted' };
 		}
 		
 		// Debug code removed: No longer saving original DataMashup XML when logLevel is 'debug'.
@@ -1109,7 +1128,8 @@ async function syncToExcel(uri?: vscode.Uri, uris?: vscode.Uri[]): Promise<void>
 						log(`Failed to open Excel file after sync: ${openError}`, 'syncToExcel', 'error');
 					}
 				}
-				return;
+				// The file on disk was rewritten and verified. This is the closed-workbook success path.
+				return { status: 'success' };
 				
 			} else {
 				throw new Error(`excel-datamashup save() returned invalid content - Type: ${typeof newBase64Content}, Length: ${String(newBase64Content).length}`);
@@ -1141,6 +1161,8 @@ async function syncToExcel(uri?: vscode.Uri, uris?: vscode.Uri[]): Promise<void>
 				}
 			}
 		}
+		// The error was reported and, where possible, the workbook restored. Nothing synced.
+		return { status: 'aborted' };
 	}
 }
 
@@ -1395,8 +1417,23 @@ async function syncAndDelete(uri?: vscode.Uri): Promise<void> {
 		if (confirmation === 'Yes, Sync & Delete') {
 			// First try to sync
 			try {
-				await syncToExcel(uri);
-				
+				// REQUIRE SUCCESS BEFORE DELETING ANYTHING.
+				//
+				// syncToExcel used to say "it worked" by not throwing, and a partial live sync does not
+				// throw - it warns and returns. This deleted the .m file while the workbook was still
+				// missing queries, destroying the source and leaving the destination incomplete. The
+				// only safe reading of a destructive command is an explicit success.
+				const outcome = await syncToExcel(uri);
+				if (outcome.status !== 'success') {
+					const detail = outcome.status === 'partial' && outcome.failures.length
+						? ` (${outcome.failures.map(f => f.name).join(', ')} failed)`
+						: '';
+					const message = `Not deleting ${path.basename(mFile)}: the sync did not fully succeed${detail}.`;
+					vscode.window.showWarningMessage(message);
+					log(message, 'syncAndDelete', 'warn');
+					return;
+				}
+
 				// Stop watching if enabled and if being watched
 				const watchers = fileWatchers.get(mFile);
 				if (watchers) {
