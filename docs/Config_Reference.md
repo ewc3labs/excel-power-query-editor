@@ -1,0 +1,371 @@
+# Configuration Reference
+
+Every setting this extension contributes, generated from `package.json` so it cannot drift from the
+software. Settings are edited in VS Code's settings UI, or in `settings.json` using the full key.
+
+Upgrading from 0.5.x? See [Config Changes](Config_Changes.md) — the settings were renamed, and your
+existing values are migrated automatically.
+
+## Sync
+
+How, and where, your `.m` changes are written back.
+
+### `excel-power-query-editor.sync.debounceMs`
+
+| | |
+| --- | --- |
+| Type | `number` |
+| Default | `500` |
+
+Milliseconds to debounce file saves before sync. Prevents duplicate syncs in rapid succession.
+
+### `excel-power-query-editor.sync.deleteAlwaysConfirm`
+
+| | |
+| --- | --- |
+| Type | `boolean` |
+| Default | `true` |
+
+Show a confirmation dialog before syncing and deleting the .m file. Uncheck to perform without confirmation.
+
+### `excel-power-query-editor.sync.liveWhenOpen`
+
+| | |
+| --- | --- |
+| Type | `boolean` |
+| Default | `false` |
+
+**Beta — Windows + Excel only.** When the workbook is already open in Excel, write the query changes straight into it through Excel itself instead of failing or waiting for the file to be closed. The file on disk is not touched — the workbook is left with unsaved changes for you to review and save. Off by default. This talks to Excel through COM, and Excel varies a great deal between versions, update channels and managed environments. If it declines to work, set `excel-power-query-editor.log.level` to `debug` and [open an issue](https://github.com/ewc3labs/excel-power-query-editor/issues) with the `live sync ...` line from the output channel. Closed workbooks are unaffected, and so is extraction.
+
+### `excel-power-query-editor.sync.openExcelAfterWrite`
+
+| | |
+| --- | --- |
+| Type | `boolean` |
+| Default | `false` |
+
+[PLANNED FEATURE] Automatically open the Excel file after a successful sync.
+
+### `excel-power-query-editor.sync.timeout`
+
+| | |
+| --- | --- |
+| Type | `number` |
+| Default | `30000` |
+
+Time in milliseconds before a sync attempt is aborted.
+
+## Watch
+
+Syncing automatically when a file is saved.
+
+### `excel-power-query-editor.watch.always`
+
+| | |
+| --- | --- |
+| Type | `boolean` |
+| Default | `false` |
+
+Automatically start watching when extracting Power Query files
+
+### `excel-power-query-editor.watch.checkExcelWriteable`
+
+| | |
+| --- | --- |
+| Type | `boolean` |
+| Default | `true` |
+
+Before syncing, check if Excel file is writable. Warn or retry if locked.
+
+### `excel-power-query-editor.watch.maxFiles`
+
+| | |
+| --- | --- |
+| Type | `number` |
+| Default | `25` |
+
+Maximum number of .m files to auto-watch when watchAlways is enabled. Prevents performance issues with large workspaces.
+
+### `excel-power-query-editor.watch.offOnDelete`
+
+| | |
+| --- | --- |
+| Type | `boolean` |
+| Default | `true` |
+
+Stop watching a .m file if it is deleted from disk.
+
+## Backups
+
+What is kept before a workbook is written, and for how long.
+
+### `excel-power-query-editor.backup.autoBackupBeforeSync`
+
+| | |
+| --- | --- |
+| Type | `boolean` |
+| Default | `true` |
+
+Automatically create a backup of the Excel file before syncing from .m.
+
+### `excel-power-query-editor.backup.autoCleanup`
+
+| | |
+| --- | --- |
+| Type | `boolean` |
+| Default | `true` |
+
+Enable automatic deletion of old backups when the number exceeds maxBackups.
+
+### `excel-power-query-editor.backup.customPath`
+
+| | |
+| --- | --- |
+| Type | `string` |
+| Default | `""` |
+
+Path to use if backupLocation is set to "custom". Can be relative to the workspace root.
+
+### `excel-power-query-editor.backup.location`
+
+| | |
+| --- | --- |
+| Type | `string` |
+| Default | `"sameFolder"` |
+| Values | `sameFolder` · `tempFolder` · `custom` |
+
+Folder to store backup files: same as Excel file, system temp folder, or a custom path.
+
+### `excel-power-query-editor.backup.maxFiles`
+
+| | |
+| --- | --- |
+| Type | `number` |
+| Default | `5` |
+
+Maximum number of backup files to retain per Excel file. Older backups are deleted when exceeded.
+
+## Logging
+
+What the extension records, and where.
+
+### `excel-power-query-editor.log.level`
+
+| | |
+| --- | --- |
+| Type | `string` |
+| Default | `"info"` |
+| Values | `none` · `error` · `warn` · `info` · `verbose` · `debug` |
+
+Set the logging level for the Excel Power Query Editor extension. Replaces legacy verboseMode and debugMode settings.
+
+### `excel-power-query-editor.log.showStatusBarInfo`
+
+| | |
+| --- | --- |
+| Type | `boolean` |
+| Default | `true` |
+
+Display sync and watch status indicators in the VS Code status bar.
+
+## Excel symbols
+
+IntelliSense for Excel functions the M language service does not ship.
+
+### `excel-power-query-editor.symbols.autoInstall`
+
+| | |
+| --- | --- |
+| Type | `boolean` |
+| Default | `true` |
+
+Automatically install Excel Power Query symbols on activation to enable Excel.CurrentWorkbook() IntelliSense in the M Language extension.
+
+### `excel-power-query-editor.symbols.installLevel`
+
+| | |
+| --- | --- |
+| Type | `string` |
+| Default | `"workspace"` |
+| Values | `workspace` · `folder` · `user` · `off` |
+
+Where to install excel-pq-symbols.json and update Power Query language settings. 'workspace' = .vscode/settings.json, 'folder' = workspace folder, 'user' = global settings, 'off' = disabled.
+
+## Internal
+
+Written by the extension. Not intended to be set by hand.
+
+### `excel-power-query-editor.xtn.level`
+
+| | |
+| --- | --- |
+| Type | `string` |
+| Default | `""` |
+
+Internal migration marker for extension settings. Do not edit.
+
+## Deprecated
+
+Renamed in 0.6.0. Still read, still migrated, and removed after a release or two. See [Config Changes](Config_Changes.md).
+
+### `excel-power-query-editor.autoBackupBeforeSync`
+
+| | |
+| --- | --- |
+| Type | `boolean` |
+| Default | `true` |
+| Status | **Deprecated** |
+
+Automatically create a backup of the Excel file before syncing from .m.
+
+> Deprecated: use excel-power-query-editor.backup.autoBackupBeforeSync. Migrated automatically.
+
+### `excel-power-query-editor.autoCleanupBackups`
+
+| | |
+| --- | --- |
+| Type | `boolean` |
+| Default | `true` |
+| Status | **Deprecated** |
+
+Enable automatic deletion of old backups when the number exceeds maxBackups.
+
+> Deprecated: use excel-power-query-editor.backup.autoCleanup. Migrated automatically.
+
+### `excel-power-query-editor.backupLocation`
+
+| | |
+| --- | --- |
+| Type | `string` |
+| Default | `"sameFolder"` |
+| Values | `sameFolder` · `tempFolder` · `custom` |
+| Status | **Deprecated** |
+
+Folder to store backup files: same as Excel file, system temp folder, or a custom path.
+
+> Deprecated: use excel-power-query-editor.backup.location. Migrated automatically.
+
+### `excel-power-query-editor.customBackupPath`
+
+| | |
+| --- | --- |
+| Type | `string` |
+| Default | `""` |
+| Status | **Deprecated** |
+
+Path to use if backupLocation is set to "custom". Can be relative to the workspace root.
+
+> Deprecated: use excel-power-query-editor.backup.customPath. Migrated automatically.
+
+### `excel-power-query-editor.debugMode`
+
+| | |
+| --- | --- |
+| Type | `boolean` |
+| Default | `false` |
+| Status | **Deprecated** |
+
+[DEPRECATED] Use logLevel instead. Enable debug-level logging and write internal debug files to disk.
+
+> Deprecated: use excel-power-query-editor.log.level set to 'debug'. Migrated automatically.
+
+### `excel-power-query-editor.logLevel`
+
+| | |
+| --- | --- |
+| Type | `string` |
+| Default | `"info"` |
+| Values | `none` · `error` · `warn` · `info` · `verbose` · `debug` |
+| Status | **Deprecated** |
+
+Set the logging level for the Excel Power Query Editor extension. Replaces legacy verboseMode and debugMode settings.
+
+> Deprecated: use excel-power-query-editor.log.level. Migrated automatically.
+
+### `excel-power-query-editor.showStatusBarInfo`
+
+| | |
+| --- | --- |
+| Type | `boolean` |
+| Default | `true` |
+| Status | **Deprecated** |
+
+Display sync and watch status indicators in the VS Code status bar.
+
+> Deprecated: use excel-power-query-editor.log.showStatusBarInfo. Migrated automatically.
+
+### `excel-power-query-editor.syncDeleteAlwaysConfirm`
+
+| | |
+| --- | --- |
+| Type | `boolean` |
+| Default | `true` |
+| Status | **Deprecated** |
+
+Show a confirmation dialog before syncing and deleting the .m file. Uncheck to perform without confirmation.
+
+> Deprecated: use excel-power-query-editor.sync.deleteAlwaysConfirm. Migrated automatically.
+
+### `excel-power-query-editor.syncTimeout`
+
+| | |
+| --- | --- |
+| Type | `number` |
+| Default | `30000` |
+| Status | **Deprecated** |
+
+Time in milliseconds before a sync attempt is aborted.
+
+> Deprecated: use excel-power-query-editor.sync.timeout. Migrated automatically.
+
+### `excel-power-query-editor.verboseMode`
+
+| | |
+| --- | --- |
+| Type | `boolean` |
+| Default | `false` |
+| Status | **Deprecated** |
+
+[DEPRECATED] Use logLevel instead. Output detailed logs to the VS Code Output panel (recommended for troubleshooting).
+
+> Deprecated: use excel-power-query-editor.log.level set to 'verbose'. Migrated automatically.
+
+### `excel-power-query-editor.watchAlways`
+
+| | |
+| --- | --- |
+| Type | `boolean` |
+| Default | `false` |
+| Status | **Deprecated** |
+
+Automatically start watching when extracting Power Query files
+
+> Deprecated: use excel-power-query-editor.watch.always. Migrated automatically.
+
+### `excel-power-query-editor.watchAlwaysMaxFiles`
+
+| | |
+| --- | --- |
+| Type | `number` |
+| Default | `25` |
+| Status | **Deprecated** |
+
+Maximum number of .m files to auto-watch when watchAlways is enabled. Prevents performance issues with large workspaces.
+
+> Deprecated: use excel-power-query-editor.watch.maxFiles. Migrated automatically.
+
+### `excel-power-query-editor.watchOffOnDelete`
+
+| | |
+| --- | --- |
+| Type | `boolean` |
+| Default | `true` |
+| Status | **Deprecated** |
+
+Stop watching a .m file if it is deleted from disk.
+
+> Deprecated: use excel-power-query-editor.watch.offOnDelete. Migrated automatically.
+
+---
+
+_Generated by `scripts/generate-config-reference.js`. Do not edit by hand — change `package.json` and re-run `npm run docs:config`._

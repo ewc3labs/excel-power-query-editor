@@ -42,12 +42,14 @@ Give the project a star on GitHub to help others discover it.
 
 For technical support and questions:
 
-1. 📖 Check the [User Guide](docs/USER_GUIDE.md) for detailed instructions
-2. ⚙️ Review [Configuration Guide](docs/CONFIGURATION.md) for settings
-3. 🤝 See the [Contributing Guide](docs/CONTRIBUTING.md) for developer setup and automation
-4. Review the [Release Summary](docs/RELEASE_SUMMARY_v0.5.0.md) for the latest features and technical notes
-5. 🔍 Enable verbose mode for troubleshooting
-6. 🐛 Use debug mode for complex issues
+1. 📖 Start at the [documentation index](docs/Overview.md)
+2. 💬 Check the [FAQ](docs/FAQ.md) — most questions are answered there
+3. 📘 Read the [User Guide](docs/User_Guide.md) for the whole workflow
+4. ⚙️ Review the [Config Reference](docs/Config_Reference.md) for settings, and
+   [Config Changes](docs/Config_Changes.md) if a setting has moved
+5. 🤝 See the [Contributing Guide](docs/CONTRIBUTING.md) for developer setup and automation
+6. 🔍 Set `excel-power-query-editor.log.level` to `debug` and read
+   **View → Output → Excel Power Query Editor**
 
 ---
 

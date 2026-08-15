@@ -893,8 +893,8 @@ Brief description of changes
 
 ## 🔗 Related Documentation
 
-- **📖 [User Guide](USER_GUIDE.md)** - Complete feature documentation and workflows
-- **⚙️ [Configuration Reference](CONFIGURATION.md)** - All settings with examples and use cases
+- **📖 [User Guide](User_Guide.md)** - Complete feature documentation and workflows
+- **⚙️ [Config Reference](Config_Reference.md)** - Every setting, generated from package.json
 - **📝 [Changelog](../CHANGELOG.md)** - Version history and feature updates
 - **🧪 [Test Documentation](../test/testcases.md)** - Comprehensive test coverage details
 

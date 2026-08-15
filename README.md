@@ -134,7 +134,7 @@ Everything works out of the box. Common ones:
 }
 ```
 
-Full reference: [CONFIGURATION.md](docs/CONFIGURATION.md).
+Full reference: [Config Reference](docs/Config_Reference.md).
 
 > **Upgrading from 0.5.x?** The settings were reorganized into namespaces (`watchAlways` →
 > `watch.always`, and so on). **Your existing settings are migrated automatically** the first time
@@ -142,8 +142,12 @@ Full reference: [CONFIGURATION.md](docs/CONFIGURATION.md).
 
 ## Documentation
 
-- **[User guide](docs/USER_GUIDE.md)** — the full workflow
-- **[Configuration](docs/CONFIGURATION.md)** — every setting
+- **[Overview](docs/Overview.md)** — the documentation index
+- **[User Guide](docs/User_Guide.md)** — the full workflow
+- **[Config Reference](docs/Config_Reference.md)** — every setting
+- **[Commands](docs/Commands.md)** — every command
+- **[Live Sync](docs/Live_Sync.md)** — writing to an open workbook
+- **[Config Changes](docs/Config_Changes.md)** — read this when upgrading
 - **[Live sync design](docs/design/live-sync-to-open-excel.md)** — how writing to an open workbook
   works, and what was measured to make it reliable
 - **[Contributing](docs/CONTRIBUTING.md)** · **[Changelog](CHANGELOG.md)** ·

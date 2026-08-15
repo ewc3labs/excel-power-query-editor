@@ -348,7 +348,7 @@ ms-python.python                    # For data analysis workflows
 
 ## 🔗 Related Documentation
 
-- **⚙️ [Configuration Reference](CONFIGURATION.md)** - Complete settings guide with examples
+- **⚙️ [Config Reference](Config_Reference.md)** - Every setting, generated from package.json
 - **🤝 [Contributing Guide](CONTRIBUTING.md)** - Development setup and contribution guidelines
 - **📝 [Changelog](../CHANGELOG.md)** - Version history and feature updates
 
