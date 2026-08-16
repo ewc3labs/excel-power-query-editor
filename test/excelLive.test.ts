@@ -2,7 +2,7 @@ import * as assert from 'assert';
 import * as path from 'path';
 import * as os from 'os';
 import * as fs from 'fs';
-import { isLiveSyncSupported, getLiveStatus, writeLive } from '../src/excelLive';
+import { isLiveSyncSupported, getLiveStatus, writeLive, shouldRefuseUnsavedWorkbook } from '../src/excelLive';
 
 /**
  * Live sync needs Windows, Excel, and a workbook actually open - none of which CI has. So these
@@ -93,5 +93,27 @@ suite('Live sync', function () {
 			'BindToMoniker OPENS a closed file - measured. The ROT lookup exists to avoid that.');
 		assert.ok(fs.existsSync(path.join(extensionPath, 'resources', 'live-sync', 'RunningObjects.cs.txt')),
 			'the ROT interop source must ship alongside the helper');
+	});
+});
+
+suite('Refusing to overwrite unsaved work', () => {
+	// The backup taken before a sync copies the file on DISK. If Excel holds edits the user has not
+	// saved, those edits are in no file at all, so the backup looks like protection and is not.
+	test('refuses when the workbook is open with unsaved changes', () => {
+		assert.strictEqual(shouldRefuseUnsavedWorkbook({ open: true, saved: false }), true);
+	});
+
+	test('allows a clean open workbook', () => {
+		assert.strictEqual(shouldRefuseUnsavedWorkbook({ open: true, saved: true }), false);
+	});
+
+	test('does NOT refuse when the helper did not report', () => {
+		// An older helper, or a status call that could not reach the workbook. Refusing on unknown
+		// would block every sync the moment this field went missing.
+		assert.strictEqual(shouldRefuseUnsavedWorkbook({ open: true, saved: undefined }), false);
+	});
+
+	test('is irrelevant when the workbook is not open', () => {
+		assert.strictEqual(shouldRefuseUnsavedWorkbook({ open: false, saved: false }), false);
 	});
 });

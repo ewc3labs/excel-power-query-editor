@@ -47,6 +47,14 @@ export interface LiveStatus {
 	 * integrity-level mismatch, which makes every workbook invisible without saying so.
 	 */
 	excelProcesses?: number;
+	/**
+	 * Excel reports the workbook has no unsaved changes.
+	 *
+	 * `false` means the user has edits in Excel that exist in NO file. The backup taken before a sync
+	 * captures the LAST SAVED state, so it does not contain them - writing over those edits would
+	 * destroy work that nothing anywhere has a copy of.
+	 */
+	saved?: boolean;
 	/** Whether the helper itself ran elevated. Half of the mismatch above. */
 	elevated?: boolean;
 }
@@ -141,6 +149,7 @@ export async function getLiveStatus(workbookPath: string, extensionPath: string)
 			excelVersion: r.excelVersion as string | undefined,
 			workbook: r.workbook as string | undefined,
 			excelProcesses: typeof r.excelProcesses === 'number' ? r.excelProcesses : undefined,
+			saved: typeof r.saved === 'boolean' ? r.saved : undefined,
 			elevated: typeof r.elevated === 'boolean' ? r.elevated : undefined
 		};
 	} catch (e) {
@@ -212,6 +221,20 @@ export function explainInvisibleWorkbook(status: LiveStatus): string | undefined
 		+ 'This usually means one of them is elevated and the other is not - '
 		+ 'COM hides running objects across integrity levels. '
 		+ 'Run VS Code and Excel the same way (normally, for preference) and try again.';
+}
+
+/**
+ * Should a live sync refuse because the workbook holds unsaved work?
+ *
+ * Extracted so the decision can be tested directly. Verifying it end to end means driving a real
+ * Excel into a dirty state, which is exactly the situation we refuse to gamble with.
+ *
+ * `saved === undefined` means the helper did not report - an older helper, or a status call that
+ * could not reach the workbook. Do NOT refuse on unknown: that would block every sync the moment the
+ * field went missing. Refuse only on a definite `false`.
+ */
+export function shouldRefuseUnsavedWorkbook(status: Pick<LiveStatus, 'open' | 'saved'>): boolean {
+	return status.open === true && status.saved === false;
 }
 
 /**

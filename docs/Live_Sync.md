@@ -69,6 +69,21 @@ Protected View · workbooks opened from a web link · co-authored files with Aut
 The worst plausible failure is that live sync declines and the normal file path takes over — which
 is what would have happened anyway. It cannot corrupt a workbook, because it never writes one.
 
+## Save the workbook first
+
+If the workbook has unsaved changes in Excel, live sync **declines** and asks you to save it.
+
+That looks like an inconvenience and is the one place where a backup cannot help you. The backup
+taken before a sync is a copy of the file **on disk** - the last saved state. Edits sitting unsaved
+in Excel are in no file anywhere. Writing over them would destroy the only copy, while the backup
+sat there looking like protection.
+
+Saving on your behalf would be worse: it commits changes you may still have been deciding about. So
+the extension says what is in the way and leaves the decision where it belongs.
+
+Save in Excel, then sync. Once the workbook is clean, the backup genuinely covers the state you are
+about to change.
+
 ## Excel and VS Code must run at the same level
 
 **This is a Windows limitation, not a missing feature.** COM partitions its running object table by
