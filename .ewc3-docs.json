@@ -56,5 +56,17 @@
         "pattern": "^\\s*(test|it)\\("
       }
     }
+  },
+  "links": {
+    "skipDirs": [
+      "node_modules",
+      ".git",
+      "dist",
+      "out",
+      ".vscode-test",
+      "archive",
+      "coverage",
+      "scratch"
+    ]
   }
 }

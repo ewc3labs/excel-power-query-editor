@@ -121,43 +121,65 @@ try {
 # There is no API that maps one to the other, so match on what the two forms genuinely share: the
 # trailing path segments. Score each candidate by how many segments agree from the right, require
 # the filename itself to agree, and refuse a tie rather than guess at somebody's workbook.
+function Get-OneDriveSyncRoots {
+    # OneDrive records every sync root as MountPoint (local) + UrlNamespace (cloud). That IS the
+    # mapping, maintained by the sync client itself, so there is no need to guess at one.
+    $roots = @()
+    $key = 'HKCU:\Software\SyncEngines\Providers\OneDrive'
+    if (-not (Test-Path $key)) { return $roots }
+
+    foreach ($sub in Get-ChildItem $key -ErrorAction SilentlyContinue) {
+        $p = Get-ItemProperty $sub.PSPath -ErrorAction SilentlyContinue
+        if ($p.MountPoint -and $p.UrlNamespace) {
+            $roots += [pscustomobject]@{
+                Mount = $p.MountPoint.TrimEnd('\')
+                Url   = $p.UrlNamespace.TrimEnd('/')
+            }
+        }
+    }
+    # Longest mount point first, so a nested sync root wins over the parent it sits inside.
+    @($roots | Sort-Object { $_.Mount.Length } -Descending)
+}
+
+function ConvertTo-CloudUrl {
+    # The local path of a synced workbook, expressed as the URL Excel registers it under.
+    param([Parameter(Mandatory)][string] $LocalPath)
+
+    foreach ($r in Get-OneDriveSyncRoots) {
+        if ($LocalPath.StartsWith($r.Mount, [StringComparison]::OrdinalIgnoreCase)) {
+            $rest = $LocalPath.Substring($r.Mount.Length).TrimStart('\')
+            return ($r.Url + '/' + ($rest -replace '\\', '/'))
+        }
+    }
+    return $null
+}
+
+# Find the workbook by IDENTITY. Never by resemblance.
+#
+# A synced workbook is registered under its cloud URL rather than the local path the user sees, so
+# both forms have to be tried - but both are EXACT comparisons.
+#
+# THE PREVIOUS VERSION SCORED TRAILING PATH SEGMENTS, AND IT COULD NOT BE MADE SAFE. Measured on a
+# real machine: C:\Users\...\Documents\PowerQuery\PowerQueryFunctions.xlsx matched an unrelated
+# workbook open from OneDrive at .../Scripts/PowerQuery/PowerQueryFunctions.xlsx with a score of 2,
+# because both end "PowerQuery\<same name>". The legitimate match scored 3. No threshold separates
+# those two, and being wrong means writing somebody's queries into a different workbook.
+#
+# A false negative is an inconvenience. A false positive is data corruption. There is no scoring
+# here on purpose.
 function Resolve-Workbook {
     param([Parameter(Mandatory)][string] $FullPath)
 
     $exact = [RunningObjects]::Get($FullPath)
-    if ($null -ne $exact) { return @{ book = $exact; how = 'exact' } }
+    if ($null -ne $exact) { return @{ book = $exact; how = 'exact-path' } }
 
-    $wantSegments = ($FullPath -split '[\\/]') | Where-Object { $_ }
-    if ($wantSegments.Count -eq 0) { return $null }
-    $wantFile = $wantSegments[-1]
+    $url = ConvertTo-CloudUrl -LocalPath $FullPath
+    if ($null -eq $url) { return $null }
 
-    $best = $null; $bestScore = 0; $tied = $false
+    $byUrl = [RunningObjects]::Get($url)
+    if ($null -ne $byUrl) { return @{ book = $byUrl; how = 'exact-cloud-url'; registeredAs = $url } }
 
-    foreach ($name in [RunningObjects]::Names()) {
-        # Only things that look like a document; skip the !CLSID service registrations.
-        if ($name -notmatch '\.xls[xmb]?$') { continue }
-
-        $haveSegments = ($name -split '[\\/]') | Where-Object { $_ }
-        if ($haveSegments.Count -eq 0) { continue }
-        if (-not [string]::Equals($haveSegments[-1], $wantFile, 'OrdinalIgnoreCase')) { continue }
-
-        $score = 0
-        $max = [Math]::Min($wantSegments.Count, $haveSegments.Count)
-        for ($i = 1; $i -le $max; $i++) {
-            if ([string]::Equals($wantSegments[-$i], $haveSegments[-$i], 'OrdinalIgnoreCase')) { $score++ }
-            else { break }
-        }
-
-        if ($score -gt $bestScore) { $bestScore = $score; $best = $name; $tied = $false }
-        elseif ($score -eq $bestScore -and $score -gt 0 -and $best -ne $name) { $tied = $true }
-    }
-
-    if ($tied) { return @{ ambiguous = $true } }
-    if ($null -eq $best) { return $null }
-
-    $obj = [RunningObjects]::Get($best)
-    if ($null -eq $obj) { return $null }
-    return @{ book = $obj; how = "matched-by-path-tail:$bestScore"; registeredAs = $best }
+    return $null
 }
 
 $book = $null
@@ -165,10 +187,6 @@ $matchedHow = 'exact'
 $registeredAs = $null
 try {
     $resolved = Invoke-WithRetry { Resolve-Workbook -FullPath $wanted }
-    if ($null -ne $resolved -and $resolved.ambiguous) {
-        Fail 'ambiguous-workbook' ("More than one open workbook matches this file name equally well. " +
-            "Refusing to guess which one you meant.")
-    }
     if ($null -ne $resolved) {
         $book = $resolved.book
         $matchedHow = $resolved.how
