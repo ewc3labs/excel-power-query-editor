@@ -158,10 +158,28 @@ covers Ubuntu, Windows and macOS on Node 22 and 24, and none of those runners ha
 five live sync tests are pending everywhere in CI and can only really be exercised on a developer
 machine.
 
-> **There used to be a devcontainer here, and it was removed on 2026-08-16.** It existed to answer
-> one question - does this work without Windows and Excel? - and CI now answers that continuously on
-> real Ubuntu and real macOS, which is a better answer than a container nobody had rebuilt in a
-> year. It also could never test live sync, being Linux.
+### Why there is no devcontainer
+
+There was one, and it was removed on 2026-08-16. The reasoning is worth keeping, because "add a
+devcontainer" is a reflex and it is not always right.
+
+**It was built to answer one question:** does this work without Windows and Excel? That was a real
+question — the whole point of extraction being file-based is that it runs anywhere — and a container
+was a reasonable way to check in 2025.
+
+**CI now answers it better.** Every push runs the full suite on real Ubuntu and real macOS, on Node
+22 and 24. That is a stronger answer than a container image, and it is checked continuously rather
+than whenever somebody remembers to rebuild.
+
+**And nobody enjoyed working in it.** This is not the kind of extension where a sandbox helps: the
+thing being automated is Excel, on Windows, through COM. A Linux container could never test the
+headline feature, so daily work happened outside it — which meant the container quietly went stale.
+When it was finally examined it had a broken user/home mismatch, pinned only one of the two Node
+versions CI tests, and forwarded a port nothing used. Meanwhile CONTRIBUTING was still calling it
+the **recommended** setup.
+
+An unverified environment presented as the supported path is worse than no environment at all. The
+setup above is what everyone actually does, so that is what is documented.
 
 ## 🚀 Quick Reference - Build + Package + Install
 
