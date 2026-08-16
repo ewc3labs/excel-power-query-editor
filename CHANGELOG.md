@@ -28,9 +28,12 @@ All notable changes to the "excel-power-query-editor" extension will be document
   iteration on scratch workbooks, accepting that a backup then holds the last state you saved rather
   than the state you were working in.
 
-  **AutoSave has not been tested against this.** Cloud workbooks usually have it on, and it may
-  persist a live write before you can review it — see
-  [PQ-33](docs/project/slices/PQ-33_AutoSave_And_Live_Sync.md).
+  **AutoSave changes what a live write means, and this has now been measured.** Cloud workbooks
+  usually have AutoSave on; Excel then commits the change within about two seconds and closing
+  without saving does **not** undo it. There is no review step for those workbooks — version history
+  in OneDrive or SharePoint is the undo path, and the completion message says so instead of
+  promising a review that will not happen. A local workbook, where AutoSave is off, behaves as
+  described above. See [PQ-33](docs/project/slices/PQ-33_AutoSave_And_Live_Sync.md).
 
 
   **This is beta, and Excel is a big place.** It works by talking to Excel through COM, and Excel

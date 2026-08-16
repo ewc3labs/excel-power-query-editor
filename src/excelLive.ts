@@ -55,6 +55,16 @@ export interface LiveStatus {
 	 * destroy work that nothing anywhere has a copy of.
 	 */
 	saved?: boolean;
+	/**
+	 * Excel's AutoSave is on for this workbook - true for most OneDrive and SharePoint files.
+	 *
+	 * It changes what a live write means. Measured: with AutoSave on, a change written through COM
+	 * is committed to disk within about two seconds, and closing the workbook without saving does
+	 * NOT undo it. The "review before saving" behavior only exists when this is false.
+	 *
+	 * Absent rather than false when Excel would not report it.
+	 */
+	autoSaveOn?: boolean;
 	/** Whether the helper itself ran elevated. Half of the mismatch above. */
 	elevated?: boolean;
 }
@@ -69,6 +79,8 @@ export interface LiveWriteResult {
 	failures: { name: string; message: string }[];
 	/** The workbook has unsaved changes - true after any real write. */
 	dirty?: boolean;
+	/** AutoSave is on, so Excel commits the write itself within seconds. See LiveStatus. */
+	autoSaveOn?: boolean;
 	reason?: string;
 }
 
@@ -150,6 +162,7 @@ export async function getLiveStatus(workbookPath: string, extensionPath: string)
 			workbook: r.workbook as string | undefined,
 			excelProcesses: typeof r.excelProcesses === 'number' ? r.excelProcesses : undefined,
 			saved: typeof r.saved === 'boolean' ? r.saved : undefined,
+			autoSaveOn: typeof r.autoSaveOn === 'boolean' ? r.autoSaveOn : undefined,
 			elevated: typeof r.elevated === 'boolean' ? r.elevated : undefined
 		};
 	} catch (e) {
@@ -203,7 +216,8 @@ export async function writeLive(
 			failures: Array.isArray(r.failures)
 				? (r.failures as { name: string; message: string }[])
 				: [],
-			dirty: r.dirty as boolean | undefined
+			dirty: r.dirty as boolean | undefined,
+			autoSaveOn: typeof r.autoSaveOn === 'boolean' ? r.autoSaveOn : undefined
 		};
 	} catch (e) {
 		return { ...empty, reason: e instanceof Error ? e.message : String(e) };

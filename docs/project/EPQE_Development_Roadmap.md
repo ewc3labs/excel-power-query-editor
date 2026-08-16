@@ -105,7 +105,7 @@ The two write paths currently disagree about deletion, and nobody chose that. Se
 
 | ID | State | Slice | Est | Doc | Status |
 | --- | --- | --- | --- | --- | --- |
-| PQ-33 | ⬜ planned | AutoSave vs live sync: untested interaction, and backups per sync | M | [PQ-33](slices/PQ-33_AutoSave_And_Live_Sync.md) | AutoSave persists our write immediately, so "review before saving" may not exist for cloud workbooks; and a backup per sync needs debouncing |
+| PQ-33 | 🟡 measured | AutoSave vs live sync: untested interaction, and backups per sync | M | [PQ-33](slices/PQ-33_AutoSave_And_Live_Sync.md) | MEASURED: AutoSave commits a live write in ~2s and closing without saving does NOT undo it. Docs corrected, message differentiated. Backup churn was already answered by retention |
 | PQ-05 | ⬜ planned | Audit every path that writes a workbook | M | — | backup-then-temp-then-swap, no exceptions |
 | PQ-06 | ⬜ planned | Prove `.xlsb` round-trips byte-for-byte | M | — | binary and unforgiving; fixtures exist |
 

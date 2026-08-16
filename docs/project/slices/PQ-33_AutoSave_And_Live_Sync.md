@@ -1,6 +1,6 @@
 # PQ-33 — AutoSave vs live sync
 
-**State:** ⬜ planned · **Est:** M · Minted 2026-08-16
+**State:** 🟡 measured · **Est:** M · Minted 2026-08-16 · Measured 2026-08-16
 
 ## The problem
 
@@ -36,7 +36,45 @@ For cloud workbooks there is also a second safety net — OneDrive and SharePoin
 recovers the whole workbook, which makes turning backups off a defensible choice there rather than a
 reckless one. The documentation now says so.
 
-## What has to be established
+## Measured 2026-08-16
+
+Two scratch copies of `test/fixtures/simple.xlsx`, one in a OneDrive synced folder and one local, in
+a dedicated Excel instance. A query formula was set through COM - the same call live sync makes -
+and then `Saved`, `AutoSaveOn` and the file's mtime were watched.
+
+| | after the write | ~2s | ~5s | closed WITHOUT saving |
+| --- | --- | --- | --- | --- |
+| **Cloud**, `AutoSaveOn=True` | `Saved=False` | `Saved=True` | disk mtime changed | **change survived** |
+| **Local**, `AutoSaveOn=False` | `Saved=False` | `Saved=False` | unchanged | change discarded |
+
+**Answers:**
+
+1. **Yes, and within about two seconds.** AutoSave commits a live write with no user action.
+2. **`Saved` returns to `True` almost immediately**, so `sync.requireSavedWorkbook` will rarely fire
+   on a cloud workbook. It is not useless: the risk it guards against - unsaved work destroyed by our
+   write - barely exists there either, because AutoSave has already put those edits on disk where the
+   backup can capture them. **The guard protects local workbooks**, which is where the danger is.
+3. **The review step does not exist for AutoSave workbooks.** Closing without saving does not undo
+   it. Version history is the undo path.
+4. **`Workbook.AutoSaveOn` is readable through COM** and was `True` on the real 29-query workbook
+   live sync was proven against.
+
+## Done as a result
+
+- The helper reports `autoSaveOn` on both status and write responses.
+- The completion message tells the truth per workbook: AutoSave workbooks are told Excel saves it
+  itself and that version history is the undo path, rather than being promised a review step.
+- `Live_Sync.md` carries the measurement, and the headline "close without saving and the edit is
+  gone" promise is now qualified rather than stated flatly.
+
+## Still open
+
+- Whether to warn BEFORE writing to an AutoSave workbook rather than explaining afterwards. Leaning
+  no: it is not dangerous, version history covers it, and a confirmation on every sync is the kind of
+  friction that gets a feature turned off.
+- Debouncing the per-sync backup, which retention already largely handles.
+
+## What was originally to be established
 
 Measured, not reasoned about:
 
