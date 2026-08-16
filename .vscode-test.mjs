@@ -9,10 +9,19 @@ import { defineConfig } from '@vscode/test-cli';
 // Raising this does not hide a hang. A genuinely stuck test still fails, twenty seconds later.
 const mocha = { timeout: 20000 };
 
+// macOS caps a Unix domain socket path at 104 bytes, and VS Code puts its IPC socket inside the
+// user-data directory. GitHub Actions checks out to work/<repo>/<repo>, so the default
+// .vscode-test/user-data/... path came to 106 characters and the host died with
+// `listen EINVAL: invalid argument`. Two bytes over.
+//
+// Somewhere short, on macOS only - Windows and Linux have no such limit and are already green.
+const launchArgs = process.platform === 'darwin' ? ['--user-data-dir=/tmp/epqe-vsc'] : [];
+
 export default defineConfig([
 	{
 		label: 'unit',
 		files: ['out/test/*.test.js'],
+		launchArgs,
 		mocha
 	},
 	{
@@ -25,6 +34,7 @@ export default defineConfig([
 		label: 'workspace',
 		files: ['out/test/workspace/*.test.js'],
 		workspaceFolder: './test/fixtures/migration-workspace',
+		launchArgs,
 		mocha
 	}
 ]);
