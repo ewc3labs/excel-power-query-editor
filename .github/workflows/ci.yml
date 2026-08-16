@@ -47,12 +47,15 @@ jobs:
     # welcome to send a PR. What it must not do is keep the whole matrix red, because a
     # permanently failing CI is one nobody reads - which is exactly how this pipeline went a year
     # without anyone noticing it had stopped.
-    # macOS was tolerated because the test harness could not launch VS Code on the ARM runner. That
-    # was @vscode/test-electron 2.5.2 spawning Contents/MacOS/Electron, which stable VS Code renamed
-    # to Code in 1.110+ - fixed upstream in 3.x. Kept tolerant for one run to confirm the fix in CI;
-    # remove this once macOS is reliably green, because a permanently excused platform is one nobody
-    # notices breaking.
-    continue-on-error: ${{ matrix.os == 'macos-latest' }}
+    # NO PLATFORM IS EXCUSED.
+    #
+    # macOS was continue-on-error for a long time, on the belief that the VS Code test harness could
+    # not launch on the ARM runner. It could. Two real bugs were hiding behind the excuse:
+    # @vscode/test-electron 2.5.2 spawned Contents/MacOS/Electron, which stable VS Code renamed to
+    # Code in 1.110+; and once that was fixed, the default user-data path came to 106 characters
+    # against macOS's 104-byte limit for a Unix socket. Both are fixed and macOS passes.
+    #
+    # A permanently excused platform is one nobody notices breaking. If macOS fails, it is failing.
 
     steps:
       - name: Checkout repository
@@ -123,15 +126,8 @@ jobs:
           echo "## Test Results 🧪" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           if [ "${{ needs.test.result }}" = "success" ]; then
-            # SAY WHAT ACTUALLY PASSED.
-            #
-            # macOS is continue-on-error, so `needs.test.result` reports success while both macOS
-            # legs may have failed to launch VS Code at all (PQ-20). Printing "all platforms" there
-            # is the same class of untruth as a hard-coded test count: technically derived from a
-            # green signal, and wrong.
-            echo "✅ **Required platforms passed** — Ubuntu and Windows, on Node 22 and 24." >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "> macOS legs are \`continue-on-error\`: the VS Code test harness cannot launch Electron on the ARM runner (PQ-20). Check them individually rather than reading this summary as full coverage." >> $GITHUB_STEP_SUMMARY
+            # This claim is now true: no leg is excused, so a green matrix means every leg passed.
+            echo "✅ **All platforms passed** — Ubuntu, Windows and macOS, on Node 22 and 24." >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
             echo "### Test Coverage Areas:" >> $GITHUB_STEP_SUMMARY
             echo "- ✅ Extension lifecycle and activation" >> $GITHUB_STEP_SUMMARY

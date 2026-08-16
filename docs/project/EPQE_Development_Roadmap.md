@@ -120,7 +120,7 @@ The two write paths currently disagree about deletion, and nobody chose that. Se
 | PQ-11 | 💨 proven | Research: does the PQ/M extension ship Excel symbols | S | excel-symbols.md | answered 2026-08-14 — it does NOT ship Excel.CurrentWorkbook |
 | PQ-18 | 💨 proven | Push symbols through the Power Query API | M | excel-symbols.md | proven 2026-08-15 — survives the PQ extension being absent or added later |
 | PQ-19 | 🟨 coded | CI: get a real signal out of the matrix | M | — | fail-fast off + test timeout; windows-22 GREEN, first in a year |
-| PQ-20 | ⬜ planned | CI: macOS cannot launch VS Code at all | M | — | ENOENT on Electron, vscode-test on the ARM runner |
+| PQ-20 | ✅ done | CI: macOS cannot launch VS Code at all | M | — | TWO bugs behind one excuse: test-electron 2.5.2 spawned `Contents/MacOS/Electron`, renamed to `Code` in VS Code 1.110+; then a 106-char user-data socket path against macOS's 104-byte limit. Both fixed, macOS green, continue-on-error removed |
 | PQ-21 | 🟨 coded | CI: ubuntu fails, and PQ-18 was part of why | M | — | workspace error GONE from CI; both windows legs now green |
 
 ## Working Rules
