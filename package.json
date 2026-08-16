@@ -358,6 +358,12 @@
           "default": false,
           "markdownDescription": "**Beta — Windows + Excel only.** When the workbook is already open in Excel, write the query changes straight into it through Excel itself instead of failing or waiting for the file to be closed. The file on disk is not touched — the workbook is left with unsaved changes for you to review and save.\n\nOff by default. This talks to Excel through COM, and Excel varies a great deal between versions, update channels and managed environments. If it declines to work, set `#excel-power-query-editor.log.level#` to `debug` and [open an issue](https://github.com/ewc3labs/excel-power-query-editor/issues) with the `live sync ...` line from the output channel.\n\nClosed workbooks are unaffected, and so is extraction.",
           "order": 20
+        },
+        "excel-power-query-editor.sync.requireSavedWorkbook": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "**On by default. Leave it on for the safest behavior; turn it off for rapid iteration.**\n\nWhen the workbook is open in Excel with unsaved changes, live sync declines and asks you to save it first.\n\nThe reason is that the backup taken before a sync is a copy of the file **on disk** — the last saved state. Edits sitting unsaved in Excel are in no file anywhere, so writing over them destroys the only copy while the backup looks like protection.\n\n**Turning this off is a real trade, not a formality.** It is genuinely useful when you are beating up prototype queries in a scratch workbook and do not want to save between every sync. What you give up is that a failed or unwanted sync can no longer be undone from a backup — the backup will contain the last state you saved, not the state you were working in.\n\nOnly applies to live sync. Closed workbooks are written to disk with a backup as usual.",
+          "order": 21
         }
       }
     },
