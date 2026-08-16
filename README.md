@@ -37,6 +37,12 @@ Excel's Advanced Editor gives you one query at a time, in a modal dialog, with n
 and no real editor. This gives you your M code as files — in VS Code, with IntelliSense,
 multi-cursor, diff, blame, and everything else you already use.
 
+**Which means you can write and refactor Power Query M with GitHub Copilot, Claude, Cursor, or any
+other AI coding agent.** That is what this was built for. An agent cannot drive a modal dialog
+inside Excel — but the moment your queries are `.m` files in your editor, every tool that works on
+files works on them: generating a query, explaining one somebody else wrote, refactoring twenty at
+once, reviewing a diff before it goes near the workbook.
+
 It reads `.xlsx`, `.xlsm` and `.xlsb` directly. **Excel does not need to be installed**, which also
 means it works on macOS and Linux, and in CI.
 

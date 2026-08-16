@@ -216,6 +216,17 @@ The suite has <!--ewc3:tests-->136<!--/ewc3:tests--> tests, organized by area:
 - **Backup** - backup creation, retention, and cleanup
 - **Live sync** - writing through Excel; these skip when Excel is absent
 
+**The test harness version matters.** `@vscode/test-electron` must be **3.x**. Version 2.5.2
+hardcodes the macOS executable as `Contents/MacOS/Electron`, which stable VS Code renamed to `Code`
+in 1.110+ - so every macOS run failed with `spawn ... ENOENT` while looking like a platform problem.
+It is not macOS-specific in effect: the harness is used on every platform, and this is simply the
+version that resolves the executable rather than assuming it.
+
+`.vscode-test.mjs` also points VS Code's user-data directory at `/tmp/epqe-vsc` **on macOS only**.
+The IPC socket lives there, macOS caps a Unix socket path at 104 bytes, and GitHub Actions checks
+out to `work/<repo>/<repo>` - which made the default path 106 characters. Two bytes. Do not "tidy"
+that back to the default; it is load-bearing on one platform and inert on the others.
+
 **There are two test hosts**, defined in `.vscode-test.mjs`:
 
 - **`unit`** - the default host, with no folder open.
