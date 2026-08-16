@@ -46,6 +46,15 @@ Show a confirmation dialog before syncing and deleting the .m file. Uncheck to p
 
 [PLANNED FEATURE] Automatically open the Excel file after a successful sync.
 
+### `excel-power-query-editor.sync.requireSavedWorkbook`
+
+| | |
+| --- | --- |
+| Type | `boolean` |
+| Default | `true` |
+
+**On by default. Leave it on for the safest behavior; turn it off for rapid iteration.** When the workbook is open in Excel with unsaved changes, live sync declines and asks you to save it first. The reason is that the backup taken before a sync is a copy of the file **on disk** — the last saved state. Edits sitting unsaved in Excel are in no file anywhere, so writing over them destroys the only copy while the backup looks like protection. **Turning this off is a real trade, not a formality.** It is genuinely useful when you are beating up prototype queries in a scratch workbook and do not want to save between every sync. What you give up is that a failed or unwanted sync can no longer be undone from a backup — the backup will contain the last state you saved, not the state you were working in. Only applies to live sync. Closed workbooks are written to disk with a backup as usual.
+
 ### `excel-power-query-editor.sync.timeout`
 
 | | |

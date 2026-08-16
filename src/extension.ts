@@ -812,7 +812,8 @@ async function syncToExcel(uri?: vscode.Uri, uris?: vscode.Uri[]): Promise<SyncO
 				//
 				// Saving on their behalf is not ours to do - it would commit changes they may still have
 				// been deciding about. Say what is in the way and let them choose.
-				if (shouldRefuseUnsavedWorkbook(probe)) {
+				if (config.get<boolean>('sync.requireSavedWorkbook', true)
+					&& shouldRefuseUnsavedWorkbook(probe)) {
 					const message = `${path.basename(excelFile)} has unsaved changes in Excel. Save it there `
 						+ 'first - a backup can only capture what is on disk, so syncing now would write over '
 						+ 'work that nothing has a copy of.';
@@ -820,6 +821,12 @@ async function syncToExcel(uri?: vscode.Uri, uris?: vscode.Uri[]): Promise<SyncO
 					vscode.window.showWarningMessage(message);
 					return { status: 'aborted' };
 				}
+				if (probe.open && probe.saved === false) {
+					log('Workbook has unsaved changes and sync.requireSavedWorkbook is off - '
+						+ 'writing anyway. The backup holds the last SAVED state, not what is in Excel.',
+						'syncToExcel', 'warn');
+				}
+
 				log(`Excel file is locked; live sync ${probe.open ? 'CAN' : 'cannot'} handle it ` +
 					`(available=${probe.available}${probe.reason ? ', ' + probe.reason : ''}` +
 					`${probe.excelProcesses ? ', excelProcesses=' + probe.excelProcesses : ''})`,

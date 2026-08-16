@@ -84,6 +84,33 @@ the extension says what is in the way and leaves the decision where it belongs.
 Save in Excel, then sync. Once the workbook is clean, the backup genuinely covers the state you are
 about to change.
 
+### Turning it off
+
+```jsonc
+"excel-power-query-editor.sync.requireSavedWorkbook": false
+```
+
+There is a real workflow this gets in the way of: hammering on prototype queries in a scratch
+workbook, where saving between every sync is friction for no benefit. If that is what you are doing,
+turn it off.
+
+Be clear about the trade. With it off, a sync you did not want cannot be undone from a backup - the
+backup holds the last state **you** saved, not the state you were working in. The extension writes a
+warning to the log each time it proceeds over unsaved changes, so a surprising result later has an
+explanation.
+
+Closed workbooks are unaffected either way: they are written to disk with a backup, as always.
+
+### AutoSave has not been tested
+
+Workbooks in OneDrive and SharePoint usually have **AutoSave on**, and Excel then persists changes
+continuously. What that does to the "review before saving" promise above is currently **unknown** -
+a live write may be saved to the cloud within seconds, with no review step.
+
+It may be perfectly fine, and version history may cover you. It has not been measured, so it is
+listed here rather than quietly assumed. If you rely on being able to close without saving, check
+that AutoSave is off for that workbook.
+
 ## Excel and VS Code must run at the same level
 
 **This is a Windows limitation, not a missing feature.** COM partitions its running object table by
