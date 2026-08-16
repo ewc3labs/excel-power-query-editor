@@ -53,7 +53,14 @@
     "etl",
     "xlsx",
     "xlsm",
-    "xlsb"
+    "xlsb",
+    "copilot",
+    "ai",
+    "claude",
+    "cursor",
+    "ai coding agent",
+    "power query editor",
+    "powerquery"
   ],
   "activationEvents": [
     "onStartupFinished"
