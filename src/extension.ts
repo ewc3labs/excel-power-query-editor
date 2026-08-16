@@ -12,6 +12,7 @@ import {
 	getLiveStatus,
 	hasOwnerLockFile,
 	isLiveSyncSupported,
+	shouldRefuseUnsavedWorkbook,
 	writeLive
 } from './excelLive';
 import * as fs from 'fs';
@@ -801,6 +802,24 @@ async function syncToExcel(uri?: vscode.Uri, uris?: vscode.Uri[]): Promise<SyncO
 			if (extensionPath) {
 				const probe = await getLiveStatus(excelFile, extensionPath);
 				liveSyncPossible = probe.open;
+
+				// REFUSE TO WRITE OVER UNSAVED WORK.
+				//
+				// The backup taken before a sync is a copy of the file on DISK - the last saved state. If
+				// Excel is holding edits the user has not saved, those edits exist in no file anywhere, and
+				// a live write replaces them with no way back. The backup is worse than absent here: it
+				// looks like protection and is not.
+				//
+				// Saving on their behalf is not ours to do - it would commit changes they may still have
+				// been deciding about. Say what is in the way and let them choose.
+				if (shouldRefuseUnsavedWorkbook(probe)) {
+					const message = `${path.basename(excelFile)} has unsaved changes in Excel. Save it there `
+						+ 'first - a backup can only capture what is on disk, so syncing now would write over '
+						+ 'work that nothing has a copy of.';
+					log(message, 'syncToExcel', 'warn');
+					vscode.window.showWarningMessage(message);
+					return { status: 'aborted' };
+				}
 				log(`Excel file is locked; live sync ${probe.open ? 'CAN' : 'cannot'} handle it ` +
 					`(available=${probe.available}${probe.reason ? ', ' + probe.reason : ''}` +
 					`${probe.excelProcesses ? ', excelProcesses=' + probe.excelProcesses : ''})`,

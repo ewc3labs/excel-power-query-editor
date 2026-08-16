@@ -207,7 +207,7 @@ fully devcontainer-compatible out of the box.
 
 ### Test Architecture
 
-The suite has <!--ewc3:tests-->132<!--/ewc3:tests--> tests, organized by area:
+The suite has <!--ewc3:tests-->136<!--/ewc3:tests--> tests, organized by area:
 
 - **Commands** - extension command functionality
 - **Integration** - end-to-end Excel workflows against real workbooks
@@ -473,7 +473,7 @@ CI will judge the result identically either way.
 **With one exception.** If a document uses value markers:
 
 ```markdown
-Quality gates: ESLint, TypeScript, <!--ewc3:tests-->132<!--/ewc3:tests--> tests (<!--ewc3:testsNeedingExcel-->5<!--/ewc3:testsNeedingExcel--> of them need Excel and skip without it, on every platform including Windows CI)
+Quality gates: ESLint, TypeScript, <!--ewc3:tests-->136<!--/ewc3:tests--> tests (<!--ewc3:testsNeedingExcel-->5<!--/ewc3:testsNeedingExcel--> of them need Excel and skip without it, on every platform including Windows CI)
 ```
 
 then the toolkit is mandatory, because only it can refresh that number - and a stale one fails
@@ -492,7 +492,7 @@ conventions are in [Overview](Overview.md).
 
 - **Operating Systems**: Ubuntu, Windows, macOS
 - **Node.js Versions**: 22, 24
-- **Quality Gates**: ESLint, TypeScript, <!--ewc3:tests-->132<!--/ewc3:tests--> tests
+- **Quality Gates**: ESLint, TypeScript, <!--ewc3:tests-->136<!--/ewc3:tests--> tests
   (<!--ewc3:testsNeedingExcel-->5<!--/ewc3:testsNeedingExcel--> need Excel), documentation checks
 - **Artifact Management**: VSIX packaging with 30-day retention
 
