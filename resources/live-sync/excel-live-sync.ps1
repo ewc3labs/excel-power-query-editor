@@ -167,6 +167,22 @@ function ConvertTo-CloudUrl {
 #
 # A false negative is an inconvenience. A false positive is data corruption. There is no scoring
 # here on purpose.
+function Get-ComparableName {
+    # Canonical form for comparing two names that refer to the same document.
+    #
+    # This is still an EXACT comparison - it just removes differences that are not differences.
+    # SharePoint team sites live under ".../Shared Documents/", and whether that space arrives as a
+    # space or as %20 depends on who produced the string. Comparing the raw forms would silently
+    # fail to find every team-site workbook.
+    param([Parameter(Mandatory)][string] $Name)
+
+    $n = $Name
+    try { $n = [Uri]::UnescapeDataString($n) } catch { }
+    $n = $n -replace '\\', '/'
+    $n = $n.TrimEnd('/')
+    return $n.ToLowerInvariant()
+}
+
 function Resolve-Workbook {
     param([Parameter(Mandatory)][string] $FullPath)
 
@@ -178,6 +194,18 @@ function Resolve-Workbook {
 
     $byUrl = [RunningObjects]::Get($url)
     if ($null -ne $byUrl) { return @{ book = $byUrl; how = 'exact-cloud-url'; registeredAs = $url } }
+
+    # Same identity, differently encoded. Compare canonical forms rather than raw strings.
+    $wanted = Get-ComparableName -Name $url
+    foreach ($name in [RunningObjects]::Names()) {
+        if ($name -notmatch '\.xls[xmb]?$') { continue }
+        if ((Get-ComparableName -Name $name) -ne $wanted) { continue }
+
+        $obj = [RunningObjects]::Get($name)
+        if ($null -ne $obj) {
+            return @{ book = $obj; how = 'exact-cloud-url-normalized'; registeredAs = $name }
+        }
+    }
 
     return $null
 }
