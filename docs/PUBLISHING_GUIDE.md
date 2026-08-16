@@ -51,7 +51,7 @@ The current workflow is triggered by the tag directly. That is the whole fix.
 
 | Job | What it does |
 | --- | --- |
-| **build** | types, lint, package the `.vsix`, and verify the package contains what it must |
+| **build** | types, lint, **the full test suite**, documentation checks, package the `.vsix`, and verify the package contains what it must |
 | **github-release** | creates a **draft** release with the `.vsix` attached |
 | **marketplace** | publishes — only when all three conditions above are met |
 | **summary** | reports what happened, including what was skipped and why |
@@ -68,6 +68,9 @@ Two details that are easy to trip over:
 
 **1. Make sure the tree is releasable.** CI green on the branch, `CHANGELOG.md` updated, and the
 version in `package.json` matching the tag you are about to push.
+
+The pipeline now runs the tests itself, so a tag cannot outrun them - but finding out from a failed
+release is a worse way to learn it than finding out from CI.
 
 **2. Tag and push.**
 
@@ -107,7 +110,9 @@ The pipeline can be exercised safely, and should be after any change to it:
 
 - **Push a real prerelease tag.** `v0.6.0-rc.N` produces a draft prerelease and nothing else. Delete
   the tag and the draft afterwards.
-- **Run it manually** from the Actions tab, leaving **publish_marketplace** unchecked.
+- **Run it manually** from the Actions tab. It asks for a **tag** - a manual run has no tag of its
+  own, and without one the version derivation produces nonsense. Leave **publish_marketplace**
+  unchecked.
 
 Do not "test" by reading the YAML. That is how the `workflow_run` bug survived a year.
 

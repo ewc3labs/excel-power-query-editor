@@ -117,7 +117,15 @@ jobs:
           echo "## Test Results 🧪" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           if [ "${{ needs.test.result }}" = "success" ]; then
-            echo "✅ **All tests passed!** Extension builds successfully on all platforms." >> $GITHUB_STEP_SUMMARY
+            # SAY WHAT ACTUALLY PASSED.
+            #
+            # macOS is continue-on-error, so `needs.test.result` reports success while both macOS
+            # legs may have failed to launch VS Code at all (PQ-20). Printing "all platforms" there
+            # is the same class of untruth as a hard-coded test count: technically derived from a
+            # green signal, and wrong.
+            echo "✅ **Required platforms passed** — Ubuntu and Windows, on Node 22 and 24." >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "> macOS legs are \`continue-on-error\`: the VS Code test harness cannot launch Electron on the ARM runner (PQ-20). Check them individually rather than reading this summary as full coverage." >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
             echo "### Test Coverage Areas:" >> $GITHUB_STEP_SUMMARY
             echo "- ✅ Extension lifecycle and activation" >> $GITHUB_STEP_SUMMARY

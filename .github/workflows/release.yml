@@ -21,6 +21,10 @@ on:
     tags: ['v*']
   workflow_dispatch:
     inputs:
+      tag:
+        description: 'Tag to release, e.g. v0.6.0. Required - a manual run has no tag of its own.'
+        type: string
+        required: true
       publish_marketplace:
         description: 'Publish to the VS Code Marketplace (otherwise draft release only)'
         type: boolean
@@ -38,7 +42,13 @@ jobs:
       base: ${{ steps.meta.outputs.base }}
       is_prerelease: ${{ steps.meta.outputs.is_prerelease }}
     steps:
+      # On a manual run GITHUB_REF is a BRANCH, so the tag has to be named and checked out
+      # explicitly. Without this the workflow advertised manual publishing and could not do it: the
+      # version derivation below produced a non-version string and failed the comparison.
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag || github.ref }}
+          fetch-depth: 0
 
       - uses: actions/setup-node@v4
         with:
@@ -54,10 +64,29 @@ jobs:
           npm run check-types
           npm run lint
 
+      # THE RELEASE MUST NOT OUTRUN THE TESTS.
+      #
+      # CI and this workflow are triggered independently, so before this step a tag could produce a
+      # published VSIX while that same commit's test run was still going - or had already failed.
+      # Type checking and linting are not a substitute for the suite.
+      #
+      # xvfb because the tests drive a real VS Code, which needs a display.
+      - name: Run tests
+        uses: coactions/setup-xvfb@v1
+        with:
+          run: npm test
+        env:
+          CI: true
+
+      - name: Documentation is current
+        run: npm run docs:check
+
       - name: Work out what this tag is
         id: meta
         run: |
-          TAG="${GITHUB_REF#refs/tags/}"
+          # A manual run has no tag ref, so take the one that was asked for.
+          TAG="${{ inputs.tag }}"
+          if [[ -z "$TAG" ]]; then TAG="${GITHUB_REF#refs/tags/}"; fi
           VERSION="${TAG#v}"
           PKG=$(node -p "require('./package.json').version")
 

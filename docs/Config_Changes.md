@@ -43,6 +43,27 @@ UI with a pointer to the replacement.
 > rather than migrating them. That code never shipped in a release, but if your configuration
 > emptied itself, this is why. Setting them again is safe; the current migration preserves values.
 
+**20260816 — `symbols.autoInstall` and `symbols.installLevel` removed.**
+
+Both governed a mechanism that no longer exists: writing `excel-pq-symbols.json` into your workspace
+and editing `powerquery.client.additionalSymbolsDirectories`. Since 0.6.0 the symbols are handed to
+the Power Query extension through its API, so nothing is written and there is nothing to opt out of.
+
+They had already stopped doing anything - no code read either one. **If they are in your
+`settings.json` you can delete them**; VS Code will flag them as unknown. Nothing about your setup
+changes either way.
+
+**20260816 — `syncDeleteTurnsWatchOff` never existed, and is now `watch.offOnDelete`.**
+
+`Sync & Delete` read a setting called `syncDeleteTurnsWatchOff` that was never declared in the
+manifest. It could not be set from the settings UI, so it always took its default of `true`.
+
+The behavior it described - stop watching a `.m` file that has been deleted - is exactly what
+`watch.offOnDelete` already means, and `Sync & Delete` deletes the file. That registered setting now
+governs it. Since both defaulted to `true`, nothing changes unless you had hand-written the old name
+into `settings.json` **and** set it to `false`, in which case set `watch.offOnDelete` to `false`
+instead.
+
 **20260815 — Excel symbols are no longer written into your workspace.**
 
 Previously the extension wrote `excel-pq-symbols.json` into `<workspace>/.vscode/` and appended that
