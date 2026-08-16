@@ -213,3 +213,49 @@ export function explainInvisibleWorkbook(status: LiveStatus): string | undefined
 		+ 'COM hides running objects across integrity levels. '
 		+ 'Run VS Code and Excel the same way (normally, for preference) and try again.';
 }
+
+/**
+ * Can this file be written right now?
+ *
+ * Opens for read/write WITHOUT truncating and writes nothing, then closes immediately. If Windows
+ * refuses (EBUSY/EPERM), something holds an exclusive lock - which is the only question worth asking
+ * first. A workbook that is not locked is not open, so there is nothing for live sync to do and the
+ * ordinary file writer handles it without Excel being consulted at all.
+ *
+ * Verified non-destructive: the file's mtime does not move.
+ */
+export function isWritableNow(filePath: string): boolean {
+	try {
+		const fd = fs.openSync(filePath, 'r+');
+		fs.closeSync(fd);
+		return true;
+	} catch {
+		return false;
+	}
+}
+
+/** Excel leaves `~$Name.xlsx` beside a workbook it has open FROM DISK. */
+export function hasOwnerLockFile(filePath: string): boolean {
+	const sibling = path.join(path.dirname(filePath), '~$' + path.basename(filePath));
+	return fs.existsSync(sibling);
+}
+
+/**
+ * The file cannot be written AND no Excel we can see has it open.
+ *
+ * This is a real, ordinary situation rather than a bug: COM partitions the running object table by
+ * integrity level, so a workbook open in an elevated Excel is invisible to a normal-integrity
+ * extension, and vice versa. We can prove the file is locked - the write fails - but we cannot reach
+ * whatever holds it, and we must not guess at a similarly-named workbook we CAN see. Measured on a
+ * real machine, that guess wrote into a different workbook two directories away.
+ *
+ * Both ways out are the user's to choose, so say both.
+ */
+export function explainLockedButUnreachable(filePath: string): string {
+	return `${path.basename(filePath)} is open somewhere this extension cannot reach. The usual `
+		+ 'cause is Excel and VS Code running at different privilege levels - COM hides running '
+		+ 'objects across integrity levels, so we can tell the file is locked but cannot talk to '
+		+ 'whatever holds it. '
+		+ 'Either run VS Code and Excel the same way, or close the workbook and sync again - with it '
+		+ 'closed the file is written directly and none of this applies.';
+}

@@ -6,7 +6,14 @@ function openExtensionSettings() {
 import * as vscode from 'vscode';
 import { parseSection, diffQueries } from './mSection';
 import { registerExcelSymbols, unregisterExcelSymbols, explainRegistration, watchForPowerQueryExtension } from './powerQuerySymbols';
-import { getLiveStatus, writeLive, isLiveSyncSupported, explainInvisibleWorkbook } from './excelLive';
+import {
+	explainInvisibleWorkbook,
+	explainLockedButUnreachable,
+	getLiveStatus,
+	hasOwnerLockFile,
+	isLiveSyncSupported,
+	writeLive
+} from './excelLive';
 import * as fs from 'fs';
 import * as path from 'path';
 import { watch, FSWatcher } from 'chokidar';
@@ -812,10 +819,17 @@ async function syncToExcel(uri?: vscode.Uri, uris?: vscode.Uri[]): Promise<SyncO
 
 		if (!isWritable && !liveSyncPossible) {
 			const fileName = path.basename(excelFile);
-			const retry = await vscode.window.showWarningMessage(
-				`Excel file "${fileName}" appears to be locked (possibly open in Excel). Close the file and try again.`,
-				'Retry', 'Cancel'
-			);
+
+			// We KNOW it is locked - the write access probe failed. What we cannot know is by whom,
+			// because COM partitions running objects by integrity level: a workbook open in an
+			// elevated Excel is invisible to a normal-integrity extension, and the reverse. Say that
+			// plainly rather than "possibly open in Excel", and name both ways out. Guessing at a
+			// similarly-named workbook we CAN see is how queries end up in the wrong file.
+			const message = explainLockedButUnreachable(excelFile);
+			log(`${fileName} is locked and not reachable through Excel `
+				+ `(owner lock file present: ${hasOwnerLockFile(excelFile)})`, 'syncToExcel', 'warn');
+
+			const retry = await vscode.window.showWarningMessage(message, 'Retry', 'Cancel');
 			if (retry === 'Retry') {
 				// Retry after a short delay
 				setTimeout(() => syncToExcel(uri), 1000);

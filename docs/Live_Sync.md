@@ -69,6 +69,35 @@ Protected View · workbooks opened from a web link · co-authored files with Aut
 The worst plausible failure is that live sync declines and the normal file path takes over — which
 is what would have happened anyway. It cannot corrupt a workbook, because it never writes one.
 
+## Excel and VS Code must run at the same level
+
+**This is a Windows limitation, not a missing feature.** COM partitions its running object table by
+integrity level: a workbook open in an elevated Excel is invisible to a normal VS Code, and a
+workbook open in a normal Excel is invisible to an elevated VS Code. Neither side can see across,
+and no amount of code on our part changes that.
+
+What the extension does about it is refuse to guess. It can prove the file is locked - the write
+fails - but if it cannot reach whatever holds the lock, it says so and stops. It will **not** fall
+back to a similarly named workbook it can see. That fallback used to exist, and on a real machine it
+matched a workbook two directories away with the same name and would have written the wrong queries
+into it.
+
+Two ways forward, both yours to pick:
+
+- **Run VS Code and Excel the same way**, normally for preference. Then live sync works.
+- **Close the workbook.** With it closed the file is written directly, and none of this applies.
+
+## Cloud workbooks are matched exactly
+
+A workbook synced by OneDrive or SharePoint is registered by Excel under its **cloud URL**, not the
+local path you see. The extension translates your local path to that URL using OneDrive's own
+sync-root registration, then matches the two **exactly**.
+
+There is deliberately no fuzzy matching. Comparing trailing path segments seems reasonable and is
+not safe: `...\Documents\PowerQuery\Book.xlsx` and `.../Scripts/PowerQuery/Book.xlsx` agree on two
+segments while being entirely different files. A false negative here means live sync declines and
+you close the workbook. A false positive means your queries land in somebody else's workbook.
+
 ## When it does not work
 
 Set the log level and look at one line:
