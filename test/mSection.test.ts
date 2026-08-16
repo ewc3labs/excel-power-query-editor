@@ -54,6 +54,92 @@ suite('M section documents', () => {
 		});
 	});
 
+	suite('lexical state - expression contents are not structure', () => {
+		test('a shared binding inside a BLOCK COMMENT is not a query', () => {
+			const doc = [
+				'section Section1;',
+				'',
+				'shared Real = let',
+				'    x = 1,',
+				'    /*',
+				'shared Fake = 666;',
+				'    */',
+				'    y = 2',
+				'in',
+				'    y;',
+				''
+			].join('\n');
+
+			const sec = parseSection(doc);
+			assert.deepStrictEqual(sec.queries.map(q => q.name), ['Real'],
+				'a commented-out binding must not become a workbook query');
+			assert.ok(sec.queries[0].expression.includes('shared Fake'),
+				'and it must still be carried inside the expression, verbatim');
+		});
+
+		test('a shared binding inside a STRING is not a query', () => {
+			const doc = [
+				'section Section1;',
+				'',
+				'shared Real = let',
+				'    note = "',
+				'shared Fake = 666;',
+				'",',
+				'    y = 2',
+				'in',
+				'    y;',
+				''
+			].join('\n');
+
+			assert.deepStrictEqual(parseSection(doc).queries.map(q => q.name), ['Real']);
+		});
+
+		test('a shared binding inside a LINE COMMENT is not a query', () => {
+			const doc = 'section Section1;\n\nshared Real = 1;\n// shared Fake = 2;\n';
+			assert.deepStrictEqual(parseSection(doc).queries.map(q => q.name), ['Real']);
+		});
+
+		test('a semicolon inside a string does not terminate the binding', () => {
+			const doc = 'section Section1;\n\nshared Real = "a; b";\n';
+			const sec = parseSection(doc);
+			assert.strictEqual(sec.queries[0].expression, '"a; b"');
+		});
+
+		test('a quoted #"name" containing a semicolon is handled', () => {
+			const doc = 'section Section1;\n\nshared #"odd; name" = 1;\n';
+			const sec = parseSection(doc);
+			assert.deepStrictEqual(sec.queries.map(q => q.name), ['odd; name']);
+			assert.strictEqual(sec.queries[0].expression, '1');
+		});
+	});
+
+	suite('comments between bindings', () => {
+		const DOC = [
+			'section Section1;',
+			'',
+			'shared A = 1;',
+			'',
+			'// here is why B is weird',
+			'shared B = 2;',
+			''
+		].join('\n');
+
+		test('the comment is NOT folded into the previous expression', () => {
+			const sec = parseSection(DOC);
+			assert.strictEqual(sec.queries[0].expression, '1',
+				'A ended at its own semicolon, not at the next binding');
+		});
+
+		test('both queries are found', () => {
+			assert.deepStrictEqual(parseSection(DOC).queries.map(q => q.name), ['A', 'B']);
+		});
+
+		test('the comment survives a round trip', () => {
+			const rebuilt = buildSection(parseSection(DOC), detectEol(DOC));
+			assert.strictEqual(rebuilt, DOC, 'a comment about a query belongs to the document');
+		});
+	});
+
 	suite('round trips - the invariant live sync depends on', () => {
 		for (const name of ['simple_StudentResults.m', 'complex_FinalTable.m', 'binary_FinalTable.m']) {
 			test(`${name} rebuilds byte for byte`, () => {
