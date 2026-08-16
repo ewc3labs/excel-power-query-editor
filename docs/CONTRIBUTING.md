@@ -3,13 +3,12 @@
 > Build, test, and ship this extension - and how the project keeps its own documentation honest.
 
 Thanks for your interest in contributing. There is a cross-platform test suite, CI on every push,
-and a devcontainer so you can be building in a few minutes rather than an afternoon.
+and no toolchain to install beyond Node.
 
 ## 💡 Working on this project
 
 **Development Environment:**
 
-- DevContainers optional, but fully supported if Docker + Remote Containers is installed
 - Default terminal is Git Bash for sanity + POSIX-like parity
 - GitHub CLI (`gh`) installed and authenticated for real-time CI/CD monitoring
 - ✅ Make sure you have Node.js 22 or 24 installed (the CI pipeline tests against both)
@@ -126,71 +125,43 @@ out is whether someone is holding the thing to account. Here, someone is.
 
 ## 🚀 Development environment
 
-### Quick Start (Recommended)
+### Getting set up
 
-**Prerequisites:** Docker Desktop and VS Code with Remote-Containers extension
-
-1. **Clone and Open:**
-
-   ```bash
-   git clone https://github.com/ewc3labs/excel-power-query-editor.git
-   cd excel-power-query-editor
-   code .
-   ```
-
-2. **Automatic DevContainer Setup:**
-
-   - VS Code will prompt: "Reopen in Container" → **Click Yes**
-   - Or: `Ctrl+Shift+P` → "Dev Containers: Reopen in Container"
-
-3. **Everything is Ready:**
-   - Node.js 22 with all dependencies pre-installed
-   - TypeScript compiler and ESLint configured
-   - Test environment with VS Code API mocking
-   - Power Query syntax highlighting auto-installed
-   - the full test suite ready to run
-
-### DevContainer Features
-
-**Pre-installed & Configured:**
-
-- Node.js 22 LTS with npm
-- TypeScript compiler (`tsc`)
-- ESLint with project rules
-- Git with full history
-- VS Code extensions: Power Query language support
-- Complete test fixtures (real Excel files)
-
-**VS Code Tasks Available:**
+**You need Node.js 22 or 24** - CI tests against both - and nothing else.
 
 ```bash
-Ctrl+Shift+P → "Tasks: Run Task"
-```
-
-- **Run Tests** - Execute full 63-test suite
-- **Compile TypeScript** - Build extension
-- **Lint Code** - ESLint validation
-- **Package Extension** - Create VSIX file
-
-### Alternative Setup (Local Development)
-
-**Without DevContainer:**
-
-```bash
-# Fork repository on GitHub
+# Fork on GitHub, then:
 git clone https://github.com/YOUR-USERNAME/excel-power-query-editor.git
 cd excel-power-query-editor
-
-# Install dependencies
-npm install
+npm ci
+npm test
 ```
 
-Optional: use Git Bash as your default terminal for POSIX parity with Linux/macOS. This repo is
-fully devcontainer-compatible out of the box.
+That is the whole setup. There is no toolchain to install, no container to build, and no generated
+code to bootstrap.
 
-> You can run everything without the container too, but it's the easiest way to mirror the CI pipeline.
+On Windows, consider Git Bash as your default terminal for POSIX parity with what CI runs.
 
----
+### What you can and cannot test locally
+
+This matters more than it sounds, because it decides which failures you can reproduce:
+
+| | Windows | macOS / Linux |
+| --- | --- | --- |
+| Extract, parse, sync to a closed workbook | yes | yes |
+| Documentation checks | yes | yes |
+| **Live sync** (writing into an open workbook) | **only with Excel installed** | **no** |
+
+Live sync drives Excel through COM. Without Excel the integration suite skips itself and says so, so
+a green run on Linux is honest but narrower than a green run on a Windows machine with Excel. CI
+covers Ubuntu, Windows and macOS on Node 22 and 24, and none of those runners has Excel - so the
+five live sync tests are pending everywhere in CI and can only really be exercised on a developer
+machine.
+
+> **There used to be a devcontainer here, and it was removed on 2026-08-16.** It existed to answer
+> one question - does this work without Windows and Excel? - and CI now answers that continuously on
+> real Ubuntu and real macOS, which is a better answer than a container nobody had rebuilt in a
+> year. It also could never test live sync, being Linux.
 
 ## 🚀 Quick Reference - Build + Package + Install
 
@@ -823,7 +794,6 @@ code --install-extension excel-power-query-editor-*.vsix
 git clone https://github.com/YOUR-USERNAME/excel-power-query-editor.git
 cd excel-power-query-editor
 
-# Open in DevContainer (recommended)
 code .
 # → "Reopen in Container" when prompted
 
@@ -905,7 +875,6 @@ Brief description of changes
 │   ├── fixtures/            # Real Excel files for testing
 │   └── *.test.ts           # Test files by area
 ├── out/                     # Compiled test output
-├── .devcontainer/           # Docker container configuration
 ├── .github/workflows/       # CI/CD automation
 │   ├── ci.yml              # Multi-platform CI pipeline
 │   └── release.yml         # Enterprise release automation
@@ -940,7 +909,6 @@ Brief description of changes
 
 **Launch Extension in Debug Mode:**
 
-1. Open in DevContainer
 2. `F5` → "Run Extension"
 3. New VS Code window opens with extension loaded
 4. Set breakpoints and debug normally
@@ -975,7 +943,7 @@ Brief description of changes
 
 - Built the cross-platform test suite the project runs on
 - Built the CI pipeline
-- Built the devcontainer setup
+- Built the cross-platform CI matrix
 
 ### What the project holds itself to
 
@@ -983,7 +951,7 @@ Brief description of changes
 - Tests run on Ubuntu, Windows, and macOS
 - CI fails loudly rather than going green on a skipped step
 - Documentation checked in CI: links resolve, and computed numbers come from what they count
-- A devcontainer, centralized test utilities, and per-suite debug configurations
+- Centralized test utilities and per-suite debug configurations
 
 **Production Quality:**
 
