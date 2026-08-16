@@ -83,6 +83,24 @@ jobs:
           CI: true
         continue-on-error: false
 
+      # DIAGNOSTIC (macOS only, temporary). The harness downloads VS Code successfully and then
+      # fails to spawn it with ENOENT, so the question is what the extracted bundle actually
+      # contains. We have no Mac to look at - but the runner is one, so ask it.
+      - name: What did the macOS download actually produce?
+        if: always() && matrix.os == 'macos-latest'
+        run: |
+          echo "--- .vscode-test ---"
+          ls -la .vscode-test/ 2>/dev/null || echo "(no .vscode-test)"
+          for d in .vscode-test/vscode-darwin-*; do
+            echo "--- $d ---"
+            ls -la "$d" 2>/dev/null | head -20
+            echo "--- looking for an app bundle ---"
+            find "$d" -maxdepth 3 -name '*.app' 2>/dev/null | head
+            echo "--- executables under Contents/MacOS ---"
+            find "$d" -path '*Contents/MacOS/*' -maxdepth 5 2>/dev/null | head
+          done
+        continue-on-error: true
+
       # `npm test` records the suite's size into test-counts.json, which the documentation reads.
       # If running the tests changed it, the committed number was stale.
       - name: Recorded test count is current
