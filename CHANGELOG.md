@@ -22,6 +22,17 @@ All notable changes to the "excel-power-query-editor" extension will be document
 
   Requested in [discussion #3](https://github.com/ewc3labs/excel-power-query-editor/discussions/3).
 
+  **Live sync declines when the workbook has unsaved changes**, because the backup taken before a
+  sync copies the file on disk and cannot contain edits that exist only in Excel. Governed by
+  `excel-power-query-editor.sync.requireSavedWorkbook`, on by default. Turn it off for rapid
+  iteration on scratch workbooks, accepting that a backup then holds the last state you saved rather
+  than the state you were working in.
+
+  **AutoSave has not been tested against this.** Cloud workbooks usually have it on, and it may
+  persist a live write before you can review it — see
+  [PQ-33](docs/project/slices/PQ-33_AutoSave_And_Live_Sync.md).
+
+
   **This is beta, and Excel is a big place.** It works by talking to Excel through COM, and Excel
   varies enormously between versions, update channels and managed environments. What was measured
   to work: several Excel instances at once (workbooks are found through the Running Object Table,
