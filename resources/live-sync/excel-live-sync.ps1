@@ -244,6 +244,10 @@ if ($Action -eq 'status') {
             workbook     = (Invoke-WithRetry { $book.Name })
             fullName     = (Invoke-WithRetry { $book.FullName })
             saved        = [bool](Invoke-WithRetry { $book.Saved })
+            # AutoSave changes what a live write MEANS: with it on, Excel commits the change within
+            # seconds and closing without saving no longer undoes it. Measured, not assumed.
+            # Unreadable on older builds, so absent rather than false when we cannot tell.
+            autoSaveOn   = $(try { [bool](Invoke-WithRetry { $book.AutoSaveOn }) } catch { $null })
             queries      = $names
             matchedHow   = $matchedHow
             registeredAs = $registeredAs
@@ -328,4 +332,5 @@ Respond @{
     unchanged = $skipped
     failures  = $failures
     dirty     = (-not [bool](Invoke-WithRetry { $book.Saved }))
+    autoSaveOn = $(try { [bool](Invoke-WithRetry { $book.AutoSaveOn }) } catch { $null })
 }

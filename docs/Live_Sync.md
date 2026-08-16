@@ -38,6 +38,10 @@ same state as if you had typed the edit yourself. You save when you are ready, i
 That is the part worth internalizing: **your file on disk has not changed.** If you close the
 workbook without saving, the edit is gone from Excel and still present in your `.m` file.
 
+**This holds only while AutoSave is off**, which for a local workbook it is. Cloud workbooks usually
+have AutoSave on, and Excel then commits the change within seconds - see [AutoSave changes what
+happens next](#autosave-changes-what-happens-next).
+
 Three behaviors worth knowing:
 
 - **Queries you did not touch are left alone.** A query whose M is already identical is not
@@ -101,15 +105,25 @@ explanation.
 
 Closed workbooks are unaffected either way: they are written to disk with a backup, as always.
 
-### AutoSave has not been tested
+### AutoSave changes what happens next
 
-Workbooks in OneDrive and SharePoint usually have **AutoSave on**, and Excel then persists changes
-continuously. What that does to the "review before saving" promise above is currently **unknown** -
-a live write may be saved to the cloud within seconds, with no review step.
+Workbooks in OneDrive and SharePoint usually have **AutoSave on**, and that changes the outcome
+above. Measured on a real cloud workbook:
 
-It may be perfectly fine, and version history may cover you. It has not been measured, so it is
-listed here rather than quietly assumed. If you rely on being able to close without saving, check
-that AutoSave is off for that workbook.
+| | after the write | ~2s later | ~5s later | closed **without** saving |
+| --- | --- | --- | --- | --- |
+| **AutoSave on** | unsaved | **saved by Excel** | **written to disk** | **the change is still there** |
+| **AutoSave off** | unsaved | unsaved | not written | the change is discarded |
+
+So with AutoSave on there is **no review step**. Excel commits the change within a couple of
+seconds, and closing without saving does not undo it. The extension says so in the message it shows
+when the sync completes, rather than promising a review that will not happen.
+
+**Your undo path is version history**, in OneDrive or SharePoint - which recovers the whole
+workbook, not just the queries, and is the better tool anyway.
+
+If you want the review step, turn AutoSave off for that workbook before syncing. On a local workbook
+it is off already and the behavior above applies unchanged.
 
 ## Excel and VS Code must run at the same level
 

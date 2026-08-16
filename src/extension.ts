@@ -967,9 +967,16 @@ async function syncToExcel(uri?: vscode.Uri, uris?: vscode.Uri[]): Promise<SyncO
 						// Say plainly that the file on disk has NOT changed. A user who has been
 						// trained by every previous version to expect a written file needs to know
 						// their workbook now has unsaved changes.
-						const saveNote = result.dirty
-							? ' — the workbook now has unsaved changes in Excel, save it there.'
-							: ' — nothing needed changing.';
+						// Tell the truth per workbook, because the two cases genuinely differ. MEASURED:
+						// with AutoSave on, a write through COM is committed to disk within about two
+						// seconds and closing without saving does NOT undo it. Promising a review step
+						// there would be false, and false in the direction that loses work.
+						const saveNote = !result.dirty && !result.autoSaveOn
+							? ' — nothing needed changing.'
+							: result.autoSaveOn
+								? ' — AutoSave is on, so Excel saves this itself within seconds. To undo, '
+								  + 'use version history in OneDrive or SharePoint.'
+								: ' — the workbook now has unsaved changes in Excel, save it there.';
 
 						// A sync where some queries failed is NOT a success, and must not be announced
 						// as one. The warning above names the failures, but the message that arrives
