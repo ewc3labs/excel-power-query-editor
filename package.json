@@ -211,22 +211,6 @@
           "default": true,
           "description": "Before syncing, check if Excel file is writable. Warn or retry if locked."
         },
-        "excel-power-query-editor.symbols.installLevel": {
-          "type": "string",
-          "default": "workspace",
-          "enum": [
-            "workspace",
-            "folder",
-            "user",
-            "off"
-          ],
-          "description": "Where to install excel-pq-symbols.json and update Power Query language settings. 'workspace' = .vscode/settings.json, 'folder' = workspace folder, 'user' = global settings, 'off' = disabled."
-        },
-        "excel-power-query-editor.symbols.autoInstall": {
-          "type": "boolean",
-          "default": true,
-          "description": "Automatically install Excel Power Query symbols on activation to enable Excel.CurrentWorkbook() IntelliSense in the M Language extension."
-        },
         "excel-power-query-editor.xtn.level": {
           "type": "string",
           "default": "",

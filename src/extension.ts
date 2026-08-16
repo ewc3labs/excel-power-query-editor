@@ -20,11 +20,25 @@ import * as path from 'path';
 import { watch, FSWatcher } from 'chokidar';
 import { getConfig } from './configHelper';
 
-// Test environment detection
+/**
+ * Are we running under a test host?
+ *
+ * The `describe` probe is deliberately written through an index signature rather than as
+ * `global.describe`. The latter only compiles because @types/mocha declares `describe` globally, so
+ * production source was silently depending on TEST types being in scope - which type-checks from the
+ * command line and errors in an editor resolving a narrower context. Asking a plain object for a
+ * property it may not have is the honest expression of what this is doing.
+ */
 function isTestEnvironment(): boolean {
-	return process.env.NODE_ENV === 'test' || 
-		   process.env.VSCODE_TEST_ENV === 'true' ||
-		   typeof global.describe !== 'undefined'; // Jest/Mocha detection
+	// Note what this probe does NOT include: mocha's TDD interface defines `suite`, not `describe`,
+	// so under this project's own test host it is `undefined` and detection falls to the environment
+	// variables. Adding a `suite` probe looks like an obvious completion of the thought and is not -
+	// it flips this true during the suite, activating test-only branches that were never active, and
+	// nineteen tests change behavior. The probe stays exactly as narrow as it has always been.
+	const g = globalThis as unknown as Record<string, unknown>;
+	return process.env.NODE_ENV === 'test'
+		|| process.env.VSCODE_TEST_ENV === 'true'
+		|| typeof g.describe !== 'undefined';
 }
 
 // Helper to get test fixture path  
@@ -1484,7 +1498,11 @@ async function syncAndDelete(uri?: vscode.Uri): Promise<void> {
 				// Stop watching if enabled and if being watched
 				const watchers = fileWatchers.get(mFile);
 				if (watchers) {
-					if (config.get<boolean>('syncDeleteTurnsWatchOff', true)) {
+					// `watch.offOnDelete` already means "stop watching a .m that is deleted", and Sync &
+					// Delete deletes it. This used to read `syncDeleteTurnsWatchOff`, which was never
+					// declared in the manifest - so it could not be set from the settings UI and always
+					// took its default. One registered setting, one meaning.
+					if (config.get<boolean>('watch.offOnDelete', true)) {
 						await watchers.chokidar.close();
 						watchers.vscode?.dispose();
 						watchers.document?.dispose();

@@ -177,29 +177,6 @@ Set the logging level for the Excel Power Query Editor extension. Replaces legac
 
 Display sync and watch status indicators in the VS Code status bar.
 
-## Excel symbols
-
-IntelliSense for Excel functions the M language service does not ship.
-
-### `excel-power-query-editor.symbols.autoInstall`
-
-| | |
-| --- | --- |
-| Type | `boolean` |
-| Default | `true` |
-
-Automatically install Excel Power Query symbols on activation to enable Excel.CurrentWorkbook() IntelliSense in the M Language extension.
-
-### `excel-power-query-editor.symbols.installLevel`
-
-| | |
-| --- | --- |
-| Type | `string` |
-| Default | `"workspace"` |
-| Values | `workspace` · `folder` · `user` · `off` |
-
-Where to install excel-pq-symbols.json and update Power Query language settings. 'workspace' = .vscode/settings.json, 'folder' = workspace folder, 'user' = global settings, 'off' = disabled.
-
 ## Internal
 
 Written by the extension. Not intended to be set by hand.
