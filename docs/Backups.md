@@ -83,9 +83,19 @@ that is correct.
 "excel-power-query-editor.backup.autoBackupBeforeSync": false
 ```
 
-Reasonable if the workbook is in version control and you would rather recover from there. Not
-reasonable otherwise. A failed sync on a workbook holding six months of query work is not a
-hypothetical, and the cost of the setting being on is a few megabytes.
+Reasonable when something else is already keeping your history:
+
+- **The workbook is in OneDrive or SharePoint.** Both keep version history, which recovers the whole
+  workbook rather than just the copy we happened to take, and does it without filling a synced
+  folder with `.backup.` files. If you are working entirely in cloud storage, this is a fair trade.
+- **The workbook is in version control.**
+
+Not reasonable otherwise. A failed sync on a workbook holding six months of query work is not a
+hypothetical, and the cost of leaving it on is a few megabytes.
+
+If the churn is what bothers you rather than the safety, turn down `backup.maxFiles` or point
+`backup.location` at `tempFolder` instead of switching backups off. Retention exists precisely
+because a fast edit-sync loop was producing more backups than anyone wanted.
 
 ---
 

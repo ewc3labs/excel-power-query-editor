@@ -19,14 +19,22 @@ file history.
 None of that is necessarily wrong. It may be fine, or even what the user wants. But it is currently
 **unknown**, and the documentation states the opposite as a guarantee.
 
-## The second half: a backup per sync
+## The second half: a backup per sync — mostly already answered
 
-`syncToExcel` copies the workbook before every sync. With a fast edit-sync loop that is a backup per
-save, and `backup.maxFiles` (default 5) means older ones are deleted — so a rapid session can push
-the state you actually wanted out of the retention window while producing a great deal of file
-churn in a synced folder.
+`syncToExcel` copies the workbook before every sync, so a fast edit-sync loop produces a backup per
+save.
 
-There is no debounce. It has not mattered because live sync is new and off by default.
+**This is largely by design and already handled.** `backup.maxFiles` exists precisely because that
+churn showed up in practice; retention was the fix, and it works. Debouncing is therefore a
+refinement rather than a defect.
+
+What is left is narrower: with a low `maxFiles` and a rapid session, the state you actually wanted
+can be pushed out of the retention window by later backups of a worse state. Worth considering, not
+worth blocking anything over.
+
+For cloud workbooks there is also a second safety net — OneDrive and SharePoint version history
+recovers the whole workbook, which makes turning backups off a defensible choice there rather than a
+reckless one. The documentation now says so.
 
 ## What has to be established
 
@@ -45,8 +53,8 @@ Measured, not reasoned about:
 
 - **Detect and disclose.** If `AutoSaveOn` is readable, say in the log and in the docs what will
   actually happen, rather than promising a review step that does not exist.
-- **Debounce the backup.** One backup per workbook per session, or per N minutes, rather than per
-  sync. Cheap and clearly right regardless of what AutoSave turns out to do.
+- **Possibly debounce the backup.** One per workbook per session rather than per sync. A refinement
+  now that retention is understood to be the real answer to churn.
 - **Possibly nothing else.** If version history genuinely covers the user, the honest fix is to
   correct the documentation and move on.
 
