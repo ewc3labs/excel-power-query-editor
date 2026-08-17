@@ -18,20 +18,31 @@ AsOf: 2026-08-14
 
 ## Current Focus
 
-The extension works and has users. What is broken is everything *around* it: a release pipeline that
-last succeeded in July 2025, and a finished version that never shipped because of it.
+**0.6.0 is merged and green.** `wip/live-sync` landed on main by rebase on 2026-08-16, keeping all 72
+commits so `git blame` still points at the reasoning. CI passes on **all six legs** - Ubuntu, Windows
+and macOS on Node 22 and 24 - for the first time since 2025-07-21, and no platform is excused any
+more.
 
-**v0.6.0 = live sync to an open workbook.** The mechanism is proven (`PQ-12`); the rest is product.
+**`v0.6.0-rc.2` is published as a GitHub prerelease** with the VSIX attached, and the release
+pipeline was proven end to end on a real tag with the test suite gating it. `@namgaw`, who asked for
+live sync in October 2025, has been replied to and can install it.
 
-**Live sync works on a real workbook.** What is left is getting it to the person who asked.
+### What is actually next
 
-The pipeline works and cannot publish by accident. What is left is a decision, not a blocker.
+1. **Beat up the RC on real workbooks.** Wilson is installing it on the work PC - a managed corporate
+   environment, which is the case no CI runner can reach and the same situation `@namgaw` is in. If
+   group policy blocks COM there, live sync must decline honestly rather than fail strangely.
+2. **`PQ-34` — publishing authentication has a deadline.** Azure DevOps PATs are retired
+   **2026-12-01**. Both the stable and pre-release paths must move to `--azure-credential` before
+   then. No fire: the Marketplace has served 0.5.1 since 2025-07-21, so nothing publishes today.
+3. **`PQ-02` — decide on stable 0.6.0.** 5,441 installs are on a thirteen-month-old build. The
+   decision is Wilson's and wants RC feedback first.
 
-1. `PQ-19` — CI has failed on every run for a year; macOS cannot launch VS Code
-2. `PQ-16` — reply to namgaw, who asked for this in October 2025
-3. Merge `wip/live-sync`, decide on 0.6.0, and set `MARKETPLACE_PUBLISH` when ready
-2. `PQ-01` — the pipeline; nothing can be released until it works
-3. `PQ-10` — one README, before the marketplace page is republished
+### Not blocking, but known
+
+`PQ-22`-`PQ-27` (selective extract) is the real remaining feature work, and until it lands open and
+closed sync still disagree about deletion. Live sync stays off by default and labelled beta because
+of it, which is the honest position rather than a temporary one.
 
 ## Last Numbers
 
@@ -40,11 +51,18 @@ not a summary of them.
 
 | Series | Last Num | Series Description |
 | --- | --- | --- |
-| PQ | PQ-31 | Excel Power Query Editor slices and fixes |
+| PQ | PQ-34 | Excel Power Query Editor slices and fixes |
 
 `Last Num` is a cache over the Delivery Index, not a second source of truth — the IDs in the tables are
 authoritative. When minting, take the next number **and** confirm it is unused across every sub-table,
 then bump this cell in the same edit.
+
+> It went stale anyway: it read `PQ-31` while `PQ-32`, `PQ-33` and `PQ-34` existed in the tables
+> below. A hand-maintained number that duplicates something derivable is the same failure this
+> project keeps finding — a doc claiming 63 tests against a suite of 136, a CI summary asserting
+> "all platforms" while two were excused. **This one wants the `ewc3-docs-tools` treatment**: a
+> `countMatches` value over `^\| PQ-\d+` would make it derived and unable to drift. Until that
+> exists, bump it by hand in the same edit that mints an ID.
 
 ## Delivery Index
 
