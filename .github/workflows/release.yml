@@ -64,6 +64,7 @@ jobs:
       base: ${{ steps.meta.outputs.base }}
       is_prerelease: ${{ steps.meta.outputs.is_prerelease }}
       channel: ${{ steps.meta.outputs.channel }}
+      tag: ${{ steps.meta.outputs.tag }}
     steps:
       # On a manual run GITHUB_REF is a BRANCH, so the tag has to be named and checked out
       # explicitly. Without this the workflow advertised manual publishing and could not do it: the
@@ -110,6 +111,14 @@ jobs:
           # A manual run has no tag ref, so take the one that was asked for.
           TAG="${{ inputs.tag }}"
           if [[ -z "$TAG" ]]; then TAG="${GITHUB_REF#refs/tags/}"; fi
+
+          # Validate before anything acts on it. A typo in the manual form used to travel silently
+          # into a checkout, a package name, and a release title.
+          if [[ ! "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-.+)?$ ]]; then
+            echo "::error::'$TAG' is not a release tag. Expected vX.Y.Z or vX.Y.Z-suffix."
+            exit 1
+          fi
+
           VERSION="${TAG#v}"
           PKG=$(node -p "require('./package.json').version")
 
@@ -183,8 +192,12 @@ jobs:
           FLAG=""
           if [[ "${{ steps.meta.outputs.channel }}" == "prerelease" ]]; then FLAG="--pre-release"; fi
 
-          npm install -g @vscode/vsce
-          vsce package $FLAG --out "excel-power-query-editor-${{ steps.meta.outputs.base }}.vsix"
+          # THE LOCKFILE'S vsce, not whatever `latest` is this morning.
+          #
+          # `npm install -g @vscode/vsce` threw away the determinism `npm ci` had just established -
+          # and it did so in the step that builds the artifact users install, while the publish step
+          # was being scrupulously pinned. `npm exec` uses the copy npm ci placed in node_modules.
+          npm exec -- vsce package $FLAG --out "excel-power-query-editor-${{ steps.meta.outputs.base }}.vsix"
 
       - name: Check the package contains what it must
         run: |
@@ -220,11 +233,17 @@ jobs:
         with:
           name: vsix
 
+      # USE THE TAG THE BUILD RESOLVED, NOT `github.ref_name`.
+      #
+      # On a manual run `github.ref_name` is the BRANCH the workflow was launched from, so a
+      # dispatch for v0.6.0 packaged 0.6.0 correctly and then created the release against `main`.
+      # The build job already does the work of resolving and validating the tag; everything
+      # downstream must use its answer rather than re-deriving a different one from the context.
       - name: Create the draft release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ github.ref_name }}
-          name: Excel Power Query Editor ${{ github.ref_name }}
+          tag_name: ${{ needs.build.outputs.tag }}
+          name: Excel Power Query Editor ${{ needs.build.outputs.tag }}
           # DRAFT deliberately: nothing becomes visible until a human reads it and clicks publish.
           draft: true
           prerelease: ${{ needs.build.outputs.is_prerelease }}
@@ -254,11 +273,20 @@ jobs:
       needs.build.outputs.channel != 'none' &&
       (vars.MARKETPLACE_PUBLISH == 'enabled' || inputs.publish_marketplace == true)
 
-    # The identity lives on the environment, not on the branch or tag.
+    # THE HUMAN GATE. Make this a protected environment requiring a reviewer.
     #
-    # A federated credential is matched by SUBJECT, and a subject built from a ref would need one
-    # credential per tag - or a wildcard, which is the opposite of the point. `environment:marketplace`
-    # is one stable subject that covers tag pushes and manual runs alike.
+    # A protected environment does not merely pause the job - the job does not START, so the OIDC
+    # token is never minted. The capability to publish does not exist until a person approves it,
+    # which is a stronger property than checking a box in a form and hoping.
+    #
+    # It is also what keeps "nothing reaches users without a human" true once MARKETPLACE_PUBLISH is
+    # enabled. Publishing the draft GitHub release and publishing to the Marketplace are independent
+    # acts, and only the first one was ever gated by a human editing a draft.
+    #
+    # The Marketplace trust policy may also name this environment.
+    #
+    # (Nothing to do with Entra any more. An earlier design used this name as a federated-credential
+    # subject; trusted publishing has no subject, and that reasoning is gone.)
     environment: marketplace
 
     permissions:
@@ -315,15 +343,17 @@ jobs:
       - name: Publish
         env:
           OVSX_PAT: ${{ secrets.OVSX_PAT }}
+          OVSX_VERSION: 1.1.1
         run: |
           if [[ -z "$OVSX_PAT" ]]; then
             echo "::warning::OVSX_PAT is not configured - skipping Open VSX."
             exit 0
           fi
-          FLAG=""
-          if [[ "${{ needs.build.outputs.channel }}" == "prerelease" ]]; then FLAG="--pre-release"; fi
 
-          npx --yes ovsx publish --packagePath *.vsix $FLAG -p "$OVSX_PAT"
+          # NO --pre-release HERE, DELIBERATELY. ovsx warns "Ignoring option '--pre-release' for
+          # prepackaged extension" and moves on: the channel is already baked into the VSIX manifest
+          # at package time. Passing it would look like it decided something.
+          npx --yes "ovsx@${OVSX_VERSION}" publish --packagePath *.vsix -p "$OVSX_PAT"
 
   summary:
     name: Summary
@@ -335,7 +365,7 @@ jobs:
         run: |
           CHANNEL="${{ needs.build.outputs.channel }}"
           {
-            echo "### ${{ github.ref_name }}"
+            echo "### ${{ needs.build.outputs.tag }}"
             echo ""
             echo "| Step | Result |"
             echo "| --- | --- |"

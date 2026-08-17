@@ -9,9 +9,11 @@ git tag v0.6.0
 git push origin v0.6.0
 ```
 
-That builds, packages, and creates a **draft** GitHub release with the `.vsix` attached. Nothing is
-published to the Marketplace and nothing is visible to users until you edit the draft and press
-publish.
+That builds, tests, packages, and creates a **draft** GitHub release with the `.vsix` attached.
+
+**Publishing the draft and publishing to the Marketplace are two independent acts.** Editing the
+draft and pressing publish makes the GitHub release visible; it does nothing to the Marketplace. The
+Marketplace gate is the `marketplace` environment approval described below.
 
 ## Marketplace publishing is OFF
 
@@ -88,9 +90,39 @@ repository's workflow, and it replaces every step an Entra route would have need
 
 | Kind | Name | Value |
 | --- | --- | --- |
-| Environment | `marketplace` | must exist — the publish job declares it |
+| Environment | `marketplace` | must exist, **with a required reviewer** — see below |
 | Variable | `MARKETPLACE_PUBLISH` | `enabled`, when you want tags to publish |
 | Secret | `OVSX_PAT` | Open VSX token — optional, see below |
+
+### The human gate is the environment, not the draft
+
+**Make `marketplace` a protected environment requiring a reviewer.** Settings → Environments →
+`marketplace` → Required reviewers → add yourself.
+
+This is stronger than it looks. A protected environment does not pause a running job — **the job
+never starts**, so the OIDC token is never minted. The *capability* to publish does not exist until
+a person approves it, rather than existing continuously and being politely unused.
+
+```text
+push v0.6.0
+  ├─ build, test, package
+  ├─ draft GitHub release          (visible to nobody until you publish it)
+  ▼
+marketplace environment
+  ├─ REQUIRED HUMAN APPROVAL  ◄── the gate
+  ▼
+OIDC token minted → Marketplace publish → Open VSX
+```
+
+**Do not enable "prevent self-review."** With a single maintainer it deadlocks the pipeline
+permanently: the only person who can approve is the person who triggered it.
+
+**Two gates, doing different jobs.** `MARKETPLACE_PUBLISH` decides whether the job is *reachable* —
+unset, it is skipped entirely, so testing the pipeline with real tags produces no approval prompts
+to dismiss. The environment approval decides whether a reachable job *runs*. Keep both.
+
+An approval request expires after 30 days and the run fails, which is the correct outcome for a
+release nobody remembered to approve.
 
 **No `AZURE_CLIENT_ID`, no `AZURE_TENANT_ID`, no secrets for the Marketplace at all.** The
 `id-token: write` permission on the job is what lets `vsce` request the token; without it the error
@@ -140,6 +172,11 @@ access token stored as the **`OVSX_PAT`** secret.
 **The job is deliberately non-blocking.** A second registry being down, rate-limiting, or rejecting
 a token must not turn a successful Marketplace publish into a red release. Without `OVSX_PAT` it
 warns and skips.
+
+**Open VSX is not passed `--pre-release`, on purpose.** Given an already-packaged VSIX it warns
+*"Ignoring option '--pre-release' for prepackaged extension"* and carries on — the channel is baked
+into the manifest at package time. Passing the flag would suggest the upload decides something it
+does not. `ovsx` is pinned to `1.1.1` for the same reason `vsce` is pinned.
 
 ## Why the pipeline was rebuilt
 
