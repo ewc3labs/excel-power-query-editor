@@ -47,44 +47,30 @@ of it, which is the honest position rather than a temporary one.
 
 ## ID Prefixes
 
-**This roadmap owns these series.** A prefix belongs to exactly one roadmap, so anyone following a
-reference knows which document to open, and nobody mints a number somebody else already used.
-
-| Prefix | Scope | Owner | Series |
-| --- | --- | --- | --- |
-| PQ | global | excel-power-query-editor | product slices, fixes and infrastructure |
-| FIX | repo-local | excel-power-query-editor | small corrections not worth a slice |
-
-**`FIX` is deliberately repo-local, and that is canon across EWC3 Labs.** Every roadmap owns its own
-`FIX` series, so `FIX-3` here is a different thing from `FIX-3` in another repository. That is safe
-because a fix is never referenced from outside the repository it fixes, and the alternative -
-coordinating a fix number across repos - is a discipline nobody would keep twice.
-
-Every other prefix is **global**: claimed by one roadmap, listed in the [EWC3 Labs prefix
-registry][ewc3-labs-prefix], and never reused elsewhere.
-
-`npm run docs:check` enforces this. It fails if the roadmap uses a prefix it has not declared, and
-if two roadmaps claim the same global prefix.
-
-## Last Numbers
-
-Read this **before** minting an ID. It sits above the tables because it is an input to writing one,
+**Read this before minting an ID.** It sits above the tables because it is an input to writing one,
 not a summary of them.
 
-| Series | Last Used | Next |
-| --- | --- | --- |
-| PQ | <!--ewc3:lastPQ-->PQ-34<!--/ewc3:lastPQ--> | the number after that |
-| FIX | <!--ewc3:lastFIX-->FIX-0<!--/ewc3:lastFIX--> | none minted yet |
+| Prefix | Scope | Owner | Last Used | Series |
+| --- | --- | --- | --- | --- |
+| PQ | global | excel-power-query-editor | <!--ewc3:lastPQ-->PQ-34<!--/ewc3:lastPQ--> | product slices, fixes and infrastructure |
+| FIX | repo-local | excel-power-query-editor | <!--ewc3:lastFIX-->FIX-0<!--/ewc3:lastFIX--> | small corrections not worth a slice |
 
-> **These cells are derived and cannot drift.** They read the ID tables below via `ewc3-docs`, so
-> minting `PQ-35` updates this on the next `npm run docs:values`, and CI fails if it is stale.
->
-> It went wrong exactly once, which is what prompted automating it: the cell read `PQ-31` while
-> `PQ-32`, `PQ-33` and `PQ-34` existed below. A stale "last number" is worse than a stale summary,
-> because the next person mints a number that is already taken and nothing complains.
->
-> **Max, not a count.** Counting rows agrees with the highest ID only while a series is contiguous,
-> and starts handing out taken numbers the moment one is retired.
+**Last Used is derived** from the ID tables below by `ewc3-docs values`, and CI fails if it is
+stale. That matters more than it sounds: this cell is the INPUT to minting an ID, not a summary of
+one, so when it drifts the next person takes a number that is already taken and nothing complains.
+EPQE's read `PQ-31` while `PQ-32` through `PQ-34` existed below it, which is what prompted
+automating it. **Max, not a count** — counting rows agrees with the highest ID only while a series
+is contiguous.
+
+**A global prefix belongs to exactly one roadmap** across all of EWC3 Labs, so a reference points
+somewhere unambiguous. See the [prefix registry][prefix-registry] in HQ.
+
+**`FIX` is repo-local, and that is canon.** Every roadmap owns its own `FIX` series, so `FIX-3` here
+is a different thing from `FIX-3` elsewhere — safe, because a fix is never referenced from outside
+the repository it fixes.
+
+`ewc3-docs series` enforces both rules: it fails if this roadmap uses a prefix it has not declared,
+or if another roadmap claims the same global one.
 
 ## Delivery Index
 
@@ -181,3 +167,4 @@ The two write paths currently disagree about deletion, and nobody chose that. Se
 [ewc3-labs-prefix]: https://github.com/ewc3labs/ewc3labs-hq
 [pq-33]: slices/PQ-33_AutoSave_And_Live_Sync.md
 [pq-34]: slices/PQ-34_Marketplace_Prerelease_Channel.md
+[prefix-registry]: https://github.com/ewc3labs/ewc3labs-hq/blob/main/docs/project/EWC3_Prefix_Registry.md
