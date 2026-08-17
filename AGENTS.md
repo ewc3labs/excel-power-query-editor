@@ -82,9 +82,12 @@ hung.
 
 ## Release pipeline — currently the weakest part
 
-The intent is right: CI validates, release builds the `.vsix`, publishes a GitHub Release, and pushes
-stable tags to the Marketplace with `VSCE_PAT`. In practice it is flaky, and there are concrete
-reasons rather than mysteries:
+**Rebuilt 2026-08-15 and again 2026-08-17; the description below is kept because the failure is
+instructive, not because it is still true.** `release.yml` is now tag-triggered, publishes to both
+the Marketplace and Open VSX, derives its channel from the minor version, and authenticates with
+Entra ID rather than a PAT. See the [Publishing Guide](docs/PUBLISHING_GUIDE.md).
+
+What it used to be, and why it failed:
 
 - **`release.yml` is triggered by `workflow_run` off CI**, not by the tag. That pattern is fragile: it
   runs the workflow file from the default branch rather than the tag, the triggering context is

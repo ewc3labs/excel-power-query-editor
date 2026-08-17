@@ -33,9 +33,13 @@ live sync in October 2025, has been replied to and can install it.
    corporate environment, which is the case no CI runner can reach and the same situation `@namgaw`
    is in. If group policy blocks COM there, live sync must decline honestly rather than fail
    strangely.
-2. **`PQ-34` — publishing authentication has a deadline.** Azure DevOps PATs are retired
-   **2026-12-01**. Both the stable and pre-release paths must move to `--azure-credential` before
-   then. No fire: the Marketplace has served 0.5.1 since 2025-07-21, so nothing publishes today.
+2. **`PQ-34` — the pipeline is wired, and the Azure detour is cancelled.** Publishing uses **trusted
+   publishing** (`vsce publish --oidc`): GitHub mints an OIDC token, the Marketplace exchanges it
+   for a short-lived credential, and there is no tenant, app registration, or federated credential
+   anywhere. What remains is one form on the publisher page naming this repository and
+   `release.yml`. Steps in the [Publishing Guide](../PUBLISHING_GUIDE.md). **Pinned to vsce 3.9.3-5
+   because `--oidc` is not in stable yet**, and unproven until the first publish.
+
 3. **`PQ-02` — decide on stable 0.6.0.** 5,441 installs are on a thirteen-month-old build. The
    decision is Wilson's and wants RC feedback first.
 
@@ -85,7 +89,7 @@ States: `⬜ planned` · `⛔ blocked` · `🟨 coded` — built and deployed, n
 | --- | --- | --- | --- | --- | --- |
 | PQ-01 | 💨 proven | Rebuild release.yml as tag-triggered | M | — | proven 2026-08-15 — v0.6.0-rc.1 built a draft, marketplace skipped |
 | PQ-02 | ⬜ planned | Ship the settings refactor as 0.6.0 | S | — | unblocked; NOT a patch — 13 settings renamed |
-| PQ-03 | ⬜ planned | Verify marketplace publish end to end | S | — | `VSCE_PAT` path has never demonstrably fired from a tag |
+| PQ-03 | ⬜ planned | Verify marketplace publish end to end | S | [PQ-34][pq-34] | pipeline is wired for Entra ID; the first successful publish is the proof, and nothing has published since 2025-07-21 |
 | PQ-04 | 💨 proven | Prune the release workflow | S | — | done with PQ-01 — 318 lines to 190 |
 
 ### v0.6.0 — live sync to an open workbook
@@ -125,7 +129,7 @@ The two write paths currently disagree about deletion, and nobody chose that. Se
 | PQ-29 | ✅ done | USER_GUIDE.md has no mention of live sync | S | [Live_Sync](../Live_Sync.md) | feature doc written; User_Guide now carries a section pointing into it |
 | PQ-30 | ✅ done | Retire the RELEASE_SUMMARY pattern | S | — | removed; CHANGELOG and the release body are the two homes |
 | PQ-32 | ✅ done | docs: link and orphan checking in CI | S | [Overview](../Overview.md) | `npm run docs:links` found 11 dead links and 1 unreachable doc on its first run |
-| PQ-34 | 🔴 deadline | Marketplace pre-release channel, and Entra ID auth before PATs die | M | [PQ-34][pq-34] | **Azure DevOps PATs are retired 2026-12-01.** Publishing must move to `--azure-credential` (Entra ID + workload identity federation) before then. `vsce publish --oidc` does NOT exist - verified against 3.6.0 and 3.9.2. Also carries the odd/even minor convention |
+| PQ-34 | 🟡 wired | Marketplace pre-release channel, and PAT-free auth before PATs die | M | [PQ-34][pq-34] | pipeline done 2026-08-17: **trusted publishing** (`--oidc`, pinned to 3.9.3-5), odd/even channel derivation with an intent assertion, Open VSX non-blocking. Blocked on one Marketplace trust policy; no Entra tenant needed after all. `--oidc` is absent from 3.9.2 but shipped on `next` 2026-08-11 |
 | PQ-31 | 🟡 partial | bump-version: drop commit analysis, sync the README badge | S | [PUBLISHING_GUIDE](../PUBLISHING_GUIDE.md) | badge sync DONE by docs-tools `values`; commit analysis still there, and the `npm version` tag hazard is now documented rather than fixed |
 
 ### Data safety — the thing that must never break

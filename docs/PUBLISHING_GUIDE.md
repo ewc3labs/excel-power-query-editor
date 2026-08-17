@@ -15,29 +15,131 @@ publish.
 
 ## Marketplace publishing is OFF
 
-**This is deliberate, and it is enforced structurally rather than by remembering.** Publishing to
-the Marketplace requires all three of:
+**This is deliberate, and it is enforced structurally rather than by remembering.** Publishing
+requires all three of:
 
-1. a **stable** tag — anything with a suffix (`v0.6.0-rc.1`) is a prerelease and never publishes
-2. the repository variable **`MARKETPLACE_PUBLISH`** set to `enabled`
-3. a credential the Marketplace accepts
+1. a **plain `vX.Y.Z` tag** — anything with a suffix (`v0.6.0-rc.1`) never publishes to either
+   marketplace
+2. the repository variable **`MARKETPLACE_PUBLISH`** set to `enabled`, or a manual run with
+   **publish_marketplace** checked
+3. a **trusted publishing policy** on the Marketplace naming this repo and workflow — see [Setting
+   up publishing](#setting-up-publishing)
 
-> **`VSCE_PAT` is a dead end.** Microsoft retires global Azure DevOps Personal Access Tokens on
-> **2026-12-01**. Publishing has to move to Microsoft Entra ID with workload identity federation -
-> `vsce publish --azure-credential` - before then. The pipeline still names `VSCE_PAT` today because
-> nothing has been published since 2025-07-21 and there was no reason to build the replacement
-> speculatively. See [PQ-34][pq-34], which has the
-> verified mechanism, including the fact that `vsce publish --oidc` does not exist despite being
-> widely suggested.
-
-Neither the variable nor the secret exists right now. So the worst outcome of pushing a tag — any
-tag, including a wrong one — is a draft release you delete.
+None of the three is configured right now. So the worst outcome of pushing a tag — any tag,
+including a wrong one — is a draft release you delete.
 
 That matters more than it sounds. It is what makes the pipeline safe to test with real tags, and
 testing with real tags is the only way to know a tag-triggered pipeline works.
 
-To publish for real: set `MARKETPLACE_PUBLISH` to `enabled` and add `VSCE_PAT`, or run the workflow
-manually from the Actions tab with **publish_marketplace** checked.
+## Two channels, decided by the minor version
+
+The Marketplace has no concept of a semver prerelease suffix. A version is **either** the stable one
+**or** the pre-release one, and the same version cannot be both. VS Code's convention is therefore:
+
+| Tag | Channel | Who receives it |
+| --- | --- | --- |
+| `v0.6.0` | **stable** — even minor | everyone, including auto-update |
+| `v0.7.0` | **pre-release** — odd minor | only users who opted in via the extension pane |
+| `v0.6.0-rc.2` | **neither** | nobody; a VSIX on a draft release, for handing to someone |
+
+**The channel is derived from the version, so the wrong one is not possible.** It is, however,
+*silent* — believing you are shipping `0.7.0` to stable gets you a pre-release, having consumed the
+version number permanently. So a manual run can **assert** the channel, and a disagreement fails
+before anything is published:
+
+```text
+You asked for the stable channel, but v0.7.0 is prerelease.
+```
+
+**Once a version is published it is consumed forever.** There is no republishing `0.7.0` as
+something else, which is the whole reason the assertion exists.
+
+## Setting up publishing
+
+**There is no PAT in the implemented publishing path, and no Azure at all.** Azure DevOps personal
+access tokens are retired on **2026-12-01**, and this publishes with **trusted publishing** instead:
+`vsce` asks GitHub for an OIDC token scoped to the `marketplace.visualstudio.com` audience,
+exchanges it at `POST /_apis/gallery/token` for a short-lived Marketplace credential, and publishes
+with that.
+
+**Nothing long-lived is stored in this repository**, and there is no Entra tenant, app registration,
+federated credential, or `azure/login` step anywhere in the path.
+
+> **Correcting an earlier version of this guide.** It said `vsce publish --oidc` does not exist.
+> That was true of stable 3.9.2 — which answers `unknown option '--oidc'` — and wrong as a general
+> claim. Trusted publishing landed upstream on 2026-07-23 and shipped in **3.9.3-5** on the `next`
+> tag. The workflow pins that version exactly.
+
+### Marketplace side (manual, one time)
+
+Configure a **trusted publishing policy** on the `ewc3labs` publisher at
+<https://marketplace.visualstudio.com/manage/publishers/ewc3labs>, naming:
+
+| | |
+| --- | --- |
+| Repository | `ewc3labs/excel-power-query-editor` |
+| Workflow | `release.yml` |
+| Environment | `marketplace` — if the policy form offers it |
+
+That is the entire setup. The policy is what makes the Marketplace trust a token minted by this
+repository's workflow, and it replaces every step an Entra route would have needed.
+
+### GitHub side
+
+| Kind | Name | Value |
+| --- | --- | --- |
+| Environment | `marketplace` | must exist — the publish job declares it |
+| Variable | `MARKETPLACE_PUBLISH` | `enabled`, when you want tags to publish |
+| Secret | `OVSX_PAT` | Open VSX token — optional, see below |
+
+**No `AZURE_CLIENT_ID`, no `AZURE_TENANT_ID`, no secrets for the Marketplace at all.** The
+`id-token: write` permission on the job is what lets `vsce` request the token; without it the error
+is explicit about the missing permission.
+
+The `marketplace` environment is kept as the **release gate**, and as something the trust policy can
+name. It is no longer carrying an OIDC subject, because trusted publishing does not use one.
+
+### The pinned version, and when to unpin
+
+```yaml
+env:
+  VSCE_VERSION: 3.9.3-5
+```
+
+Pinned **exactly**, not to `@next`, which moves. `--oidc` is hidden from `--help` in that build
+because it is still preview. **Drop the pin once `--oidc` reaches `latest`**, which is checkable in
+one command:
+
+```bash
+npx --yes @vscode/vsce@latest publish --oidc --pat dummy
+# "cannot be used with option '-p, --pat'"  -> it has landed; unpin
+# "unknown option '--oidc'"                 -> not yet; leave the pin
+```
+
+That test publishes nothing — the conflict is rejected during argument parsing.
+
+### If trusted publishing is not available
+
+The fallback is Entra ID workload identity federation with `vsce publish --azure-credential`, which
+works on stable 3.9.2. It needs an app registration, a federated credential on subject
+`repo:ewc3labs/excel-power-query-editor:environment:marketplace`, that identity added to the
+publisher, and an `azure/login@v3` step with `allow-no-subscriptions: true`.
+
+**It is documented here rather than implemented** because it is materially more setup for the same
+result, and a fallback in the workflow is the thing that quietly keeps the worse path alive.
+
+## Open VSX
+
+Cursor, Windsurf, and VSCodium install from [Open VSX][open-vsx], not the Microsoft Marketplace — so
+those users currently cannot install this extension at all. That is a strange gap for a tool whose
+pitch is editing Power Query M with an AI coding agent.
+
+Publishing there needs a free account at <https://open-vsx.org>, an `ewc3labs` namespace, and an
+access token stored as the **`OVSX_PAT`** secret.
+
+**The job is deliberately non-blocking.** A second registry being down, rate-limiting, or rejecting
+a token must not turn a successful Marketplace publish into a red release. Without `OVSX_PAT` it
+warns and skips.
 
 ## Why the pipeline was rebuilt
 
@@ -99,7 +201,8 @@ what changed for a user, and link the relevant documentation.
 **5. Publish the draft** when you are happy with it.
 
 For a release candidate, tag `v0.6.0-rc.1` instead. Same pipeline, marked as a prerelease, and
-Marketplace publishing is skipped even if it has been enabled.
+**neither marketplace is touched even if publishing has been enabled** — an rc is for handing
+somebody a VSIX, and 5,450 installs with auto-update are not the audience for a release candidate.
 
 ## Versioning
 
@@ -107,6 +210,10 @@ Marketplace publishing is skipped even if it has been enabled.
 npm version patch     # or minor / major - commits and tags
 npm run bump-version  # EWC3 script: sets the version in package.json only
 ```
+
+**The minor version now carries meaning.** Even is the stable channel, odd is pre-release, so
+`npm version minor` off `0.6.0` gives you `0.7.0` — a **pre-release**, not the next stable. The next
+stable after `0.6.x` is `0.8.0`.
 
 **Be careful with `npm version`.** It creates a git tag, and pushing that tag now **fires the
 release pipeline**. That was harmless when the pipeline was broken; it is not harmless now. If you
@@ -130,10 +237,17 @@ If the pipeline is unavailable and something must ship:
 
 ```bash
 npm run package-vsix
-npx vsce publish --packagePath excel-power-query-editor-0.6.0.vsix --pat "$VSCE_PAT"
+npx vsce publish --packagePath excel-power-query-editor-0.6.0.vsix --pat "$PAT"
 ```
 
-This bypasses every check the pipeline performs. Prefer fixing the pipeline.
+Trusted publishing only works **from GitHub Actions** — it needs the runner's OIDC token — so a
+local publish still needs a credential of its own until PATs are retired.
+
+Add `--pre-release` for an odd minor, and package it that way too — `vsce publish --pre-release`
+refuses a VSIX that was not built with the flag.
+
+This bypasses every check the pipeline performs: the tests, the version/tag agreement, the package
+contents check, and the channel assertion. Prefer fixing the pipeline.
 
 ## Before you tag
 
@@ -152,4 +266,5 @@ Contributing is in [CONTRIBUTING](CONTRIBUTING.md); the documentation index is i
 [Overview](Overview.md).
 
 [docs-tools]: https://github.com/ewc3labs/ewc3-docs-tools
+[open-vsx]: https://open-vsx.org
 [pq-34]: project/slices/PQ-34_Marketplace_Prerelease_Channel.md

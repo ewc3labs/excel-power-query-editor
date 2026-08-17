@@ -7,12 +7,26 @@
 # classify itself as a release. Its last successful run was 2025-07-21; a finished 0.5.2 sat
 # unshipped for a year behind it.
 #
-# MARKETPLACE PUBLISHING IS OFF UNLESS DELIBERATELY ENABLED. It requires BOTH a stable tag AND a
-# repository variable `MARKETPLACE_PUBLISH` set to `enabled`. Until that variable exists, pushing a
-# tag can only ever produce a DRAFT GitHub release - which makes the pipeline safe to test with
-# real tags, and testing it with real tags is the only way to know it works.
+# MARKETPLACE PUBLISHING IS OFF UNLESS DELIBERATELY ENABLED. It requires BOTH a plain `vX.Y.Z` tag
+# AND a repository variable `MARKETPLACE_PUBLISH` set to `enabled`. Until that variable exists,
+# pushing a tag can only ever produce a DRAFT GitHub release - which makes the pipeline safe to test
+# with real tags, and testing it with real tags is the only way to know it works.
 #
 # To publish for real later: set the variable, or run this workflow manually with publish=true.
+#
+# TWO CHANNELS, DECIDED BY THE MINOR VERSION. The Marketplace cannot hold one version as both stable
+# and pre-release, so VS Code's convention is major.EVEN.patch stable, major.ODD.patch pre-release:
+#
+#   v0.6.0       -> stable channel      (everyone with auto-update)
+#   v0.7.0       -> pre-release channel (only users who opted in)
+#   v0.6.0-rc.2  -> neither; draft GitHub release with a VSIX to hand somebody
+#
+# AUTHENTICATION IS TRUSTED PUBLISHING, NOT A PAT. Azure DevOps personal access tokens are retired
+# on 2026-12-01. `vsce publish --oidc` exchanges a GitHub Actions OIDC token directly with the
+# Marketplace for a short-lived credential: no stored secret, and no Entra tenant, app registration,
+# or `azure/login` anywhere in the path. The trust is a policy on the Marketplace publisher naming
+# this repository and this workflow file. Setup is in docs/PUBLISHING_GUIDE.md, and nothing can
+# publish until it exists.
 
 name: Release
 
@@ -29,9 +43,17 @@ on:
         description: 'Publish to the VS Code Marketplace (otherwise draft release only)'
         type: boolean
         default: false
+      channel:
+        description: 'Assert which channel this is. Fails if it disagrees with the version.'
+        type: choice
+        default: auto
+        options: [auto, stable, prerelease]
 
+# LEAST PRIVILEGE, PER JOB. The default here is read, and each job asks for exactly what it needs:
+# `github-release` writes a release, `marketplace` mints an OIDC token. Nothing else gets either,
+# and in particular the build job - the one that runs the most third-party code - can write nothing.
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   build:
@@ -41,6 +63,7 @@ jobs:
       version: ${{ steps.meta.outputs.version }}
       base: ${{ steps.meta.outputs.base }}
       is_prerelease: ${{ steps.meta.outputs.is_prerelease }}
+      channel: ${{ steps.meta.outputs.channel }}
     steps:
       # On a manual run GITHUB_REF is a BRANCH, so the tag has to be named and checked out
       # explicitly. Without this the workflow advertised manual publishing and could not do it: the
@@ -113,10 +136,55 @@ jobs:
           fi
           echo "base=$BASE" >> "$GITHUB_OUTPUT"
 
+          # WHICH MARKETPLACE CHANNEL THIS IS, DERIVED FROM THE MINOR BEING ODD OR EVEN.
+          #
+          # The Marketplace has no notion of a semver prerelease suffix - a version is either the
+          # stable one or the pre-release one, and THE SAME VERSION CANNOT BE BOTH. VS Code's
+          # published convention is therefore major.EVEN.patch for stable and major.ODD.patch for
+          # pre-release, and users opt into the pre-release channel in the extension pane.
+          #
+          #   v0.6.0      even minor  -> stable
+          #   v0.7.0      odd minor   -> pre-release channel
+          #   v0.6.0-rc.2 has a suffix -> neither; GitHub draft only
+          #
+          # An rc tag stays off the Marketplace entirely. It is for handing somebody a VSIX, and
+          # 5,450 installs with auto-update are not the audience for a release candidate.
+          MINOR="${BASE#*.}"; MINOR="${MINOR%%.*}"
+          if [[ "$TAG" != "v$BASE" ]]; then
+            CHANNEL=none
+          elif (( MINOR % 2 == 1 )); then
+            CHANNEL=prerelease
+          else
+            CHANNEL=stable
+          fi
+          echo "channel=$CHANNEL" >> "$GITHUB_OUTPUT"
+          echo "Marketplace channel: $CHANNEL"
+
+          # STATE YOUR INTENT AND HAVE IT CHECKED, if you are running this by hand.
+          #
+          # Deriving the channel from the version makes the wrong channel impossible, but it also
+          # makes it SILENT: someone who believes they are shipping 0.7.0 to stable gets a
+          # pre-release and no complaint, having consumed the version number permanently. So a
+          # manual run may assert what it thinks this is, and a disagreement fails here - before
+          # anything is published - rather than being discovered on the Marketplace afterwards.
+          WANTED="${{ inputs.channel }}"
+          if [[ -n "$WANTED" && "$WANTED" != "auto" && "$WANTED" != "$CHANNEL" ]]; then
+            echo "::error::You asked for the $WANTED channel, but $TAG is $CHANNEL."
+            echo "::error::The Marketplace cannot hold one version as both, so the channel comes from"
+            echo "::error::the minor version: EVEN is stable, ODD is pre-release. Re-tag to change it."
+            exit 1
+          fi
+
       - name: Package the .vsix
         run: |
+          # --pre-release is baked into the VSIX manifest at PACKAGE time, not publish time.
+          # `vsce publish --pre-release` throws outright on a package that was not built with it, so
+          # the channel has to be decided here or the publish job cannot honour it.
+          FLAG=""
+          if [[ "${{ steps.meta.outputs.channel }}" == "prerelease" ]]; then FLAG="--pre-release"; fi
+
           npm install -g @vscode/vsce
-          vsce package --out "excel-power-query-editor-${{ steps.meta.outputs.base }}.vsix"
+          vsce package $FLAG --out "excel-power-query-editor-${{ steps.meta.outputs.base }}.vsix"
 
       - name: Check the package contains what it must
         run: |
@@ -144,6 +212,8 @@ jobs:
     name: Draft GitHub release
     needs: build
     runs-on: ubuntu-latest
+    permissions:
+      contents: write     # creates the draft release and uploads the VSIX
     steps:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
@@ -178,10 +248,65 @@ jobs:
     needs: [build, github-release]
     runs-on: ubuntu-latest
     # Three conditions, all required. Removing any one of them makes an accidental publish
-    # possible, and an accidental publish cannot be taken back.
+    # possible, and an accidental publish cannot be taken back - a version number is consumed
+    # permanently, and 5,450 installs mostly have auto-update on.
     if: >-
-      needs.build.outputs.is_prerelease == 'false' &&
+      needs.build.outputs.channel != 'none' &&
       (vars.MARKETPLACE_PUBLISH == 'enabled' || inputs.publish_marketplace == true)
+
+    # The identity lives on the environment, not on the branch or tag.
+    #
+    # A federated credential is matched by SUBJECT, and a subject built from a ref would need one
+    # credential per tag - or a wildcard, which is the opposite of the point. `environment:marketplace`
+    # is one stable subject that covers tag pushes and manual runs alike.
+    environment: marketplace
+
+    permissions:
+      id-token: write     # vsce asks GitHub for the OIDC token itself; without this it cannot
+      contents: read
+
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: vsix
+
+      # TRUSTED PUBLISHING. No PAT, no Entra tenant, no app registration, no `azure/login`.
+      #
+      # vsce requests a GitHub Actions OIDC token for the `marketplace.visualstudio.com` audience and
+      # exchanges it at POST /_apis/gallery/token for a short-lived Marketplace credential. Nothing
+      # long-lived is stored here, and there is no Azure subscription anywhere in the path.
+      #
+      # The trust lives on the MARKETPLACE side: a trusted publishing policy naming this repository
+      # and this workflow file. See docs/PUBLISHING_GUIDE.md.
+      #
+      # It does NOT fall back to a PAT when the exchange fails, which is the correct behaviour and
+      # worth knowing when it errors.
+      #
+      # PINNED, AND PINNED EXACTLY, because `--oidc` is not in stable yet: 3.9.2 answers `unknown
+      # option '--oidc'`. It shipped in 3.9.3-5 on the `next` tag, where the flag is hidden from
+      # --help. `@next` is a moving target and this must not change under us, so the version is
+      # literal. Drop the pin once --oidc lands in `latest`.
+      - name: Publish
+        env:
+          VSCE_VERSION: 3.9.3-5
+        run: |
+          FLAG=""
+          if [[ "${{ needs.build.outputs.channel }}" == "prerelease" ]]; then FLAG="--pre-release"; fi
+
+          npx --yes "@vscode/vsce@${VSCE_VERSION}" publish --packagePath *.vsix --oidc $FLAG
+
+  # Open VSX is where Cursor, Windsurf, and VSCodium install from. Those users currently cannot
+  # install this extension at all, which is a strange gap for a tool whose pitch is editing Power
+  # Query M with an AI coding agent.
+  #
+  # DELIBERATELY NON-BLOCKING. A second registry being down, rate-limiting, or rejecting a token
+  # must not turn a successful Marketplace publish into a red release. It reports and moves on.
+  open-vsx:
+    name: Publish to Open VSX
+    needs: [build, marketplace]
+    runs-on: ubuntu-latest
+    if: needs.marketplace.result == 'success'
+    continue-on-error: true
     steps:
       - uses: actions/download-artifact@v4
         with:
@@ -189,23 +314,26 @@ jobs:
 
       - name: Publish
         env:
-          VSCE_PAT: ${{ secrets.VSCE_PAT }}
+          OVSX_PAT: ${{ secrets.OVSX_PAT }}
         run: |
-          if [[ -z "$VSCE_PAT" ]]; then
-            echo "::error::VSCE_PAT is not configured. Add it as a repository secret."
-            exit 1
+          if [[ -z "$OVSX_PAT" ]]; then
+            echo "::warning::OVSX_PAT is not configured - skipping Open VSX."
+            exit 0
           fi
-          npm install -g @vscode/vsce
-          vsce publish --packagePath *.vsix --pat "$VSCE_PAT"
+          FLAG=""
+          if [[ "${{ needs.build.outputs.channel }}" == "prerelease" ]]; then FLAG="--pre-release"; fi
+
+          npx --yes ovsx publish --packagePath *.vsix $FLAG -p "$OVSX_PAT"
 
   summary:
     name: Summary
-    needs: [build, github-release, marketplace]
+    needs: [build, github-release, marketplace, open-vsx]
     runs-on: ubuntu-latest
     if: always()
     steps:
       - name: Report
         run: |
+          CHANNEL="${{ needs.build.outputs.channel }}"
           {
             echo "### ${{ github.ref_name }}"
             echo ""
@@ -214,9 +342,16 @@ jobs:
             echo "| Build | ${{ needs.build.result }} |"
             echo "| Draft release | ${{ needs.github-release.result }} |"
             echo "| Marketplace | ${{ needs.marketplace.result }} |"
+            echo "| Open VSX | ${{ needs.open-vsx.result }} |"
+            echo ""
+            case "$CHANNEL" in
+              stable)     echo "Channel: **stable** - every user with auto-update gets this." ;;
+              prerelease) echo "Channel: **pre-release** - only users who opted in receive it." ;;
+              none)       echo "Channel: **none**. A tag with a suffix never reaches a marketplace; the VSIX is attached to the draft release for hand-installation." ;;
+            esac
             echo ""
             if [[ "${{ needs.marketplace.result }}" == "skipped" ]]; then
-              echo "Marketplace publishing was skipped. It requires a stable tag AND the"
+              echo "Marketplace publishing was skipped. It requires a plain \`vX.Y.Z\` tag AND the"
               echo "repository variable \`MARKETPLACE_PUBLISH\` set to \`enabled\`, or a manual"
               echo "run with publish enabled."
             fi

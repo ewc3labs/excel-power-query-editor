@@ -95,6 +95,29 @@ against the tool and the docs:
 The strategy was right and two implementation details were wrong. Recorded here so nobody builds the
 version that does not exist.
 
+### 2026-08-17: superseded - trusted publishing removes the Azure route entirely
+
+**`vsce publish --oidc` exists after all, and it is a better path than everything below.**
+
+The earlier claim here - that `--oidc` does not exist, verified against 3.6.0 and 3.9.2 - was true
+of those *published* versions and wrong as a general statement. Trusted publishing was merged
+upstream on 2026-07-23 and shipped in **3.9.3-5** on the `next` dist-tag on 2026-08-11. The flag is
+`hideHelp(true)`, so it does not appear in `--help` and a version check alone will not find it:
+
+```bash
+npx @vscode/vsce@3.9.2 publish --oidc --pat x    # unknown option '--oidc'
+npx @vscode/vsce@next  publish --oidc --pat x    # cannot be used with option '-p, --pat'
+```
+
+What it does: requests a GitHub Actions OIDC token for the `marketplace.visualstudio.com` audience,
+exchanges it at `POST /_apis/gallery/token` for a short-lived Marketplace credential, and never
+falls back to a PAT. **No Entra tenant, no app registration, no federated credential, no
+`azure/login`.** The trust is a policy on the Marketplace publisher naming the repository and
+workflow file.
+
+Everything below about the Entra route remains accurate and is kept as the documented fallback. It
+is simply no longer the plan, and the tenant question it raised does not need answering.
+
 ### One caveat, and it is the risky part
 
 **Microsoft documents `--azure-credential` for Azure DevOps Pipelines, not GitHub Actions.** Their

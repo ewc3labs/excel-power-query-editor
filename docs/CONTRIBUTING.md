@@ -564,9 +564,14 @@ unreachable and it silently released nothing for a year. Tag-triggered is the fi
 | tag `v0.6.0` | Stable | `0.6.0` | Draft release |
 | Workflow dispatch | Either | Custom | Draft, or publish if explicitly requested |
 
-**Marketplace publishing requires a stable tag AND the repository variable `MARKETPLACE_PUBLISH` set
-to `enabled` AND a `VSCE_PAT` secret.** None of the last two exist, so the pipeline is currently
-incapable of publishing - which is what makes it safe to test with real tags.
+**Marketplace publishing requires a plain `vX.Y.Z` tag AND the repository variable
+`MARKETPLACE_PUBLISH` set to `enabled` AND an Entra ID identity federated to this repository.** None
+of the last two exist, so the pipeline is currently incapable of publishing - which is what makes it
+safe to test with real tags.
+
+**The minor version picks the channel:** even is stable, odd is pre-release. The Marketplace cannot
+hold one version as both, so `v0.7.0` is a pre-release and the next stable after `0.6.x` is `0.8.0`.
+Full setup is in the [Publishing Guide](PUBLISHING_GUIDE.md).
 
 `vsce` rejects a prerelease suffix in the manifest, so `v0.6.0-rc.1` packages as version `0.6.0`.
 The tag keeps the full name; the `.vsix` inside cannot.
