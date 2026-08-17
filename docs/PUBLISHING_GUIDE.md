@@ -20,7 +20,15 @@ the Marketplace requires all three of:
 
 1. a **stable** tag — anything with a suffix (`v0.6.0-rc.1`) is a prerelease and never publishes
 2. the repository variable **`MARKETPLACE_PUBLISH`** set to `enabled`
-3. the repository secret **`VSCE_PAT`**
+3. a credential the Marketplace accepts
+
+> **`VSCE_PAT` is a dead end.** Microsoft retires global Azure DevOps Personal Access Tokens on
+> **2026-12-01**. Publishing has to move to Microsoft Entra ID with workload identity federation -
+> `vsce publish --azure-credential` - before then. The pipeline still names `VSCE_PAT` today because
+> nothing has been published since 2025-07-21 and there was no reason to build the replacement
+> speculatively. See [PQ-34][pq-34], which has the
+> verified mechanism, including the fact that `vsce publish --oidc` does not exist despite being
+> widely suggested.
 
 Neither the variable nor the secret exists right now. So the worst outcome of pushing a tag — any
 tag, including a wrong one — is a draft release you delete.
@@ -144,3 +152,4 @@ Contributing is in [CONTRIBUTING](CONTRIBUTING.md); the documentation index is i
 [Overview](Overview.md).
 
 [docs-tools]: https://github.com/ewc3labs/ewc3-docs-tools
+[pq-34]: project/slices/PQ-34_Marketplace_Prerelease_Channel.md
