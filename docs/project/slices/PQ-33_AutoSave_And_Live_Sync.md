@@ -51,9 +51,10 @@ and then `Saved`, `AutoSaveOn` and the file's mtime were watched.
 
 1. **Yes, and within about two seconds.** AutoSave commits a live write with no user action.
 2. **`Saved` returns to `True` almost immediately**, so `sync.requireSavedWorkbook` will rarely fire
-   on a cloud workbook. It is not useless: the risk it guards against - unsaved work destroyed by our
-   write - barely exists there either, because AutoSave has already put those edits on disk where the
-   backup can capture them. **The guard protects local workbooks**, which is where the danger is.
+   on a cloud workbook. It is not useless: the risk it guards against - unsaved work destroyed by
+   our write - barely exists there either, because AutoSave has already put those edits on disk
+   where the backup can capture them. **The guard protects local workbooks**, which is where the
+   danger is.
 3. **The review step does not exist for AutoSave workbooks.** Closing without saving does not undo
    it. Version history is the undo path.
 4. **`Workbook.AutoSaveOn` is readable through COM** and was `True` on the real 29-query workbook
@@ -70,8 +71,8 @@ and then `Saved`, `AutoSaveOn` and the file's mtime were watched.
 ## Still open
 
 - Whether to warn BEFORE writing to an AutoSave workbook rather than explaining afterwards. Leaning
-  no: it is not dangerous, version history covers it, and a confirmation on every sync is the kind of
-  friction that gets a feature turned off.
+  no: it is not dangerous, version history covers it, and a confirmation on every sync is the kind
+  of friction that gets a feature turned off.
 - Debouncing the per-sync backup, which retention already largely handles.
 
 ## What was originally to be established

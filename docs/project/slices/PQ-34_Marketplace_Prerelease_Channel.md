@@ -5,8 +5,8 @@
 ## What this buys
 
 The **"Switch to Pre-Release Version"** button in the VS Code Extensions view. A tester opts in once
-and then receives pre-release builds automatically, in the editor, without hunting for a `.vsix` on a
-releases page.
+and then receives pre-release builds automatically, in the editor, without hunting for a `.vsix` on
+a releases page.
 
 That is the whole value, and it is real — but it only matters once there is a *stream* of testers.
 One person downloading a VSIX from a GitHub prerelease, which is what we do today, does not need it.
@@ -62,9 +62,9 @@ Microsoft's recommendation, verbatim:
 The flag is **`--azure-credential`**, and it is already present in the version we have (3.6.0) as
 well as latest (3.9.2).
 
-**Verified by reading `node_modules/@vscode/vsce/out/auth.js`** rather than assuming: the flag builds
-a `ChainedTokenCredential` and asks it for a token scoped to `499b84ac-1321-427f-aa17-267ca6975798`,
-the Azure DevOps resource:
+**Verified by reading `node_modules/@vscode/vsce/out/auth.js`** rather than assuming: the flag
+builds a `ChainedTokenCredential` and asks it for a token scoped to
+`499b84ac-1321-427f-aa17-267ca6975798`, the Azure DevOps resource:
 
 ```text
 EnvironmentCredential
@@ -118,9 +118,9 @@ Treat the first successful publish as the proof. Until then this is a well-found
 Settled during design on 2026-08-16, so they do not need relitigating:
 
 **Manual trigger only.** A `workflow_dispatch` input, the same shape as the existing
-`publish_marketplace`. Never automatic on an rc tag. A pre-release reaches real users' editors on its
-own once they have opted in, and that deserves a deliberate hand on the lever rather than being a
-side effect of tagging something.
+`publish_marketplace`. Never automatic on an rc tag. A pre-release reaches real users' editors on
+its own once they have opted in, and that deserves a deliberate hand on the lever rather than being
+a side effect of tagging something.
 
 **Enforce the convention in the pipeline, do not document it.** The job must refuse to publish an
 even minor as pre-release, and refuse to publish an odd minor as stable. A rule that lives only in a
@@ -171,9 +171,9 @@ The pre-release *channel* is still discretionary - it earns its keep once more t
 testing, and today that is one person with a VSIX. That has not changed.
 
 **The authentication is not discretionary and has a date on it.** Publishing of any kind - stable or
-pre-release - stops working when PATs are retired on **2026-12-01**. The Marketplace currently serves
-0.5.1 from 2025-07-21, so nothing is being published right now anyway, which means there is no
-emergency. There is a deadline.
+pre-release - stops working when PATs are retired on **2026-12-01**. The Marketplace currently
+serves 0.5.1 from 2025-07-21, so nothing is being published right now anyway, which means there is
+no emergency. There is a deadline.
 
 Sensible order:
 
@@ -188,11 +188,12 @@ publish converts it into a fact.
 
 ## Origin
 
-Raised by Wilson on 2026-08-16 immediately after replying to
-[@namgaw in discussion #3](https://github.com/ewc3labs/excel-power-query-editor/discussions/3) with
-the 0.6.0 RC: *"shall we add the vs marketplace prerelease pipeline? And how automated do we make
-it?"*
+Raised by Wilson on 2026-08-16 immediately after replying to [@namgaw in discussion
+#3][namgaw-in-discussion] with the 0.6.0 RC: *"shall we add the vs marketplace prerelease pipeline?
+And how automated do we make it?"*
 
 Deferred in the same conversation, on the grounds that we had just told a tester the version is
 `0.6.0` and should see how the first real feedback lands before spending a version number on
 machinery for an audience of one.
+
+[namgaw-in-discussion]: https://github.com/ewc3labs/excel-power-query-editor/discussions/3

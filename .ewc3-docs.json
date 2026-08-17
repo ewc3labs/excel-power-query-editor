@@ -5,7 +5,9 @@
     "docs/**.md"
   ],
   "exclude": [
-    "docs/Config_Reference.md"
+    "docs/Config_Reference.md",
+    "docs/archive/**.md",
+    "docs/scratch/**.md"
   ],
   "values": {
     "tests": {
@@ -54,6 +56,26 @@
           "test/liveSync.integration.test.ts"
         ],
         "pattern": "^\\s*(test|it)\\("
+      }
+    },
+    "lastPQNum": {
+      "lastId": {
+        "prefix": "PQ"
+      }
+    },
+    "lastPQ": {
+      "template": {
+        "text": "PQ-${lastPQNum}"
+      }
+    },
+    "lastFIXNum": {
+      "lastId": {
+        "prefix": "FIX"
+      }
+    },
+    "lastFIX": {
+      "template": {
+        "text": "FIX-${lastFIXNum}"
       }
     }
   },

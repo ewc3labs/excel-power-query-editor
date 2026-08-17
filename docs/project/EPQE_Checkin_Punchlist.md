@@ -31,19 +31,19 @@ receipts**. Before minting a new slice, check whether an existing one already co
 **Items:**
 
 - [ ] **The two write paths disagree about deletion and nothing says so.** File sync replaces the
-      whole section document, so a query absent from the .m is deleted. Live sync diffs per query and
-      never deletes. Same command, same file, opposite outcome depending on whether Excel happens to
-      be open. Neither behavior is documented and neither was chosen. [PQ-23]
+      whole section document, so a query absent from the .m is deleted. Live sync diffs per query
+      and never deletes. Same command, same file, opposite outcome depending on whether Excel
+      happens to be open. Neither behavior is documented and neither was chosen. [PQ-23]
 
 - [ ] **The dev loop produces false negatives.** Reinstalling the extension does not affect a
-      RUNNING VS Code: the extension host keeps executing whatever it loaded at startup, so a fix can
-      be built, packaged, installed and verified on disk while the editor still runs the old code.
-      That cost a full debugging cycle on live sync - the code was correct and the symptom said
-      otherwise. Worse, `package.json` stays at the same version through dozens of dev installs, and
-      VS Code keys the extension folder by version, so same-version reinstalls are not reliably a
-      clean replace either. `npm run bump-version` exists and is not being used in the loop.
-      Wanted: a dev-install script that bumps a prerelease number, packages, installs, and either
-      reloads the window or says plainly that a reload is required.
+      RUNNING VS Code: the extension host keeps executing whatever it loaded at startup, so a fix
+      can be built, packaged, installed and verified on disk while the editor still runs the old
+      code. That cost a full debugging cycle on live sync - the code was correct and the symptom
+      said otherwise. Worse, `package.json` stays at the same version through dozens of dev
+      installs, and VS Code keys the extension folder by version, so same-version reinstalls are not
+      reliably a clean replace either. `npm run bump-version` exists and is not being used in the
+      loop. Wanted: a dev-install script that bumps a prerelease number, packages, installs, and
+      either reloads the window or says plainly that a reload is required.
 - [ ] **And it must install into the editor that is actually RUNNING.** `code` and `code-insiders`
       are separate installs with separate extension folders. A whole debugging session went into
       live sync "not working" while every build was landing in stable VS Code and the developer was
@@ -58,28 +58,30 @@ receipts**. Before minting a new slice, check whether an existing one already co
       There is no migration code. Shipping it as a patch would silently reset the configuration of
       every existing user. [PQ-09] blocks [PQ-02].
 - [x] **`migrateLegacySettings()` is a WIPE, not a migration**, and it runs at activation
-      (`extension.ts:306`). It enumerates the config and sets every key to `undefined` in both User and
-      Workspace scope, preserving nothing, and its guard compares against the *extension version* so it
-      re-fires on every bump. The correct earlier attempt sits commented out directly above it. Full
-      write-up in `docs/analysis/settings-migration.md`. [PQ-09]
-- [x] **Why removing old settings was impossible:** VS Code only lets an extension write a key that is
-      *registered*. Once the old names were deleted from `contributes.configuration`, they could no
-      longer be cleared — the value sits in the user's settings.json permanently as an unknown setting.
-      The fix is to keep them declared with `deprecationMessage`, migrate, then clear. [PQ-09]
+      (`extension.ts:306`). It enumerates the config and sets every key to `undefined` in both User
+      and Workspace scope, preserving nothing, and its guard compares against the *extension
+      version* so it re-fires on every bump. The correct earlier attempt sits commented out directly
+      above it. Full write-up in `docs/analysis/settings-migration.md`. [PQ-09]
+- [x] **Why removing old settings was impossible:** VS Code only lets an extension write a key that
+      is *registered*. Once the old names were deleted from `contributes.configuration`, they could
+      no longer be cleared — the value sits in the user's settings.json permanently as an unknown
+      setting. The fix is to keep them declared with `deprecationMessage`, migrate, then clear.
+      [PQ-09]
 - [ ] The code still references the OLD setting names — `logLevel` 13 times, `debugMode` 9,
       `verboseMode` 9, `backupLocation` 3, `watchAlways` 2 — while `package.json` declares only the
-      new ones. Those reads can only ever return defaults. Needs a proper audit, not a sweep. [PQ-09]
-- [x] **The README swap:** `docs/README.gh.md` and `docs/README.vsmarketplace.md` were both **0 bytes**,
-      emptied in `a2ea1ef` ("save before settings refactor") — a work-in-progress commit. Recovered
-      from `fb52fc0` (v0.5.0): 8,034 and 4,034 bytes respectively.
-- [ ] `scripts/set-readme-gh.js` and `set-readme-vsce.js` still exist and **nothing calls them** — not
-      package.json, not the workflows. Left as-is they are a loaded weapon: running either copies its
-      source over `README.md`, and until just now both sources were empty. Decide one README or two,
-      then delete whichever machinery loses. [PQ-10]
+      new ones. Those reads can only ever return defaults. Needs a proper audit, not a sweep.
+      [PQ-09]
+- [x] **The README swap:** `docs/README.gh.md` and `docs/README.vsmarketplace.md` were both **0
+      bytes**, emptied in `a2ea1ef` ("save before settings refactor") — a work-in-progress commit.
+      Recovered from `fb52fc0` (v0.5.0): 8,034 and 4,034 bytes respectively.
+- [ ] `scripts/set-readme-gh.js` and `set-readme-vsce.js` still exist and **nothing calls them** —
+      not package.json, not the workflows. Left as-is they are a loaded weapon: running either
+      copies its source over `README.md`, and until just now both sources were empty. Decide one
+      README or two, then delete whichever machinery loses. [PQ-10]
 - [ ] EPQE writes `excel-pq-symbols.json` into `.vscode/` in the workspace root, which is somebody
-      else's folder. Worth researching whether Microsoft's PQ/M extension now ships these symbols, and
-      whether there is a way to reference them that does not require writing into a user's workspace at
-      all. Also: what happens when a plain folder is opened with no workspace. [PQ-11]
+      else's folder. Worth researching whether Microsoft's PQ/M extension now ships these symbols,
+      and whether there is a way to reference them that does not require writing into a user's
+      workspace at all. Also: what happens when a plain folder is opened with no workspace. [PQ-11]
 - [ ] `test/fixtures/test_workbook.xlsx` and `test_workbook.xlsb` are not workbooks — the first
       contains the literal text "test xlsx file". `test_clean.xlsx` is four bytes. Byte-identical to
       v0.5.0, so they have always been stubs; worth knowing before trusting a test that opens one.
@@ -88,8 +90,9 @@ receipts**. Before minting a new slice, check whether an existing one already co
 
 - [x] No `AGENTS.md` and no line-ending policy in the repo that every other repo is told to copy.
       Added, and 33 tracked files renormalized from CRLF.
-- [ ] `release.yml:260` contains a corrupted byte — `EF BF BD` (replacement character) in a step name.
-      Cosmetic on its own; a fair signal about how carefully the file has been reviewed. [PQ-04]
+- [ ] `release.yml:260` contains a corrupted byte — `EF BF BD` (replacement character) in a step
+      name. Cosmetic on its own; a fair signal about how carefully the file has been reviewed.
+      [PQ-04]
 - [ ] Three `.vsix` files sit in the repo root. Untracked and gitignored, so harmless, but they are
       build output living where a human looks first.
 - [ ] `docs/archive/` holds 14 tracked files of v0.4.3 documentation. Worth deciding whether that is
@@ -100,5 +103,6 @@ receipts**. Before minting a new slice, check whether an existing one already co
       Not worth creating empty — create when there is something to put in them.
 - [ ] Org-wide: `RAG_sessions` (lowercase) in 8 repos, `RAG_Sessions` in 2. HQ declares the capital
       canonical and is outvoted. Cheaper to move the standard than eight folders — needs a decision.
-- [ ] The extension has real users and no telemetry, deliberately. That means we learn about breakage
-      only from issues. Worth deciding whether that stays true forever, in writing, either way.
+- [ ] The extension has real users and no telemetry, deliberately. That means we learn about
+      breakage only from issues. Worth deciding whether that stays true forever, in writing, either
+      way.

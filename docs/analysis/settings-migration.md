@@ -21,11 +21,12 @@ It reads no values and preserves nothing. It enumerates the configuration object
 to `undefined`, in both User and Workspace scope. The guard is `migrationKey !== extensionVersion`,
 so it re-runs **on every version bump**, not once.
 
-The extension has thousands of installs. Publishing this deletes their configuration on first launch.
+The extension has thousands of installs. Publishing this deletes their configuration on first
+launch.
 
 There is also a commented-out earlier attempt directly above it (`extension.ts:1707-1746`) which is
-the *right shape* — read `debugMode`, decide a `log.level`, write the new value, clear the old ones —
-and it was abandoned. The wipe replaced it.
+the *right shape* — read `debugMode`, decide a `log.level`, write the new value, clear the old ones
+— and it was abandoned. The wipe replaced it.
 
 ## Why the honest version was hard
 
@@ -34,16 +35,16 @@ then deleted the old names from `contributes.configuration` in `package.json`.
 
 **That is the trap.** VS Code will only let an extension write a configuration key that is
 *registered*. Once a key is gone from `contributes.configuration`, `config.update(oldKey, undefined,
-scope)` fails — the key is no longer known, so it cannot be cleared. The old value stays in the user's
-`settings.json` forever, grayed out as an unknown setting, and there is no API to remove it.
+scope)` fails — the key is no longer known, so it cannot be cleared. The old value stays in the
+user's `settings.json` forever, grayed out as an unknown setting, and there is no API to remove it.
 
-So the sequence "rename the settings, then migrate" cannot work in that order. The rename removes the
-very handle the migration needs.
+So the sequence "rename the settings, then migrate" cannot work in that order. The rename removes
+the very handle the migration needs.
 
 ## What works
 
-**Keep the old keys declared, marked deprecated.** They stay registered, so they can still be read and
-cleared, and VS Code renders them struck through with an explanation:
+**Keep the old keys declared, marked deprecated.** They stay registered, so they can still be read
+and cleared, and VS Code renders them struck through with an explanation:
 
 ```json
 "excel-power-query-editor.watchAlways": {
@@ -57,8 +58,8 @@ cleared, and VS Code renders them struck through with an explanation:
 Then migrate explicitly, per key, per scope:
 
 1. `inspect()` the old key to find out **which scope** actually holds a value — `globalValue`,
-   `workspaceValue`, `workspaceFolderValue`. Do not guess, and do not write to a scope the user never
-   used, or the setting appears in a file they did not choose.
+   `workspaceValue`, `workspaceFolderValue`. Do not guess, and do not write to a scope the user
+   never used, or the setting appears in a file they did not choose.
 2. If the old key has a value **and the new key does not**, write the new one in that same scope.
    Never overwrite a new value the user has already set.
 3. Clear the old key in that scope only.
@@ -76,12 +77,13 @@ removing them early recreates exactly this problem for whoever is here next.
 
 ## Verified, on a real install
 
-The wipe was not hypothetical: the marker `xtn.level: "0.5.2"` and a stale
-`settings.level: "0.5.2"` were sitting in the developer's own VS Code settings, with everything else
-for this extension gone. It had already run.
+The wipe was not hypothetical: the marker `xtn.level: "0.5.2"` and a stale `settings.level: "0.5.2"`
+were sitting in the developer's own VS Code settings, with everything else for this extension gone.
+It had already run.
 
-The replacement was tested end to end rather than only in unit tests — seven v0.5.0-era settings were
-written into a real `settings.json`, the built `.vsix` installed with `--force`, and VS Code started:
+The replacement was tested end to end rather than only in unit tests — seven v0.5.0-era settings
+were written into a real `settings.json`, the built `.vsix` installed with `--force`, and VS Code
+started:
 
 | seeded | became |
 | --- | --- |

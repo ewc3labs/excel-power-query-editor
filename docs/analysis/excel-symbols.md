@@ -69,8 +69,6 @@ always correct; only the delivery was wrong.
 
 ## The old design, and why it was wrong
 
-
-
 Make it a **command** rather than something that happens to you:
 
 - **"Excel Power Query: Add Excel Symbols File"**, invoked when the user wants it
