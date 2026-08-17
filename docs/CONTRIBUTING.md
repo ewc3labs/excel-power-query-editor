@@ -399,7 +399,9 @@ gh pr list
 | `npm run test`         | Run test suite via `vscode-test`                |
 | `npm run watch`        | Watch build and test                            |
 | `npm run check-types`  | TypeScript compile check (no emit)              |
-| `npm run docs:fix`     | Fix everything fixable: regenerate the config reference, reformat, refresh values |
+| `npm run fix`          | **Everything fixable**: docs, plus `eslint --fix`. Idempotent — run it as often as you like |
+| `npm run verify`       | **Everything checkable**: types, lint, docs, tests. What CI runs, minus the matrix |
+| `npm run docs:fix`     | Just the docs half of `fix` |
 | `npm run docs:check`   | **What CI runs.** Fails on anything `docs:fix` would change |
 | `npm run docs:config`  | Regenerate `docs/Config_Reference.md` from `package.json` |
 | `npm run docs:format`  | Rewrap prose so a source line is as wide as it renders |
@@ -465,6 +467,24 @@ ci` already installed it and there is nothing extra to set up. One command fixes
 npm run docs:fix      # regenerate, reformat, refresh values
 npm run docs:check    # exactly what CI runs
 ```
+
+**Two commands, and the difference is whether they write to your tree:**
+
+```bash
+npm run fix       # makes it correct. Mutates. Idempotent.
+npm run verify    # asks whether it is correct. Writes nothing.
+```
+
+`fix` before you commit, `verify` before you push. Neither is wired into `build` or `test` on
+purpose: a command that rewrites files as a side effect of compiling or observing is one you stop
+trusting, and in CI it would modify the checkout.
+
+**CI refuses rather than repairs.** It names the stale file and fails; it never edits your work. The
+point is not that documentation fixes itself — it is that it can no longer be wrong and green at the
+same time.
+
+If you would rather not remember any of this, `docsready` from the [shell shortcuts][docs-tools]
+runs fix, then check, then `git status`.
 
 **Is it required?** The *checks* are, because CI enforces them. The *tool* is simply how you satisfy
 them without doing it by hand - you are welcome to handroll wrapping and count things yourself, and

@@ -462,7 +462,9 @@
     "docs:values": "ewc3-docs values",
     "docs:fix": "npm run docs:config && ewc3-docs format && ewc3-docs values",
     "docs:check": "npm run docs:config:check && ewc3-docs check",
-    "test:raw": "vscode-test"
+    "test:raw": "vscode-test",
+    "fix": "npm run docs:fix && eslint src --fix",
+    "verify": "npm run check-types && npm run lint && npm run docs:check && npm test"
   },
   "devDependencies": {
     "@ewc3labs/docs-tools": "github:ewc3labs/ewc3-docs-tools",
