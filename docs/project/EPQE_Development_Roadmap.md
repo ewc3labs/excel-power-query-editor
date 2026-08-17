@@ -33,12 +33,14 @@ live sync in October 2025, has been replied to and can install it.
    corporate environment, which is the case no CI runner can reach and the same situation `@namgaw`
    is in. If group policy blocks COM there, live sync must decline honestly rather than fail
    strangely.
-2. **`PQ-34` — the pipeline is wired, and the Azure detour is cancelled.** Publishing uses **trusted
-   publishing** (`vsce publish --oidc`): GitHub mints an OIDC token, the Marketplace exchanges it
-   for a short-lived credential, and there is no tenant, app registration, or federated credential
-   anywhere. What remains is one form on the publisher page naming this repository and
-   `release.yml`. Steps in the [Publishing Guide](../PUBLISHING_GUIDE.md). **Pinned to vsce 3.9.3-5
-   because `--oidc` is not in stable yet**, and unproven until the first publish.
+2. **`PQ-34` — both auth modes are wired; the Marketplace has not shipped the trust UI.** Trusted
+   publishing (`--oidc`) is real and implemented, but **the Marketplace exposes no configuration
+   surface for its trust policy yet** — in the codebase, absent from the UI, expected shortly. So a
+   repository variable selects the mode: `MARKETPLACE_AUTH=entra` uses Microsoft's documented
+   `--azure-credential` route on stable vsce, `oidc` uses trusted publishing. **No default, no
+   fallback.** Migration later is one variable, no workflow redesign. Remaining work is manual
+   identity setup: [Marketplace identity][marketplace-identity], where the step everyone gets wrong
+   is that the publisher member is a **profile id**, not the client ID.
 
 3. **`PQ-02` — decide on stable 0.6.0.** 5,441 installs are on a thirteen-month-old build. The
    decision is Wilson's and wants RC feedback first.
@@ -129,7 +131,7 @@ The two write paths currently disagree about deletion, and nobody chose that. Se
 | PQ-29 | ✅ done | USER_GUIDE.md has no mention of live sync | S | [Live_Sync](../Live_Sync.md) | feature doc written; User_Guide now carries a section pointing into it |
 | PQ-30 | ✅ done | Retire the RELEASE_SUMMARY pattern | S | — | removed; CHANGELOG and the release body are the two homes |
 | PQ-32 | ✅ done | docs: link and orphan checking in CI | S | [Overview](../Overview.md) | `npm run docs:links` found 11 dead links and 1 unreachable doc on its first run |
-| PQ-34 | 🟡 wired | Marketplace pre-release channel, and PAT-free auth before PATs die | M | [PQ-34][pq-34] | pipeline done 2026-08-17: **trusted publishing** (`--oidc`, pinned to 3.9.3-5), odd/even channel derivation with an intent assertion, Open VSX non-blocking. Blocked on one Marketplace trust policy; no Entra tenant needed after all. `--oidc` is absent from 3.9.2 but shipped on `next` 2026-08-11 Human gate is a **protected `marketplace` environment**, so the OIDC token cannot be minted without an approval. |
+| PQ-34 | 🟡 wired | Marketplace channels, and PAT-free auth before PATs die | M | [PQ-34][pq-34] | both modes implemented behind `MARKETPLACE_AUTH` (`entra` \| `oidc`), fail-closed, no fallback. Pipeline proven on v0.6.0-rc.3 by tag push and dispatch; **neither publish job has ever run.** Blocked on manual identity setup |
 | PQ-31 | 🟡 partial | bump-version: drop commit analysis, sync the README badge | S | [PUBLISHING_GUIDE](../PUBLISHING_GUIDE.md) | badge sync DONE by docs-tools `values`; commit analysis still there, and the `npm version` tag hazard is now documented rather than fixed |
 
 ### Data safety — the thing that must never break
@@ -169,6 +171,7 @@ The two write paths currently disagree about deletion, and nobody chose that. Se
 
 [discussion-3]: https://github.com/ewc3labs/excel-power-query-editor/discussions/3
 [ewc3-labs-prefix]: https://github.com/ewc3labs/ewc3labs-hq
+[marketplace-identity]: ../Marketplace_Identity.md
 [pq-33]: slices/PQ-33_AutoSave_And_Live_Sync.md
 [pq-34]: slices/PQ-34_Marketplace_Prerelease_Channel.md
 [prefix-registry]: https://github.com/ewc3labs/ewc3labs-hq/blob/main/docs/project/EWC3_Prefix_Registry.md

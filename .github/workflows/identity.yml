@@ -1,0 +1,81 @@
+# One-off helper for Marketplace identity setup. Publishes nothing, ever.
+#
+# WHY THIS EXISTS. Adding an Entra identity to a Marketplace publisher does not use its client ID.
+# Microsoft's procedure is to authenticate AS the identity, call the Azure DevOps profile endpoint,
+# and add the `id` from that response as a publisher member with the Contributor role.
+#
+# Which creates a chicken-and-egg problem for a federated app registration: the credential only
+# works from GitHub Actions, from a job bound to the `marketplace` environment. There is no way to
+# run that `az rest` from a laptop without inventing a client secret - which is the long-lived
+# credential this whole design exists to avoid.
+#
+# So the lookup runs here instead, from the same environment the real publish job uses. That also
+# makes it a genuine end-to-end test of the federated credential: if this prints an id, the trust
+# relationship is correct, and it proves it BEFORE a release is riding on it.
+#
+# Delete this workflow once the publisher member is added, or keep it - it publishes nothing and
+# requires the same human approval as a release.
+
+name: Identity
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  profile:
+    name: Look up the Azure DevOps profile id
+    runs-on: ubuntu-latest
+
+    # The same environment as the publish job, because the federated credential's subject names it:
+    #   repo:ewc3labs/excel-power-query-editor:environment:marketplace
+    # Running under any other environment produces a different subject and Azure refuses the token.
+    environment: marketplace
+
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - name: Sign in to Entra ID
+        uses: azure/login@v3
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          allow-no-subscriptions: true
+
+      - name: Print the profile id
+        run: |
+          # 499b84ac-1321-427f-aa17-267ca6975798 is the Azure DevOps resource. It is a well-known
+          # Microsoft identifier, not a secret, and it is the same one vsce's Entra path requests.
+          RESPONSE=$(az rest \
+            -u https://app.vssps.visualstudio.com/_apis/profile/profiles/me \
+            --resource 499b84ac-1321-427f-aa17-267ca6975798)
+
+          # Only the id and display name. The full profile carries an email address, and this log is
+          # readable by anyone who can see the repository.
+          ID=$(echo "$RESPONSE" | jq -r '.id')
+          NAME=$(echo "$RESPONSE" | jq -r '.displayName // "(none)"')
+
+          if [[ -z "$ID" || "$ID" == "null" ]]; then
+            echo "::error::No profile id in the response. The identity authenticated but has no Azure DevOps profile."
+            exit 1
+          fi
+
+          {
+            echo "### Marketplace publisher member"
+            echo ""
+            echo "Add this id as a member of the \`ewc3labs\` publisher with the **Contributor** role:"
+            echo ""
+            echo '```text'
+            echo "$ID"
+            echo '```'
+            echo ""
+            echo "Display name: $NAME"
+            echo ""
+            echo "Then record it in \`docs/Marketplace_Identity.md\` and set \`MARKETPLACE_AUTH=entra\`."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          echo "Profile id: $ID"

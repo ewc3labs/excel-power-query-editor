@@ -58,7 +58,19 @@ something else, which is the whole reason the assertion exists.
 
 ## Setting up publishing
 
-**There is no PAT in the implemented publishing path, and no Azure at all.** Azure DevOps personal
+**There is no PAT in the implemented publishing path.** Two PAT-less modes are wired, and a
+repository variable picks one:
+
+| `MARKETPLACE_AUTH` | Path | Status |
+| --- | --- | --- |
+| `entra` | Entra ID federation → `vsce publish --azure-credential` | Microsoft's documented route today |
+| `oidc` | GitHub OIDC → Marketplace directly → `vsce publish --oidc` | waiting on the Marketplace trust-policy UI |
+
+**No default, and no fallback between them.** Unset or misspelled fails the publish job; a failure
+in one mode never retries in the other. Identity setup for both is in [Marketplace
+identity](Marketplace_Identity.md).
+
+The rest of this section describes `oidc`, which is where this is heading. Azure DevOps personal
 access tokens are retired on **2026-12-01**, and this publishes with **trusted publishing** instead:
 `vsce` asks GitHub for an OIDC token scoped to the `marketplace.visualstudio.com` audience,
 exchanges it at `POST /_apis/gallery/token` for a short-lived Marketplace credential, and publishes
@@ -91,7 +103,10 @@ repository's workflow, and it replaces every step an Entra route would have need
 | Kind | Name | Value |
 | --- | --- | --- |
 | Environment | `marketplace` | must exist, **with a required reviewer** — see below |
+| Variable | `MARKETPLACE_AUTH` | `entra` or `oidc` — no default |
 | Variable | `MARKETPLACE_PUBLISH` | `enabled`, when you want tags to publish |
+| Variable | `AZURE_CLIENT_ID` | `entra` mode only |
+| Variable | `AZURE_TENANT_ID` | `entra` mode only |
 | Secret | `OVSX_PAT` | Open VSX token — optional, see below |
 
 ### The human gate is the environment, not the draft
@@ -150,15 +165,20 @@ npx --yes @vscode/vsce@latest publish --oidc --pat dummy
 
 That test publishes nothing — the conflict is rejected during argument parsing.
 
-### If trusted publishing is not available
+### Trusted publishing is not available yet
 
-The fallback is Entra ID workload identity federation with `vsce publish --azure-credential`, which
-works on stable 3.9.2. It needs an app registration, a federated credential on subject
-`repo:ewc3labs/excel-power-query-editor:environment:marketplace`, that identity added to the
-publisher, and an `azure/login@v3` step with `allow-no-subscriptions: true`.
+**The Marketplace has no configuration surface for the trust policy.** It is in the codebase and not
+in the UI, so `--oidc` currently has nothing to trust it — expected to land shortly, but not
+something to plan a release around.
 
-**It is documented here rather than implemented** because it is materially more setup for the same
-result, and a fallback in the workflow is the thing that quietly keeps the worse path alive.
+So `entra` is the interim mode: `MARKETPLACE_AUTH=entra` selects `vsce publish --azure-credential`
+on stable vsce, which is the route Microsoft's own publishing guide walks through. Setup is in
+[Marketplace identity](Marketplace_Identity.md), including the step everyone gets wrong — the
+publisher member is a **profile id from the Azure DevOps profile endpoint**, not the client ID.
+
+**Both modes stay implemented.** Migrating later is one variable, `entra` → `oidc`, with no workflow
+redesign. This is a configuration switch precisely so the `--oidc` work does not have to be deleted
+and rewritten in a month.
 
 ## Open VSX
 

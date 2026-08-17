@@ -314,14 +314,51 @@ jobs:
       # option '--oidc'`. It shipped in 3.9.3-5 on the `next` tag, where the flag is hidden from
       # --help. `@next` is a moving target and this must not change under us, so the version is
       # literal. Drop the pin once --oidc lands in `latest`.
+      # ENTRA MODE ONLY. Skipped entirely when MARKETPLACE_AUTH is `oidc`, which needs no Azure.
+      - name: Sign in to Entra ID
+        if: vars.MARKETPLACE_AUTH == 'entra'
+        uses: azure/login@v3
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          # The identity publishes an extension; it is attached to no subscription, and azure/login
+          # fails looking for one without this.
+          allow-no-subscriptions: true
+
+      # ONE STEP, DISPATCHING ON MARKETPLACE_AUTH, AND IT FAILS CLOSED.
+      #
+      # Deliberately not two `if:`-gated steps. If the variable were unset or misspelled, both would
+      # simply skip and the job would go GREEN having published nothing - a silent success, which is
+      # the worst outcome available. A `case` with a default arm cannot do that.
+      #
+      # NO FALLBACK BETWEEN MODES, EVER. If `oidc` fails because the Marketplace has not exposed the
+      # trust policy yet, it fails. Quietly retrying through Entra would mean nobody ever finds out
+      # which contract actually published the extension.
       - name: Publish
         env:
-          VSCE_VERSION: 3.9.3-5
+          MARKETPLACE_AUTH: ${{ vars.MARKETPLACE_AUTH }}
+          # Two pins, on purpose. `--azure-credential` is in stable, so the interim production path
+          # runs no preview code at all; only trusted publishing needs the prerelease build. Drop
+          # VSCE_OIDC_VERSION once --oidc reaches latest, then drop this whole switch.
+          VSCE_ENTRA_VERSION: 3.9.2
+          VSCE_OIDC_VERSION: 3.9.3-5
         run: |
           FLAG=""
           if [[ "${{ needs.build.outputs.channel }}" == "prerelease" ]]; then FLAG="--pre-release"; fi
 
-          npx --yes "@vscode/vsce@${VSCE_VERSION}" publish --packagePath *.vsix --oidc $FLAG
+          case "$MARKETPLACE_AUTH" in
+            entra)
+              VERSION="$VSCE_ENTRA_VERSION"; AUTH="--azure-credential" ;;
+            oidc)
+              VERSION="$VSCE_OIDC_VERSION";  AUTH="--oidc" ;;
+            *)
+              echo "::error::MARKETPLACE_AUTH must be 'entra' or 'oidc' (got '${MARKETPLACE_AUTH:-unset}')."
+              echo "::error::See docs/Marketplace_Identity.md. There is deliberately no default."
+              exit 1 ;;
+          esac
+
+          echo "Authenticating with: $AUTH   (vsce $VERSION)"
+          npx --yes "@vscode/vsce@${VERSION}" publish --packagePath *.vsix $AUTH $FLAG
 
   # Open VSX is where Cursor, Windsurf, and VSCodium install from. Those users currently cannot
   # install this extension at all, which is a strange gap for a tool whose pitch is editing Power
