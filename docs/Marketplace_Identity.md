@@ -4,7 +4,7 @@ The manual, one-time identity work behind Marketplace publishing — and the rec
 created, so nobody has to reverse-engineer it later.
 
 **No credentials belong in this file.** Client ID and tenant ID are identifiers, not secrets, and
-they live in repository variables already. Nothing here should ever be a secret, because this design
+they will live in repository variables. Nothing here should ever be a secret, because this design
 has no long-lived credential to record.
 
 ## Two authentication modes, selected by configuration
@@ -85,8 +85,12 @@ az rest -u https://app.vssps.visualstudio.com/_apis/profile/profiles/me \
 works from a job bound to that environment — and creating a client secret to work around this
 reintroduces exactly the long-lived credential the design exists to remove.
 
-So run the **Identity** workflow instead: Actions → Identity → Run workflow. It signs in with the
-federated credential, calls the endpoint, and prints the id to the run summary.
+So run the **Identity** workflow instead: Actions → Identity → **Run workflow from `main`**. It
+signs in with the federated credential, calls the endpoint, and prints the id to the run summary.
+
+**It must be `main`.** The `marketplace` environment allows only `main` and `v*`, so a run launched
+from another branch is refused by the environment before it starts — correctly, but the message
+points at deployment rules rather than at the branch you picked.
 
 That run doubles as the **first real test of the federated credential**. If it prints an id, the
 trust relationship is correct — proven before a release depends on it.
@@ -95,6 +99,14 @@ trust relationship is correct — proven before a release depends on it.
 
 Add the profile id as a member of the `ewc3labs` publisher with the **Contributor** role, at
 <https://marketplace.visualstudio.com/manage/publishers/ewc3labs>.
+
+The `marketplace` environment already exists and is configured correctly:
+
+| | |
+| --- | --- |
+| Required reviewer | `Wilson421` |
+| Prevent self-review | **off** — with one maintainer, on would deadlock the pipeline |
+| Allowed refs | `main` (branch), `v*` (tag) |
 
 | Kind | Name | Value |
 | --- | --- | --- |

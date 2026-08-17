@@ -21,12 +21,17 @@
 #   v0.7.0       -> pre-release channel (only users who opted in)
 #   v0.6.0-rc.2  -> neither; draft GitHub release with a VSIX to hand somebody
 #
-# AUTHENTICATION IS TRUSTED PUBLISHING, NOT A PAT. Azure DevOps personal access tokens are retired
-# on 2026-12-01. `vsce publish --oidc` exchanges a GitHub Actions OIDC token directly with the
-# Marketplace for a short-lived credential: no stored secret, and no Entra tenant, app registration,
-# or `azure/login` anywhere in the path. The trust is a policy on the Marketplace publisher naming
-# this repository and this workflow file. Setup is in docs/PUBLISHING_GUIDE.md, and nothing can
-# publish until it exists.
+# AUTHENTICATION IS PAT-FREE EITHER WAY, AND THE MODE IS CONFIGURATION. Azure DevOps personal
+# access tokens are retired on 2026-12-01. The repository variable MARKETPLACE_AUTH selects:
+#
+#   entra  Entra ID workload identity federation -> vsce publish --azure-credential
+#          Microsoft's documented route today. Runs on stable vsce.
+#   oidc   GitHub OIDC exchanged directly with the Marketplace -> vsce publish --oidc
+#          No Azure at all. Waiting on the Marketplace to expose its trust policy.
+#
+# No default and no fallback: unset or misspelled fails the publish job, and a failure in one mode
+# never retries in the other. Setup for both is docs/Marketplace_Identity.md, and nothing can publish
+# until that work is done.
 
 name: Release
 
@@ -285,8 +290,9 @@ jobs:
     #
     # The Marketplace trust policy may also name this environment.
     #
-    # (Nothing to do with Entra any more. An earlier design used this name as a federated-credential
-    # subject; trusted publishing has no subject, and that reasoning is gone.)
+    # It is also the federation subject in `entra` mode:
+    #   repo:ewc3labs/excel-power-query-editor:environment:marketplace
+    # Trusted publishing does not use a subject at all, so in `oidc` mode this is purely the gate.
     environment: marketplace
 
     permissions:
@@ -298,22 +304,22 @@ jobs:
         with:
           name: vsix
 
-      # TRUSTED PUBLISHING. No PAT, no Entra tenant, no app registration, no `azure/login`.
+      # The artifact is deterministic and both publisher versions are pinned; without this the Node
+      # that runs them is whatever the runner image happens to ship. Completes the story.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      # NO PAT IN EITHER MODE, and neither falls back to one on failure - which is correct, and
+      # worth knowing when you are reading an error.
       #
-      # vsce requests a GitHub Actions OIDC token for the `marketplace.visualstudio.com` audience and
-      # exchanges it at POST /_apis/gallery/token for a short-lived Marketplace credential. Nothing
-      # long-lived is stored here, and there is no Azure subscription anywhere in the path.
+      #   entra  azure/login establishes an Azure CLI session, which vsce's --azure-credential picks
+      #          up via AzureCliCredential, second in the chain it builds. Runs on stable vsce.
+      #   oidc   vsce asks GitHub for a token with audience marketplace.visualstudio.com and
+      #          exchanges it at POST /_apis/gallery/token. No Azure in the path at all. Pinned to a
+      #          prerelease: 3.9.2 answers `unknown option '--oidc'`, and the flag is hidden from
+      #          --help in 3.9.3-5, so grepping help output reports it does not exist.
       #
-      # The trust lives on the MARKETPLACE side: a trusted publishing policy naming this repository
-      # and this workflow file. See docs/PUBLISHING_GUIDE.md.
-      #
-      # It does NOT fall back to a PAT when the exchange fails, which is the correct behaviour and
-      # worth knowing when it errors.
-      #
-      # PINNED, AND PINNED EXACTLY, because `--oidc` is not in stable yet: 3.9.2 answers `unknown
-      # option '--oidc'`. It shipped in 3.9.3-5 on the `next` tag, where the flag is hidden from
-      # --help. `@next` is a moving target and this must not change under us, so the version is
-      # literal. Drop the pin once --oidc lands in `latest`.
       # ENTRA MODE ONLY. Skipped entirely when MARKETPLACE_AUTH is `oidc`, which needs no Azure.
       - name: Sign in to Entra ID
         if: vars.MARKETPLACE_AUTH == 'entra'
@@ -376,6 +382,10 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: vsix
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
 
       - name: Publish
         env:

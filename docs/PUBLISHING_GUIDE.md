@@ -24,8 +24,8 @@ requires all three of:
    marketplace
 2. the repository variable **`MARKETPLACE_PUBLISH`** set to `enabled`, or a manual run with
    **publish_marketplace** checked
-3. a **trusted publishing policy** on the Marketplace naming this repo and workflow — see [Setting
-   up publishing](#setting-up-publishing)
+3. the identity setup required by the selected `MARKETPLACE_AUTH` mode — see [Marketplace
+   identity](Marketplace_Identity.md)
 
 None of the three is configured right now. So the worst outcome of pushing a tag — any tag,
 including a wrong one — is a draft release you delete.
@@ -76,17 +76,19 @@ access tokens are retired on **2026-12-01**, and this publishes with **trusted p
 exchanges it at `POST /_apis/gallery/token` for a short-lived Marketplace credential, and publishes
 with that.
 
-**Nothing long-lived is stored in this repository**, and there is no Entra tenant, app registration,
-federated credential, or `azure/login` step anywhere in the path.
+**Nothing long-lived is stored in this repository in either mode.** In `oidc` specifically there is
+also no Entra tenant, app registration, federated credential, or `azure/login` step anywhere in the
+path — which is why it is the destination, and `entra` the interim.
 
 > **Correcting an earlier version of this guide.** It said `vsce publish --oidc` does not exist.
 > That was true of stable 3.9.2 — which answers `unknown option '--oidc'` — and wrong as a general
 > claim. Trusted publishing landed upstream on 2026-07-23 and shipped in **3.9.3-5** on the `next`
 > tag. The workflow pins that version exactly.
 
-### Marketplace side (manual, one time)
+### Marketplace side for `oidc` mode (manual, one time)
 
-Configure a **trusted publishing policy** on the `ewc3labs` publisher at
+**Not available yet** — see below. When it is, configure a **trusted publishing policy** on the
+`ewc3labs` publisher at
 <https://marketplace.visualstudio.com/manage/publishers/ewc3labs>, naming:
 
 | | |
@@ -139,9 +141,10 @@ to dismiss. The environment approval decides whether a reachable job *runs*. Kee
 An approval request expires after 30 days and the run fails, which is the correct outcome for a
 release nobody remembered to approve.
 
-**No `AZURE_CLIENT_ID`, no `AZURE_TENANT_ID`, no secrets for the Marketplace at all.** The
-`id-token: write` permission on the job is what lets `vsce` request the token; without it the error
-is explicit about the missing permission.
+**In `oidc` mode there are no Azure identifiers and no Marketplace secret at all**; `entra` mode
+needs `AZURE_CLIENT_ID` and `AZURE_TENANT_ID`, which are identifiers rather than credentials. Either
+way the `id-token: write` permission on the job is what lets a token be requested, and without it
+the error is explicit about the missing permission.
 
 The `marketplace` environment is kept as the **release gate**, and as something the trust policy can
 name. It is no longer carrying an OIDC subject, because trusted publishing does not use one.
