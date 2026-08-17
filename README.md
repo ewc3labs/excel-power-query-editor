@@ -175,10 +175,14 @@ This stands on other people's work:
   part: reading and writing the DataMashup part inside a workbook.
 - **[Alexander Malanov][alexander-malanov]** — [EditExcelPQM][editexcelpqm], which showed this was
   possible.
+- **[Ken Puls](https://excelguru.ca/)** — whose Monkey Tools proved writing to an open workbook was
+  a solved problem, from the other side of the same wall. Live sync exists because that removed the
+  question of whether it could be done at all.
+- **[@namgaw](https://github.com/namgaw)** — who asked for live sync in [discussion #3][namgaw], and
+  then pointed at Monkey Tools. The request was the easy part; the pointer is what unstuck it. This
+  was a file-lock problem until it became an object-model problem.
 - **[Microsoft][microsoft]** — the Power Query / M language extension that provides the language
   service.
-- **[Ken Puls](https://excelguru.ca/)** — whose Monkey Tools proved writing to an open workbook was
-  a solved problem, from the other side of the same wall.
 - **[The Klipper project][klipper]** — for a documentation structure good enough to be worth
   copying, and for a great deal else that has nothing to do with Excel.
 
