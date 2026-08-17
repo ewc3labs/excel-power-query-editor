@@ -124,24 +124,77 @@ become unused, the `azure/login` step skips itself, and the app registration can
 
 ## The record
 
-Fill this in as the work is done. Identifiers only.
+Established 2026-08-17. Identifiers only — this design has no secret to record, and the app
+registration deliberately has **no client secret**.
+
+### Tenant
 
 | | |
 | --- | --- |
-| Tenant name | *(not yet established)* |
-| Tenant ID | *(not yet established)* |
-| Primary domain | *(not yet established)* |
-| App registration name | *(not yet created)* |
-| Client ID | *(not yet created)* |
-| Azure DevOps profile id | *(run the Identity workflow)* |
-| Publisher member added | *(no)* |
-| `MARKETPLACE_AUTH` | *(unset — publishing fails closed)* |
+| Name | `EWC3 Labs` |
+| Tenant ID | `2d4be3ba-e29f-4a9a-b19d-711e9b07539a` |
+| Primary domain | `wilsonewc3.onmicrosoft.com` |
+
+### App registration
+
+| | |
+| --- | --- |
+| Name | `EPQE Marketplace Publisher` |
+| Client ID | `0096515e-d1d0-462d-882f-66fd5fadfb02` |
+| Tenancy | single-tenant |
+| Redirect URI | none |
+| Client secret | **none, deliberately** — federation is the whole point |
+
+### Federated credential
+
+| | |
+| --- | --- |
+| Name | `github-epqe-marketplace` |
+| Issuer | `https://token.actions.githubusercontent.com` |
+| Subject | `repo:ewc3labs/excel-power-query-editor:environment:marketplace` |
+| Audience | `api://AzureADTokenExchange` |
+
+> **The subject form is not the one Entra offered, and that matters.** Entra generated GitHub's newer
+> **immutable-ID** subject; it was corrected by hand to the name-based form above, because this
+> repository is configured with `use_immutable_subject: false`:
+>
+> ```json
+> {"use_default":true,"use_immutable_subject":false,"sub_claim_prefix":"repo:ewc3labs/excel-power-query-editor"}
+> ```
+>
+> **If that setting is ever flipped to `true`, this credential stops working** and the failure will
+> look like a permissions problem rather than a subject mismatch. Change the federated credential
+> subject at the same time, or do not flip it.
+
+### GitHub configuration
+
+| Kind | Name | Value | State |
+| --- | --- | --- | --- |
+| Variable | `AZURE_CLIENT_ID` | `0096515e-…fb02` | ✅ set |
+| Variable | `AZURE_TENANT_ID` | `2d4be3ba-…539a` | ✅ set |
+| Variable | `MARKETPLACE_AUTH` | `entra` | ⬜ unset — publishing fails closed |
+| Variable | `MARKETPLACE_PUBLISH` | `enabled` | ⬜ unset — publish job unreachable |
+| Environment | `marketplace` | reviewer `Wilson421`, refs `main` and `v*` | ✅ configured |
+| Secret | `OVSX_PAT` | Open VSX | ⬜ unset — that job warns and skips |
+
+**Both remaining variables are intentionally unset.** Nothing can publish, which is what makes the
+next step safe to run.
+
+### Still to do
+
+| | |
+| --- | --- |
+| Azure DevOps profile id | **run the Identity workflow from `main`** |
+| Publisher member added | not yet — needs the profile id above |
+| `MARKETPLACE_AUTH` → `entra` | after the member is added |
+| `MARKETPLACE_PUBLISH` → `enabled` | when you want tags to publish |
 
 ## What is still unproven
 
 The release pipeline has been exercised end to end on `v0.6.0-rc.3`, by tag push and by manual
-dispatch. **Neither publish job has ever run.** `--azure-credential` from GitHub Actions is an
-adaptation of a documented Azure Pipelines path, and `--oidc` has no Marketplace policy to talk to
-yet. The first successful publish is the proof for whichever mode goes first.
+dispatch. **Neither publish job has ever run, and the federated credential has never been used.**
+`--azure-credential` from GitHub Actions is an adaptation of a documented Azure Pipelines path, and
+`--oidc` has no Marketplace policy to talk to yet. The first successful publish is the proof for
+whichever mode goes first.
 
 [guide]: PUBLISHING_GUIDE.md
