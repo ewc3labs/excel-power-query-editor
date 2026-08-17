@@ -74,7 +74,7 @@ Excel serves external automation. See `design/live-sync-to-open-excel.md`.
 | PQ-13 | 💨 proven | Helper process, status/write, error paths | L | live-sync-to-open-excel.md | proven 2026-08-14 — ROT lookup, retry on busy, stdin payload |
 | PQ-14 | 💨 proven | Split a section document and match queries by name | M | live-sync-to-open-excel.md | proven 2026-08-14 — 3 fixtures round-trip byte for byte |
 | PQ-15 | 💨 proven | Round-trip test: section -> N formulas -> Excel -> section | M | live-sync-to-open-excel.md | proven 2026-08-14 — byte-identical through a real Excel |
-| PQ-16 | ⬜ planned | Reply to namgaw, and reach out to Ken Puls | S | — | he asked in Oct 2025 and suggested the contact |
+| PQ-16 | ✅ done | Reply to namgaw, and reach out to Ken Puls | S | [discussion #3](https://github.com/ewc3labs/excel-power-query-editor/discussions/3) | replied with the built feature and a prerelease he can install; his Monkey Tools pointer is what unstuck it. Ken Puls NOT contacted, deliberately - he is credited in the README, which is better than cold-emailing the author of the commercial tool we just built a free alternative to |
 | PQ-17 | 💨 proven | Wire live sync into the sync command and settings | M | live-sync-to-open-excel.md | proven 2026-08-14 — real 29-query workbook in a OneDrive folder |
 
 ### Selective extract, and who is authoritative
