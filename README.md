@@ -79,8 +79,8 @@ work on macOS and Linux with no Excel installed, exactly as they always have.
 
 ## Quick start
 
-**1. Install** — from the [Marketplace][marketplace], or `ext install
-ewc3labs.excel-power-query-editor`.
+**1. Install** — from the [Marketplace][marketplace], or
+`ext install ewc3labs.excel-power-query-editor`.
 
 **2. Extract** — right-click any `.xlsx` / `.xlsm` / `.xlsb` → **Extract Power Query**. You get a
 `.m` file beside it with every query in the workbook.

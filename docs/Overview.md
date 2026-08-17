@@ -43,8 +43,8 @@ If you are adding a feature:
 
 1. Write `Your_Feature.md` — what it does, how to turn it on, and how it fails.
 2. Add a line to the **Features** list above.
-3. Settings appear in [Config Reference](Config_Reference.md) automatically; run `npm run
-   docs:config` after changing `package.json`.
+3. Settings appear in [Config Reference](Config_Reference.md) automatically; run
+   `npm run docs:config` after changing `package.json`.
 4. Commands go in [Commands](Commands.md) by hand.
 5. If you renamed or removed a setting, add a dated entry to [Config Changes](Config_Changes.md).
 

@@ -460,8 +460,9 @@ npm version patch --dry-run
 Documentation checks run in CI and **will fail your PR**, so it is worth knowing what they are
 before they surprise you.
 
-Most of the work is done by [@ewc3labs/docs-tools][docs-tools], which is a **devDependency** - `npm
-ci` already installed it and there is nothing extra to set up. One command fixes everything fixable:
+Most of the work is done by [@ewc3labs/docs-tools][docs-tools], which is a **devDependency** -
+`npm ci` already installed it and there is nothing extra to set up. One command fixes everything
+fixable:
 
 ```bash
 npm run docs:fix      # regenerate, reformat, refresh values

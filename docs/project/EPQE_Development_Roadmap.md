@@ -76,8 +76,8 @@ or if another roadmap claims the same global one.
 
 **Rows are one line.** `Doc` pins a filename; anything wanting a paragraph wants a slice doc.
 
-States: `⬜ planned` · `⛔ blocked` · `🟨 coded` — built and deployed, nobody has used it yet · `💨
-proven` — someone used it and it worked · `⏸ retired` — tried, backed out, kept for the reason.
+States: `⬜ planned` · `⛔ blocked` · `🟨 coded` — built and deployed, nobody has used it yet ·
+`💨 proven` — someone used it and it worked · `⏸ retired` — tried, backed out, kept for the reason.
 
 ### Shipping — the pipeline is the blocker
 
