@@ -5,8 +5,8 @@ How a release is cut, and what stops one happening by accident.
 ## The short version
 
 ```bash
-git tag v0.6.0
-git push origin v0.6.0
+git tag v0.7.0
+git push origin v0.7.0
 ```
 
 That builds, tests, packages, and creates a **draft** GitHub release with the `.vsix` attached.
@@ -20,7 +20,7 @@ Marketplace gate is the `marketplace` environment approval described below.
 **This is deliberate, and it is enforced structurally rather than by remembering.** Publishing
 requires all three of:
 
-1. a **plain `vX.Y.Z` tag** — anything with a suffix (`v0.6.0-rc.1`) never publishes to either
+1. a **plain `vX.Y.Z` tag** — anything with a suffix (`v0.7.0-rc.1`) never publishes to either
    marketplace
 2. the repository variable **`MARKETPLACE_PUBLISH`** set to `enabled`, or a manual run with
    **publish_marketplace** checked
@@ -40,9 +40,9 @@ The Marketplace has no concept of a semver prerelease suffix. A version is **eit
 
 | Tag | Channel | Who receives it |
 | --- | --- | --- |
-| `v0.6.0` | **stable** — even minor | everyone, including auto-update |
+| `v0.8.0` | **stable** — even minor | everyone, including auto-update |
 | `v0.7.0` | **pre-release** — odd minor | only users who opted in via the extension pane |
-| `v0.6.0-rc.2` | **neither** | nobody; a VSIX on a draft release, for handing to someone |
+| `v0.7.0-rc.2` | **neither** | nobody; a VSIX on a draft release, for handing to someone |
 
 **The channel is derived from the version, so the wrong one is not possible.** It is, however,
 *silent* — believing you are shipping `0.7.0` to stable gets you a pre-release, having consumed the
@@ -121,7 +121,7 @@ never starts**, so the OIDC token is never minted. The *capability* to publish d
 a person approves it, rather than existing continuously and being politely unused.
 
 ```text
-push v0.6.0
+push v0.7.0
   ├─ build, test, package
   ├─ draft GitHub release          (visible to nobody until you publish it)
   ▼
@@ -228,8 +228,8 @@ The current workflow is triggered by the tag directly. That is the whole fix.
 
 Two details that are easy to trip over:
 
-- **A prerelease is any tag with a suffix.** `v0.6.0-rc.1` and `v0.6.0-beta.2` are prereleases;
-  `v0.6.0` is not. The GitHub release is marked accordingly.
+- **A prerelease is any tag with a suffix.** `v0.7.0-rc.1` and `v0.7.0-beta.2` are prereleases;
+  `v0.7.0` is not. The GitHub release is marked accordingly.
 - **`vsce` rejects a prerelease suffix in the manifest.** An extension version must be plain
   `x.y.z`, so the packaged version is the base version even when the tag carries a suffix. The tag
   keeps the full name; the `.vsix` inside cannot.
@@ -245,8 +245,8 @@ release is a worse way to learn it than finding out from CI.
 **2. Tag and push.**
 
 ```bash
-git tag v0.6.0
-git push origin v0.6.0
+git tag v0.7.0
+git push origin v0.7.0
 ```
 
 **3. Watch it.**
@@ -260,7 +260,7 @@ what changed for a user, and link the relevant documentation.
 
 **5. Publish the draft** when you are happy with it.
 
-For a release candidate, tag `v0.6.0-rc.1` instead. Same pipeline, marked as a prerelease, and
+For a release candidate, tag `v0.7.0-rc.1` instead. Same pipeline, marked as a prerelease, and
 **neither marketplace is touched even if publishing has been enabled** — an rc is for handing
 somebody a VSIX, and 5,450 installs with auto-update are not the audience for a release candidate.
 
@@ -271,9 +271,9 @@ npm version patch     # or minor / major - commits and tags
 npm run bump-version  # EWC3 script: sets the version in package.json only
 ```
 
-**The minor version now carries meaning.** Even is the stable channel, odd is pre-release, so
-`npm version minor` off `0.6.0` gives you `0.7.0` — a **pre-release**, not the next stable. The next
-stable after `0.6.x` is `0.8.0`.
+**The minor version now carries meaning.** Even is the stable channel, odd is pre-release. The
+repository is on `0.7.0`, which is a **pre-release**; `npm version minor` gives `0.8.0`, the next
+stable. A patch on the pre-release line is `0.7.1`, still pre-release.
 
 **Be careful with `npm version`.** It creates a git tag, and pushing that tag now **fires the
 release pipeline**. That was harmless when the pipeline was broken; it is not harmless now. If you
@@ -283,7 +283,7 @@ only want to change the number, use `bump-version`, which performs no git operat
 
 The pipeline can be exercised safely, and should be after any change to it:
 
-- **Push a real prerelease tag.** `v0.6.0-rc.N` produces a draft prerelease and nothing else. Delete
+- **Push a real prerelease tag.** `v0.7.0-rc.N` produces a draft prerelease and nothing else. Delete
   the tag and the draft afterwards.
 - **Run it manually** from the Actions tab. It asks for a **tag** - a manual run has no tag of its
   own, and without one the version derivation produces nonsense. Leave **publish_marketplace**
@@ -297,7 +297,7 @@ If the pipeline is unavailable and something must ship:
 
 ```bash
 npm run package-vsix
-npx vsce publish --packagePath excel-power-query-editor-0.6.0.vsix --pat "$PAT"
+npx vsce publish --packagePath excel-power-query-editor-0.7.0.vsix --pat "$PAT"
 ```
 
 Trusted publishing only works **from GitHub Actions** — it needs the runner's OIDC token — so a

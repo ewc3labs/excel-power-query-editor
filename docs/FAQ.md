@@ -26,7 +26,7 @@ never deleted**. The extension will not remove something you did not ask it to r
 
 ### Where did my setting go?
 
-Every setting moved into a namespace in 0.6.0 — `logLevel` became `log.level`, and so on. **Your
+Every setting moved into a namespace in 0.7.0 — `logLevel` became `log.level`, and so on. **Your
 values were migrated automatically**, in whatever scope you had set them.
 
 [Config Changes](Config_Changes.md) has the full old-to-new table.

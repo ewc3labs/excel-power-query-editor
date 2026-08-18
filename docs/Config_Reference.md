@@ -192,7 +192,7 @@ Internal migration marker for extension settings. Do not edit.
 
 ## Deprecated
 
-Renamed in 0.6.0. Still read, still migrated, and removed after a release or two. See [Config Changes](Config_Changes.md).
+Renamed in 0.7.0. Still read, still migrated, and removed after a release or two. See [Config Changes](Config_Changes.md).
 
 ### `excel-power-query-editor.autoBackupBeforeSync`
 

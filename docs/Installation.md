@@ -35,7 +35,7 @@ Download it, then either:
 - **In VS Code** — Extensions view → `...` menu → **Install from VSIX...**
 - **From a terminal** —
   ```
-  code --install-extension excel-power-query-editor-0.6.0.vsix
+  code --install-extension excel-power-query-editor-0.7.0.vsix
   ```
 
 If you run VS Code Insiders, install into Insiders explicitly — `code-insiders --install-extension`.

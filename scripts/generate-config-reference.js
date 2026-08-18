@@ -33,7 +33,7 @@ const GROUP_BLURBS = {
 	log: 'What the extension records, and where.',
 	symbols: 'IntelliSense for Excel functions the M language service does not ship.',
 	xtn: 'Written by the extension. Not intended to be set by hand.',
-	'': 'Renamed in 0.6.0. Still read, still migrated, and removed after a release or two. '
+	'': 'Renamed in 0.7.0. Still read, still migrated, and removed after a release or two. '
 		+ 'See [Config Changes](Config_Changes.md).'
 };
 

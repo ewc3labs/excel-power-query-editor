@@ -15,9 +15,9 @@ and no toolchain to install beyond Node.
 
 **Release Workflow:**
 
-- **Releases are triggered by a tag, and only by a tag.** Pushing `v0.6.0` builds, packages, and
+- **Releases are triggered by a tag, and only by a tag.** Pushing `v0.7.0` builds, packages, and
   creates a DRAFT GitHub release. Branch pushes do not release anything.
-- A tag with a suffix (`v0.6.0-rc.1`) is a prerelease; a plain `v0.6.0` is not.
+- A tag with a suffix (`v0.7.0-rc.1`) is a prerelease; a plain `v0.7.0` is not.
 - **Marketplace publishing is off** and cannot happen by accident - see
   [PUBLISHING_GUIDE](PUBLISHING_GUIDE.md).
 - Careful with `npm version`: it creates a tag, and pushing that tag now fires the release pipeline.
@@ -418,12 +418,12 @@ gh pr list
 npm run bump-version
 
 # Analyzes your git history for conventional commit patterns:
-# - feat: → minor version bump (0.5.0 → 0.6.0)
+# - feat: → minor version bump (0.7.0 → 0.8.0)
 # - fix: → patch version bump (0.5.0 → 0.5.1) 
 # - BREAKING: → major version bump (0.5.0 → 1.0.0)
 
 # Manual override (updates package.json only, no git operations)
-npm run bump-version 0.6.0
+npm run bump-version 0.8.0
 ```
 
 **When to Use Which:**
@@ -438,13 +438,13 @@ npm run bump-version 0.6.0
 ```bash
 # Native NPM versioning commands (standard industry practice)
 npm version patch   # 0.5.0 → 0.5.1 + git commit + git tag
-npm version minor   # 0.5.0 → 0.6.0 + git commit + git tag  
+npm version minor   # 0.7.0 → 0.8.0 + git commit + git tag  
 npm version major   # 0.5.0 → 1.0.0 + git commit + git tag
 
 # Pre-release versions  
 npm version prerelease  # 0.5.0 → 0.5.1-0 + git commit + git tag
 npm version prepatch    # 0.5.0 → 0.5.1-0 + git commit + git tag
-npm version preminor    # 0.5.0 → 0.6.0-0 + git commit + git tag
+npm version preminor    # 0.7.0 → 0.8.0-0 + git commit + git tag
 
 # Dry run (see what would happen without doing it)
 npm version patch --dry-run
@@ -560,8 +560,8 @@ unreachable and it silently released nothing for a year. Tag-triggered is the fi
 ### **Release Channels:**
 | Trigger | Release Type | Version Format | Result |
 |---------|--------------|----------------|--------|
-| tag `v0.6.0-rc.1` | Prerelease | `0.6.0` in the manifest | Draft prerelease |
-| tag `v0.6.0` | Stable | `0.6.0` | Draft release |
+| tag `v0.7.0-rc.1` | Prerelease | `0.7.0` in the manifest | Draft prerelease |
+| tag `v0.8.0` | Stable | `0.8.0` | Draft release |
 | Workflow dispatch | Either | Custom | Draft, or publish if explicitly requested |
 
 **Marketplace publishing requires a plain `vX.Y.Z` tag AND the repository variable
@@ -573,7 +573,7 @@ safe to test with real tags.
 hold one version as both, so `v0.7.0` is a pre-release and the next stable after `0.6.x` is `0.8.0`.
 Full setup is in the [Publishing Guide](PUBLISHING_GUIDE.md).
 
-`vsce` rejects a prerelease suffix in the manifest, so `v0.6.0-rc.1` packages as version `0.6.0`.
+`vsce` rejects a prerelease suffix in the manifest, so `v0.7.0-rc.1` packages as version `0.7.0`.
 The tag keeps the full name; the `.vsix` inside cannot.
 
 ### **Monitoring Your Releases:**

@@ -18,10 +18,10 @@ AsOf: 2026-08-14
 
 ## Current Focus
 
-**0.6.0 is merged and green.** `wip/live-sync` landed on main by rebase on 2026-08-16, keeping all
-72 commits so `git blame` still points at the reasoning. CI passes on **all six legs** - Ubuntu,
-Windows and macOS on Node 22 and 24 - for the first time since 2025-07-21, and no platform is
-excused any more.
+**The 0.7.0 work is merged and green.** `wip/live-sync` landed on main by rebase on 2026-08-16,
+keeping all 72 commits so `git blame` still points at the reasoning. CI passes on **all six legs** -
+Ubuntu, Windows and macOS on Node 22 and 24 - for the first time since 2025-07-21, and no platform
+is excused any more.
 
 **`v0.6.0-rc.2` is published as a GitHub prerelease** with the VSIX attached, and the release
 pipeline was proven end to end on a real tag with the test suite gating it. `@namgaw`, who asked for
@@ -42,8 +42,9 @@ live sync in October 2025, has been replied to and can install it.
    identity setup: [Marketplace identity][marketplace-identity], where the step everyone gets wrong
    is that the publisher member is a **profile id**, not the client ID.
 
-3. **`PQ-02` — decide on stable 0.6.0.** 5,441 installs are on a thirteen-month-old build. The
-   decision is Wilson's and wants RC feedback first.
+3. **`PQ-02` — 0.7.0 to the pre-release channel, then 0.8.0 stable.** 5,450 installs are on a
+   thirteen-month-old build. The pre-release goes first because nobody has opted in to that channel,
+   so it proves the publish path without betting the stable release on it.
 
 ### Not blocking, but known
 
@@ -90,11 +91,11 @@ States: `⬜ planned` · `⛔ blocked` · `🟨 coded` — built and deployed, n
 | ID | State | Slice | Est | Doc | Status |
 | --- | --- | --- | --- | --- | --- |
 | PQ-01 | 💨 proven | Rebuild release.yml as tag-triggered | M | — | proven 2026-08-15 — v0.6.0-rc.1 built a draft, marketplace skipped |
-| PQ-02 | ⬜ planned | Ship the settings refactor as 0.6.0 | S | — | unblocked; NOT a patch — 13 settings renamed |
+| PQ-02 | ⬜ planned | Ship the settings refactor: 0.7.0 pre-release, then 0.8.0 stable | S | — | renumbered from 0.6.0, which was never published; odd minor is the pre-release channel. NOT a patch — 13 settings renamed |
 | PQ-03 | ⬜ planned | Verify marketplace publish end to end | S | [PQ-34][pq-34] | pipeline is wired for Entra ID; the first successful publish is the proof, and nothing has published since 2025-07-21 |
 | PQ-04 | 💨 proven | Prune the release workflow | S | — | done with PQ-01 — 318 lines to 190 |
 
-### v0.6.0 — live sync to an open workbook
+### v0.7.0 — live sync to an open workbook
 
 The headline feature, requested by a real user in October 2025 and left for ten months because the
 object model looked like a dead end. It is not: `WorkbookQuery.Formula` is read/write, and a running

@@ -27,7 +27,7 @@
 
 <!-- BADGES -->
 <p align="center">
-<img alt="License: MIT" src="https://img.shields.io/badge/License-MIT-yellow.svg">&nbsp;<!--ewc3:badgeVersion--><img alt="Version" src="https://img.shields.io/badge/Version-0.6.0-brightgreen.svg"><!--/ewc3:badgeVersion-->&nbsp;<!--ewc3:badgeTestsHtml--><img alt="Tests" src="https://img.shields.io/badge/tests-136-brightgreen.svg"><!--/ewc3:badgeTestsHtml-->&nbsp;<a href="https://marketplace.visualstudio.com/items?itemName=ewc3labs.excel-power-query-editor"><img alt="VS Code Marketplace" src="https://img.shields.io/badge/VS_Code-Marketplace-blue.svg"></a>&nbsp;<a href="https://www.buymeacoffee.com/ewc3labs"><img alt="Buy Me a Coffee" src="https://img.shields.io/badge/Buy%20Me%20a%20Coffee-yellow?logo=buy-me-a-coffee&logoColor=white"></a>
+<img alt="License: MIT" src="https://img.shields.io/badge/License-MIT-yellow.svg">&nbsp;<!--ewc3:badgeVersion--><img alt="Version" src="https://img.shields.io/badge/Version-0.7.0-brightgreen.svg"><!--/ewc3:badgeVersion-->&nbsp;<!--ewc3:badgeTestsHtml--><img alt="Tests" src="https://img.shields.io/badge/tests-136-brightgreen.svg"><!--/ewc3:badgeTestsHtml-->&nbsp;<a href="https://marketplace.visualstudio.com/items?itemName=ewc3labs.excel-power-query-editor"><img alt="VS Code Marketplace" src="https://img.shields.io/badge/VS_Code-Marketplace-blue.svg"></a>&nbsp;<a href="https://www.buymeacoffee.com/ewc3labs"><img alt="Buy Me a Coffee" src="https://img.shields.io/badge/Buy%20Me%20a%20Coffee-yellow?logo=buy-me-a-coffee&logoColor=white"></a>
 </p>
 <!-- /BADGES -->
 
@@ -46,7 +46,7 @@ once, reviewing a diff before it goes near the workbook.
 It reads `.xlsx`, `.xlsm` and `.xlsb` directly. **Excel does not need to be installed**, which also
 means it works on macOS and Linux, and in CI.
 
-## New in 0.6.0 — write to a workbook that's open
+## New in 0.7.0 — write to a workbook that's open
 
 The oldest complaint about tools like this: you edit your query, hit save, and get *"the file is
 locked, close Excel and try again."* So you close the workbook, sync, reopen it, find your place
@@ -138,7 +138,7 @@ Full reference: [Config Reference](docs/Config_Reference.md).
 
 > **Upgrading from 0.5.x?** The settings were reorganized into namespaces (`watchAlways` →
 > `watch.always`, and so on). **Your existing settings are migrated automatically** the first time
-> 0.6.0 starts, and the old names remain documented as deprecated for a release.
+> 0.7.0 starts, and the old names remain documented as deprecated for a release.
 
 ## Documentation
 

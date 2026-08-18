@@ -13,7 +13,7 @@ Dates are approximate, newest first.
 **20260815 — every setting moved into a namespace.**
 
 Thirteen settings were renamed. **Your existing values are migrated automatically the first time
-0.6.0 starts**, in whichever scope you set them: user, workspace, or folder. A value you have
+0.7.0 starts**, in whichever scope you set them: user, workspace, or folder. A value you have
 already set under the new name is never overwritten.
 
 | Old | New |
@@ -39,14 +39,14 @@ The old names are still declared, marked deprecated, and will keep working for a
 release — so skipping a version does not skip the migration. They are struck through in the settings
 UI with a pointer to the replacement.
 
-> **If you ran a development build between 0.5.0 and 0.6.0**, an earlier migration deleted settings
+> **If you ran a development build between 0.5.0 and 0.7.0**, an earlier migration deleted settings
 > rather than migrating them. That code never shipped in a release, but if your configuration
 > emptied itself, this is why. Setting them again is safe; the current migration preserves values.
 
 **20260816 — `symbols.autoInstall` and `symbols.installLevel` removed.**
 
 Both governed a mechanism that no longer exists: writing `excel-pq-symbols.json` into your workspace
-and editing `powerquery.client.additionalSymbolsDirectories`. Since 0.6.0 the symbols are handed to
+and editing `powerquery.client.additionalSymbolsDirectories`. Since 0.7.0 the symbols are handed to
 the Power Query extension through its API, so nothing is written and there is nothing to opt out of.
 
 They had already stopped doing anything - no code read either one. **If they are in your

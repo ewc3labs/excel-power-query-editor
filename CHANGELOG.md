@@ -11,7 +11,12 @@ All notable changes to the "excel-power-query-editor" extension will be document
 ---
 
 
-## [0.6.0] - 2026-08-15
+## [0.7.0] - 2026-08-15
+
+> **Numbered 0.7.0, not 0.6.0.** This work was developed and tested as `0.6.0` — the
+> `v0.6.0-rc.*` tags are that history — but `0.6.0` was never published anywhere. The Marketplace
+> pre-release channel requires an **odd** minor version, so this ships there as `0.7.0`, and the
+> first general release will be `0.8.0`.
 
 ### Added
 
