@@ -42,9 +42,10 @@ live sync in October 2025, has been replied to and can install it.
    identity setup: [Marketplace identity][marketplace-identity], where the step everyone gets wrong
    is that the publisher member is a **profile id**, not the client ID.
 
-3. **`PQ-02` — 0.7.0 to the pre-release channel, then 0.8.0 stable.** 5,450 installs are on a
-   thirteen-month-old build. The pre-release goes first because nobody has opted in to that channel,
-   so it proves the publish path without betting the stable release on it.
+3. **`PQ-02` — 0.7.0 is on the pre-release channel; 0.8.0 stable is the decision left.** Published
+   2026-08-18, and the stable channel is deliberately untouched at `0.5.1`, so the 5,450 installs
+   still have not received this work. The publish path is now proven, so shipping 0.8.0 is a version
+   bump and a tag — the remaining question is whether the RC feedback justifies it.
 
 ### Not blocking, but known
 
@@ -91,7 +92,7 @@ States: `⬜ planned` · `⛔ blocked` · `🟨 coded` — built and deployed, n
 | ID | State | Slice | Est | Doc | Status |
 | --- | --- | --- | --- | --- | --- |
 | PQ-01 | 💨 proven | Rebuild release.yml as tag-triggered | M | — | proven 2026-08-15 — v0.6.0-rc.1 built a draft, marketplace skipped |
-| PQ-02 | ⬜ planned | Ship the settings refactor: 0.7.0 pre-release, then 0.8.0 stable | S | — | renumbered from 0.6.0, which was never published; odd minor is the pre-release channel. NOT a patch — 13 settings renamed |
+| PQ-02 | 🟡 half | Ship the settings refactor: 0.7.0 pre-release ✅, 0.8.0 stable ⬜ | S | — | 0.7.0 published 2026-08-18; stable still on 0.5.1 by design. NOT a patch — 13 settings renamed |
 | PQ-03 | ⬜ planned | Verify marketplace publish end to end | S | [PQ-34][pq-34] | pipeline is wired for Entra ID; the first successful publish is the proof, and nothing has published since 2025-07-21 |
 | PQ-04 | 💨 proven | Prune the release workflow | S | — | done with PQ-01 — 318 lines to 190 |
 
@@ -132,7 +133,7 @@ The two write paths currently disagree about deletion, and nobody chose that. Se
 | PQ-29 | ✅ done | USER_GUIDE.md has no mention of live sync | S | [Live_Sync](../Live_Sync.md) | feature doc written; User_Guide now carries a section pointing into it |
 | PQ-30 | ✅ done | Retire the RELEASE_SUMMARY pattern | S | — | removed; CHANGELOG and the release body are the two homes |
 | PQ-32 | ✅ done | docs: link and orphan checking in CI | S | [Overview](../Overview.md) | `npm run docs:links` found 11 dead links and 1 unreachable doc on its first run |
-| PQ-34 | 🟡 wired | Marketplace channels, and PAT-free auth before PATs die | M | [PQ-34][pq-34] | both modes implemented behind `MARKETPLACE_AUTH` (`entra` \| `oidc`), fail-closed, no fallback. Pipeline proven on v0.6.0-rc.3 by tag push and dispatch; **neither publish job has ever run.** Blocked on manual identity setup |
+| PQ-34 | 💨 proven | Marketplace channels, and PAT-free auth before PATs die | M | [PQ-34][pq-34] | **proven 2026-08-18** — 0.7.0 published to the pre-release channel via `--azure-credential`, run 32084088671. Both modes behind `MARKETPLACE_AUTH`, fail-closed, no fallback; `oidc` stays unproven until the Marketplace ships its trust policy |
 | PQ-31 | 🟡 partial | bump-version: drop commit analysis, sync the README badge | S | [PUBLISHING_GUIDE](../PUBLISHING_GUIDE.md) | badge sync DONE by docs-tools `values`; commit analysis still there, and the `npm version` tag hazard is now documented rather than fixed |
 
 ### Data safety — the thing that must never break
