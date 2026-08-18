@@ -214,15 +214,21 @@ membership grants what `vsce` needs, and whether `vsce`'s credential chain picks
 session `azure/login` leaves behind — `AzureCliCredential` is second in the chain it builds, so it
 should, but that is reading the source rather than observing it.
 
-### Publish 0.6.0 before anything higher
+### Prove the auth on the pre-release channel first
 
-**Marketplace versions only go up.** Publishing `0.7.0` to the pre-release channel first would
-foreclose `0.6.0` as a stable release permanently, because a lower version cannot follow a higher
-one. The pre-release channel looks like the low-risk place to test authentication — nobody has opted
-in to it yet — but that ordering is a one-way door.
+**Marketplace versions only go up**, so publishing `0.7.0` means the next stable is `0.8.0`, not
+`0.6.0`. That is not a cost — it is the cadence the even/odd convention already describes, and it
+buys a genuinely safe first publish:
 
-So the first real publish is `0.6.0` to stable, which is also the release 5,450 users on a
-thirteen-month-old build are waiting for. It is gated by an approval and by `MARKETPLACE_PUBLISH`,
-and it has been through the full pipeline as `v0.6.0-rc.3`.
+```text
+0.7.0  pre-release   nobody has opted in -> effectively zero blast radius
+0.8.0  stable        after the auth path is proven, to 5,450 users
+```
 
-[guide]: PUBLISHING_GUIDE.md
+The alternative — making the first ever use of an unproven publish path a stable release to 5,450
+auto-updating installs — has the same irreversibility and none of the safety.
+
+**Nothing is orphaned by the renumber.** `v0.6.0` was never released; only `v0.6.0-rc.1` through
+`rc.3` exist. The version number is cheap and the release content is unchanged.
+
+The README version badge is derived from `package.json`, so it follows a bump on its own.
