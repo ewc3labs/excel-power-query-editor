@@ -232,3 +232,5 @@ auto-updating installs — has the same irreversibility and none of the safety.
 `rc.3` exist. The version number is cheap and the release content is unchanged.
 
 The README version badge is derived from `package.json`, so it follows a bump on its own.
+
+[guide]: PUBLISHING_GUIDE.md
