@@ -40,6 +40,16 @@ const LIBRARY_ID = 'excel-power-query-editor';
  * Declared here rather than imported: taking a dependency on their package to describe three
  * methods would be heavier than the methods themselves, and the extension may not be installed at
  * all - in which case there is nothing to type against.
+ *
+ * >>> UPSTREAM CONTRACT: microsoft/vscode-powerquery#206 <<<
+ * https://github.com/microsoft/vscode-powerquery/issues/206
+ *
+ * THESE METHOD NAMES ARE NOT A PUBLISHED API. They come from that issue, and TypeScript cannot
+ * check them for us because the shape is declared here rather than imported. If Power Query renames
+ * or removes them, nothing fails to compile - the `typeof` guard below simply starts returning
+ * `api-not-available` forever and Excel symbols quietly stop appearing.
+ *
+ * Grep `vscode-powerquery#206` to find every place that assumption is made.
  */
 interface PowerQueryApi {
 	readonly addLibrarySymbols: (
@@ -85,6 +95,12 @@ export async function registerExcelSymbols(
 
 	if (!api || typeof api.addLibrarySymbols !== 'function') {
 		// An older Power Query extension predating the API. Nothing to do, and nothing broken.
+		//
+		// THIS IS ALSO WHERE A RENAME LANDS. `addLibrarySymbols` is from vscode-powerquery#206 and
+		// is not a published contract, so an upstream rename is indistinguishable from an old
+		// version here - both are "the method is not there". If Excel symbols stop appearing for
+		// users on a CURRENT Power Query extension, check the method name upstream before anything
+		// else. https://github.com/microsoft/vscode-powerquery/issues/206
 		return { ok: false, count: 0, reason: 'api-not-available' };
 	}
 
@@ -136,6 +152,9 @@ export function explainRegistration(result: SymbolRegistrationResult): string {
 			return 'Install the Power Query / M Language extension to get IntelliSense for '
 				+ 'Excel.CurrentWorkbook().';
 		case 'api-not-available':
+			// Says "too old" because that is the likely cause - but an upstream RENAME of
+			// `addLibrarySymbols` presents identically and would make this sentence wrong for
+			// everybody. See vscode-powerquery#206 and the guard in registerExcelSymbols.
 			return 'The installed Power Query extension is too old to accept extra symbols. '
 				+ 'Update it to get Excel.CurrentWorkbook() IntelliSense.';
 		default:
@@ -184,4 +203,72 @@ export function watchForPowerQueryExtension(
 			log(`Power Query extension changed but symbols did not register: ${result.reason}`, 'debug');
 		}
 	});
+}
+
+/**
+ * LEFTOVERS FROM THE FILE-BASED VERSION, WHICH WE FIND AND REPORT BUT NEVER DELETE.
+ *
+ * Before PQ-18 this extension wrote `excel-pq-symbols/excel-pq-symbols.json` to disk and appended
+ * that folder to `powerquery.client.additionalSymbolsDirectories`. Upgrading does not remove either,
+ * because an upgrade has no business deleting files a user might have edited, moved, or come to
+ * depend on - the same reason live sync refuses to overwrite an unsaved workbook.
+ *
+ * But leaving them silent is its own problem: if the setting still points at the old folder, the
+ * Power Query extension keeps loading those symbols from disk while we push the current ones through
+ * the API. At best that is redundant, and the stale copy never updates again.
+ *
+ * So: find them, say so once, and let the human decide.
+ */
+
+const LEGACY_DIR_NAME = 'excel-pq-symbols';
+const LEGACY_FILE_NAME = 'excel-pq-symbols.json';
+
+export interface LegacyLeftovers {
+	/** Directories that still contain our old symbols file. */
+	readonly folders: ReadonlyArray<string>;
+	/** True when `additionalSymbolsDirectories` still names one of our folders. */
+	readonly settingStillPoints: boolean;
+}
+
+/** Both places the old version could have written, matching its own path logic exactly. */
+function legacyCandidates(): string[] {
+	const out: string[] = [];
+
+	// User scope. The old code used APPDATA or HOME - not a VS Code API - so we repeat that rather
+	// than compute a "better" path and miss the files it actually wrote.
+	const userDataPath = process.env.APPDATA || process.env.HOME;
+	if (userDataPath) {
+		out.push(path.join(userDataPath, 'Code', 'User', LEGACY_DIR_NAME));
+	}
+
+	for (const folder of vscode.workspace.workspaceFolders ?? []) {
+		out.push(path.join(folder.uri.fsPath, '.vscode', LEGACY_DIR_NAME));
+	}
+
+	return out;
+}
+
+/** Look for what the file-based version left behind. Reads only; writes and deletes nothing. */
+export function findLegacyLeftovers(): LegacyLeftovers {
+	const folders = legacyCandidates().filter(dir => {
+		try {
+			return fs.existsSync(path.join(dir, LEGACY_FILE_NAME));
+		} catch {
+			// An unreadable path is not our problem to report.
+			return false;
+		}
+	});
+
+	let settingStillPoints = false;
+	try {
+		const configured = vscode.workspace
+			.getConfiguration('powerquery.client')
+			.get<string[]>('additionalSymbolsDirectories') ?? [];
+		settingStillPoints = configured.some(d =>
+			typeof d === 'string' && d.replace(/[\/]+$/, '').endsWith(LEGACY_DIR_NAME));
+	} catch {
+		// The Power Query extension may not be installed, so the section may not exist.
+	}
+
+	return { folders, settingStillPoints };
 }

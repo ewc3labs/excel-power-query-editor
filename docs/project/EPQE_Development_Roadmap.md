@@ -61,7 +61,7 @@ not a summary of them.
 | Prefix | Scope | Owner | Last Used | Series |
 | --- | --- | --- | --- | --- |
 | PQ | global | excel-power-query-editor | <!--ewc3:lastPQ-->PQ-34<!--/ewc3:lastPQ--> | product slices, fixes and infrastructure |
-| FIX | repo-local | excel-power-query-editor | <!--ewc3:lastFIX-->FIX-0<!--/ewc3:lastFIX--> | small corrections not worth a slice |
+| FIX | repo-local | excel-power-query-editor | <!--ewc3:lastFIX-->FIX-2<!--/ewc3:lastFIX--> | small corrections not worth a slice |
 
 **Last Used is derived** from the ID tables below by `ewc3-docs values`, and CI fails if it is
 stale. That matters more than it sounds: this cell is the INPUT to minting an ID, not a summary of
@@ -134,6 +134,8 @@ The two write paths currently disagree about deletion, and nobody chose that. Se
 | PQ-30 | ✅ done | Retire the RELEASE_SUMMARY pattern | S | — | removed; CHANGELOG and the release body are the two homes |
 | PQ-32 | ✅ done | docs: link and orphan checking in CI | S | [Overview](../Overview.md) | `npm run docs:links` found 11 dead links and 1 unreachable doc on its first run |
 | PQ-34 | 💨 proven | Marketplace channels, and PAT-free auth before PATs die | M | [PQ-34][pq-34] | **proven 2026-08-18** — 0.7.0 published to the pre-release channel via `--azure-credential`, run 32084088671. Both modes behind `MARKETPLACE_AUTH`, fail-closed, no fallback; `oidc` stays unproven until the Marketplace ships its trust policy |
+| FIX-1 | ✅ done | Symbol registration no longer blocks activation | S | — | `registerExcelSymbols` awaited `activate()` on the Power Query extension, so our activation waited on theirs for a result used only to write one debug line. Fire-and-forget; `watchForPowerQueryExtension` already covers late arrival |
+| FIX-2 | ✅ done | Report the old file-based symbols leftovers, never delete them | S | [Excel Symbols](../Excel_Symbols.md) | upgrading left `excel-pq-symbols/` on disk and the folder in `additionalSymbolsDirectories`, so a stale copy kept loading beside the API-registered one. Found and reported once; deleting is the user's call |
 | PQ-31 | 🟡 partial | bump-version: drop commit analysis, sync the README badge | S | [PUBLISHING_GUIDE](../PUBLISHING_GUIDE.md) | badge sync DONE by docs-tools `values`; commit analysis still there, and the `npm version` tag hazard is now documented rather than fixed |
 
 ### Data safety — the thing that must never break

@@ -189,12 +189,26 @@ Cursor, Windsurf, and VSCodium install from [Open VSX][open-vsx], not the Micros
 those users currently cannot install this extension at all. That is a strange gap for a tool whose
 pitch is editing Power Query M with an AI coding agent.
 
-Publishing there needs a free account at <https://open-vsx.org>, an `ewc3labs` namespace, and an
-access token stored as the **`OVSX_PAT`** secret.
+**Not published there yet** — `OVSX_PAT` has never been set, so the job has warned and skipped on
+every run. Setup, in order, because step 2 is the one people miss:
+
+1. **Sign in at <https://open-vsx.org>** with GitHub.
+2. **Sign the Eclipse Foundation Publisher Agreement**, from your Open VSX profile. Publishing is
+   refused without it, and nothing earlier in the flow mentions it.
+3. **Claim the `ewc3labs` namespace** — `npx ovsx create-namespace ewc3labs -p <token>`.
+4. **Generate an access token** in your profile and store it as the repository secret `OVSX_PAT`.
+
+The job publishes the **same VSIX** the Marketplace got, so the pre-release flag baked in at package
+time carries over untouched.
 
 **The job is deliberately non-blocking.** A second registry being down, rate-limiting, or rejecting
 a token must not turn a successful Marketplace publish into a red release. Without `OVSX_PAT` it
 warns and skips.
+
+**But it now says which.** The run summary reports `published` or `skipped (no OVSX_PAT)` rather
+than the job result, because "success" covered both — and on the first real release it meant *"did
+nothing"*. Nobody would have known without checking Open VSX by hand, which is how 0.7.0 reached the
+Marketplace and not Open VSX with a green pipeline either way.
 
 **Open VSX is not passed `--pre-release`, on purpose.** Given an already-packaged VSIX it warns
 *"Ignoring option '--pre-release' for prepackaged extension"* and carries on — the channel is baked

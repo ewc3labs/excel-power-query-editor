@@ -56,6 +56,39 @@ where it goes and a pull request is welcome.
 The right long-term home for these is Microsoft's library rather than ours — see
 [vscode-powerquery#206][vscode-powerquery]. Until then, we push in the missing ones.
 
+## Leftovers from the old version
+
+Before 0.7.0 this extension wrote `excel-pq-symbols/excel-pq-symbols.json` to disk and appended that
+folder to `powerquery.client.additionalSymbolsDirectories`:
+
+```text
+%APPDATA%/Code/User/excel-pq-symbols/          (user scope)
+<workspace>/.vscode/excel-pq-symbols/          (workspace scope)
+```
+
+**Upgrading does not delete either, deliberately.** An upgrade removing files you might have edited
+or moved is a trade nobody agreed to. The extension reports what it finds, once, and leaves the
+decision to you.
+
+**If that folder is still listed in the setting, it is not merely untidy** — the Power Query
+extension keeps loading that copy from disk while the current symbols arrive through the API. The
+file on disk never updates again, so it can only drift. Removing the setting entry is the part worth
+doing; the folder itself is harmless once nothing points at it.
+
+## If the symbols stop appearing
+
+They are handed to the Power Query extension through `addLibrarySymbols`, a method described in
+[vscode-powerquery#206][vscode-powerquery] rather than in a published API. **We cannot detect the
+difference between that method being renamed upstream and the Power Query extension simply being
+old** — both look like "the method is not there."
+
+So if completions vanish for someone on a **current** Power Query extension, and
+`Excel Power Query Editor: Register Excel Symbols` reports *"too old to accept extra symbols"*,
+check the method name upstream before anything else. That message is a guess about the cause, and it
+is the wrong guess in exactly this case.
+
+Everywhere the code depends on that method is greppable as `vscode-powerquery#206`.
+
 ---
 
 Commands are in [Commands](Commands.md).

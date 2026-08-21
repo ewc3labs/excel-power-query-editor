@@ -5,7 +5,7 @@ function openExtensionSettings() {
 // The module 'vscode' contains the VS Code extensibility API
 import * as vscode from 'vscode';
 import { parseSection, diffQueries } from './mSection';
-import { registerExcelSymbols, unregisterExcelSymbols, explainRegistration, watchForPowerQueryExtension } from './powerQuerySymbols';
+import { registerExcelSymbols, unregisterExcelSymbols, explainRegistration, watchForPowerQueryExtension, findLegacyLeftovers } from './powerQuerySymbols';
 import {
 	explainInvisibleWorkbook,
 	explainLockedButUnreachable,
@@ -377,11 +377,26 @@ export async function activate(context: vscode.ExtensionContext) {
 		// setting is changed, so there is nothing to gate behind a preference and nothing to
 		// fail when no workspace is open - which is what the old file-based version did on
 		// every CI run for a year.
-		const symbolResult = await registerExcelSymbols(context.extensionPath,
-			(m, l) => log(m, 'excelSymbols', l ?? 'info'));
-		if (!symbolResult.ok) {
-			log(`Excel symbols not registered: ${symbolResult.reason}`, 'excelSymbols', 'debug');
-		}
+		// Symbols go to the POWER QUERY extension's API, not to any VS Code API - see
+		// vscode-powerquery#206. If it is absent, old, or renames the method, registerExcelSymbols
+		// declines with a reason and nothing here breaks.
+		//
+		// NOT AWAITED, DELIBERATELY. registerExcelSymbols calls `activate()` on the Power Query
+		// extension, so awaiting it makes OUR activation wait on THEIRS - and the only thing we do
+		// with the result is write one debug line. The try/catch in there covers Power Query
+		// throwing; it cannot cover Power Query being slow, and activation time is the one number
+		// VS Code shows users in `Extensions: Show Running Extensions`.
+		//
+		// Nothing downstream needs the symbols to be registered before we finish activating, and
+		// watchForPowerQueryExtension below re-registers on any later arrival, so a late finish
+		// costs nothing.
+		void registerExcelSymbols(context.extensionPath,
+			(m, l) => log(m, 'excelSymbols', l ?? 'info'))
+			.then(symbolResult => {
+				if (!symbolResult.ok) {
+					log(`Excel symbols not registered: ${symbolResult.reason}`, 'excelSymbols', 'debug');
+				}
+			});
 
 		// And keep them registered. The Power Query extension can be installed, enabled or updated
 		// after we start, and in each case symbols registered at activation are never delivered or
@@ -391,6 +406,13 @@ export async function activate(context: vscode.ExtensionContext) {
 				(m, l) => log(m, 'excelSymbols', l ?? 'info'))
 		);
 		
+		// Tell the user about anything the OLD file-based symbols version left on disk. Once.
+		//
+		// We do not delete it. An upgrade deleting a user's files is a trade nobody agreed to, and
+		// they may have edited or moved that copy. Reporting is the whole job; the decision is
+		// theirs. See vscode-powerquery#206 and PQ-18 for why the file stopped being used.
+		void reportLegacySymbolLeftovers(context);
+
 		log('Extension activation completed successfully', 'activate', 'success');
 	} catch (error) {
 		log(`Extension activation failed: ${error}`, 'activate', 'error');
@@ -2397,6 +2419,50 @@ async function isExcelFileWritable(excelFile: string): Promise<boolean> {
 }
 
 // This method is called when your extension is deactivated
+
+/**
+ * Report - never remove - what the pre-PQ-18 file-based symbols version left behind.
+ *
+ * Shown at most once per machine. A notification that returns every startup is one people learn to
+ * dismiss without reading, which would defeat the point on the one startup it mattered.
+ */
+const LEGACY_SYMBOLS_NOTICE_KEY = 'excelPowerQueryEditor.legacySymbolsNoticeShown';
+
+async function reportLegacySymbolLeftovers(context: vscode.ExtensionContext): Promise<void> {
+	try {
+		if (context.globalState.get<boolean>(LEGACY_SYMBOLS_NOTICE_KEY)) { return; }
+
+		const { folders, settingStillPoints } = findLegacyLeftovers();
+		if (folders.length === 0 && !settingStillPoints) { return; }
+
+		log(`Legacy symbols leftovers found: ${folders.length} folder(s), `
+			+ `setting still points: ${settingStillPoints}`, 'excelSymbols', 'info');
+
+		// Two different situations, and only one of them is actively doing something.
+		const message = settingStillPoints
+			? "Excel symbols now come from the Power Query API, but this extension's old symbols "
+				+ "folder is still listed in powerquery.client.additionalSymbolsDirectories - so a "
+				+ "stale copy is still being loaded. Nothing has been deleted."
+			: "This extension used to write an Excel symbols file to disk. It no longer does, and "
+				+ "the old folder is still there. Nothing has been deleted.";
+
+		const SHOW = 'Show Me';
+		const DISMISS = "Don't Show Again";
+		const choice = await vscode.window.showInformationMessage(message, SHOW, DISMISS);
+
+		if (choice === SHOW && folders.length > 0) {
+			await vscode.commands.executeCommand('revealFileInOS', vscode.Uri.file(folders[0]));
+		}
+		if (choice === SHOW || choice === DISMISS) {
+			await context.globalState.update(LEGACY_SYMBOLS_NOTICE_KEY, true);
+		}
+	} catch (e) {
+		// Reporting leftovers must never be the thing that breaks a session.
+		log(`Could not check for legacy symbols leftovers: ${e instanceof Error ? e.message : e}`,
+			'excelSymbols', 'debug');
+	}
+}
+
 export function deactivate() {
 	// Take our symbols back out, so the language service is left as we found it.
 	void unregisterExcelSymbols();

@@ -11,6 +11,41 @@ All notable changes to the "excel-power-query-editor" extension will be document
 ---
 
 
+## [0.7.1] - 2026-08-21
+
+Presentation and plumbing. No change to how live sync or extraction behave.
+
+### Fixed
+
+- **The README header rendered squashed on the Marketplace.** The logos are 128×128 square files
+  that were arriving as 85×128, because the markup pinned both `width` and `height` while the
+  renderer clamps width to the table cell and leaves height alone. Specifying only the width lets
+  the browser derive the height, so they stay square at any column width.
+- **`FIX-1` — symbol registration no longer delays activation.** Registering Excel symbols calls
+  `activate()` on the Power Query extension, and awaiting it made our activation wait on theirs for
+  a result used only to write one log line.
+
+### Added
+
+- **`FIX-2` — leftovers from the old file-based symbols version are now reported.** Before `0.7.0`
+  this extension wrote `excel-pq-symbols/excel-pq-symbols.json` to disk and added that folder to
+  `powerquery.client.additionalSymbolsDirectories`. Upgrading never removed either, so a stale copy
+  could still be loading beside the symbols now supplied through the API. The extension says so
+  once and **deletes nothing** — the folder may have been edited or moved, and that decision is
+  yours. See [Excel Symbols](docs/Excel_Symbols.md).
+- **Published to [Open VSX](https://open-vsx.org/extension/ewc3labs/excel-power-query-editor)**, so
+  Cursor, Windsurf, and VSCodium can install it. Same package as the Marketplace build.
+
+### Internal
+
+- The Open VSX release job now reports `published` or `skipped` rather than reporting success for
+  both. It had silently skipped every run for want of a token, with a green pipeline either way.
+- Every place the code depends on `addLibrarySymbols` — an API described in
+  [vscode-powerquery#206](https://github.com/microsoft/vscode-powerquery/issues/206) rather than
+  published — is now greppable as `vscode-powerquery#206`. A rename upstream compiles fine and
+  presents as "your Power Query extension is too old", which is the wrong sentence for the right
+  failure.
+
 ## [0.7.0] - 2026-08-15
 
 > **Numbered 0.7.0, not 0.6.0.** This work was developed and tested as `0.6.0` — the

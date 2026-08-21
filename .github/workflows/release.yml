@@ -378,6 +378,12 @@ jobs:
     runs-on: ubuntu-latest
     if: needs.marketplace.result == 'success'
     continue-on-error: true
+    # SAY WHICH, because "success" covered both "published" and "did nothing" - and the first time
+    # this ran it did nothing, reported green, and nobody would have known without checking Open VSX
+    # by hand. A job that cannot distinguish silence from success is the exact thing this pipeline
+    # keeps being rebuilt to avoid.
+    outputs:
+      status: ${{ steps.publish.outputs.status }}
     steps:
       - uses: actions/download-artifact@v4
         with:
@@ -388,11 +394,13 @@ jobs:
           node-version: '22'
 
       - name: Publish
+        id: publish
         env:
           OVSX_PAT: ${{ secrets.OVSX_PAT }}
           OVSX_VERSION: 1.1.1
         run: |
           if [[ -z "$OVSX_PAT" ]]; then
+            echo "status=skipped (no OVSX_PAT)" >> "$GITHUB_OUTPUT"
             echo "::warning::OVSX_PAT is not configured - skipping Open VSX."
             exit 0
           fi
@@ -401,6 +409,7 @@ jobs:
           # prepackaged extension" and moves on: the channel is already baked into the VSIX manifest
           # at package time. Passing it would look like it decided something.
           npx --yes "ovsx@${OVSX_VERSION}" publish --packagePath *.vsix -p "$OVSX_PAT"
+          echo "status=published" >> "$GITHUB_OUTPUT"
 
   summary:
     name: Summary
@@ -419,7 +428,7 @@ jobs:
             echo "| Build | ${{ needs.build.result }} |"
             echo "| Draft release | ${{ needs.github-release.result }} |"
             echo "| Marketplace | ${{ needs.marketplace.result }} |"
-            echo "| Open VSX | ${{ needs.open-vsx.result }} |"
+            echo "| Open VSX | ${{ needs.open-vsx.outputs.status || needs.open-vsx.result }} |"
             echo ""
             case "$CHANNEL" in
               stable)     echo "Channel: **stable** - every user with auto-update gets this." ;;

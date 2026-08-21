@@ -2,14 +2,14 @@
 <table align="center">
 <tr>
   <td width="112" align="center" valign="middle">
-    <img src="assets/excel-power-query-editor-logo-128x128.png" width="128" height="128"><br>
+    <img src="assets/excel-power-query-editor-logo-128x128.png" width="112" alt="Excel Power Query Editor"><br>
     <strong>E · P · Q · E</strong>
   </td>
 
   <td align="center" valign="middle">
     <h1 align="center">Excel Power Query Editor</h1>
     <p align="left">
-      <b>Edit Power Query M in VS Code — including in workbooks Excel already has open.</b><br>
+      <b>Edit Power Query M in VS Code —<br>including in workbooks Excel already has open.</b><br>
       <sub>
         No Excel automation to install, no COM to configure, no closing your file to save your work.
         Built by <strong>EWC3 Labs</strong>.
@@ -18,8 +18,8 @@
   </td>
 
   <td width="112" align="center" valign="middle">
-    <img src="assets/EWC3LabsLogo-blue-128x128.png" width="128" height="128"><br>
-    <strong><em>QA Officer</em></strong>
+    <img src="assets/EWC3LabsLogo-blue-128x128.png" width="112" alt="EWC3 Labs"><br>
+    <strong>EWC3 Labs</strong>
   </td>
 </tr>
 </table>
@@ -27,7 +27,7 @@
 
 <!-- BADGES -->
 <p align="center">
-<img alt="License: MIT" src="https://img.shields.io/badge/License-MIT-yellow.svg">&nbsp;<!--ewc3:badgeVersion--><img alt="Version" src="https://img.shields.io/badge/Version-0.7.0-brightgreen.svg"><!--/ewc3:badgeVersion-->&nbsp;<!--ewc3:badgeTestsHtml--><img alt="Tests" src="https://img.shields.io/badge/tests-136-brightgreen.svg"><!--/ewc3:badgeTestsHtml-->&nbsp;<a href="https://marketplace.visualstudio.com/items?itemName=ewc3labs.excel-power-query-editor"><img alt="VS Code Marketplace" src="https://img.shields.io/badge/VS_Code-Marketplace-blue.svg"></a>&nbsp;<a href="https://www.buymeacoffee.com/ewc3labs"><img alt="Buy Me a Coffee" src="https://img.shields.io/badge/Buy%20Me%20a%20Coffee-yellow?logo=buy-me-a-coffee&logoColor=white"></a>
+<img alt="License: MIT" src="https://img.shields.io/badge/License-MIT-yellow.svg">&nbsp;<!--ewc3:badgeVersion--><img alt="Version" src="https://img.shields.io/badge/Version-0.7.1-brightgreen.svg"><!--/ewc3:badgeVersion-->&nbsp;<!--ewc3:badgeTestsHtml--><img alt="Tests" src="https://img.shields.io/badge/tests-136-brightgreen.svg"><!--/ewc3:badgeTestsHtml-->&nbsp;<a href="https://marketplace.visualstudio.com/items?itemName=ewc3labs.excel-power-query-editor"><img alt="VS Code Marketplace" src="https://img.shields.io/badge/VS_Code-Marketplace-blue.svg"></a>&nbsp;<a href="https://www.buymeacoffee.com/ewc3labs"><img alt="Buy Me a Coffee" src="https://img.shields.io/badge/Buy%20Me%20a%20Coffee-yellow?logo=buy-me-a-coffee&logoColor=white"></a>
 </p>
 <!-- /BADGES -->
 
