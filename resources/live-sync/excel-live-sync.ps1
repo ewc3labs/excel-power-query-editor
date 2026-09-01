@@ -51,6 +51,16 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
+# UTF-8 ON THE WAY OUT, BECAUSE THE DEFAULT IS THE OEM CODEPAGE.
+#
+# This helper is spawned with windowsHide, so there is no console attached and [Console]::Output-
+# Encoding falls back to the system OEM codepage - 437 on a US machine. Node reads our stdout as
+# UTF-8. Any non-ASCII in a query name or an error message would be mangled on the way back.
+#
+# An interactive shell usually has 65001 already, which is exactly why this never showed up in
+# manual testing: the bug only exists under the spawn conditions the extension actually uses.
+try { [Console]::OutputEncoding = New-Object System.Text.UTF8Encoding $false } catch { }
+
 function Respond($object) {
     Write-Output ($object | ConvertTo-Json -Depth 6 -Compress)
     exit 0
@@ -287,7 +297,19 @@ if ($Action -eq 'status') {
 
 # --- write ------------------------------------------------------------------------------------
 try {
-    $raw = [Console]::In.ReadToEnd()
+    # READ THE PIPE AS UTF-8 EXPLICITLY. [Console]::In decodes with [Console]::InputEncoding, which
+    # is the OEM codepage when no console is attached - and Node sends this payload as UTF-8.
+    #
+    # Measured: an em-dash is E2 80 94 in UTF-8, and those three bytes decoded as CP437 are the
+    # literal string a user reported seeing in their round-tripped M. Any non-ASCII character has
+    # the same problem - accented names, smart quotes, anything an AI agent wrote into a comment.
+    #
+    # A StreamReader with an explicit encoding does not consult the console at all, which is why it
+    # is used here rather than assigning [Console]::InputEncoding - that assignment can itself throw
+    # when stdin is redirected.
+    $stdin  = [Console]::OpenStandardInput()
+    $reader = New-Object System.IO.StreamReader($stdin, (New-Object System.Text.UTF8Encoding $false))
+    $raw    = $reader.ReadToEnd()
 } catch {
     Fail 'payload-unreadable' $_.Exception.Message
 }

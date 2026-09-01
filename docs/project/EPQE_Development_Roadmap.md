@@ -61,7 +61,7 @@ not a summary of them.
 | Prefix | Scope | Owner | Last Used | Series |
 | --- | --- | --- | --- | --- |
 | PQ | global | excel-power-query-editor | <!--ewc3:lastPQ-->PQ-34<!--/ewc3:lastPQ--> | product slices, fixes and infrastructure |
-| FIX | repo-local | excel-power-query-editor | <!--ewc3:lastFIX-->FIX-2<!--/ewc3:lastFIX--> | small corrections not worth a slice |
+| FIX | repo-local | excel-power-query-editor | <!--ewc3:lastFIX-->FIX-5<!--/ewc3:lastFIX--> | small corrections not worth a slice |
 
 **Last Used is derived** from the ID tables below by `ewc3-docs values`, and CI fails if it is
 stale. That matters more than it sounds: this cell is the INPUT to minting an ID, not a summary of
@@ -136,6 +136,9 @@ The two write paths currently disagree about deletion, and nobody chose that. Se
 | PQ-34 | 💨 proven | Marketplace channels, and PAT-free auth before PATs die | M | [PQ-34][pq-34] | **proven 2026-08-18** — 0.7.0 published to the pre-release channel via `--azure-credential`, run 32084088671. Both modes behind `MARKETPLACE_AUTH`, fail-closed, no fallback; `oidc` stays unproven until the Marketplace ships its trust policy |
 | FIX-1 | ✅ done | Symbol registration no longer blocks activation | S | — | `registerExcelSymbols` awaited `activate()` on the Power Query extension, so our activation waited on theirs for a result used only to write one debug line. Fire-and-forget; `watchForPowerQueryExtension` already covers late arrival |
 | FIX-2 | ✅ done | Report the old file-based symbols leftovers, never delete them | S | [Excel Symbols](../Excel_Symbols.md) | upgrading left `excel-pq-symbols/` on disk and the folder in `additionalSymbolsDirectories`, so a stale copy kept loading beside the API-registered one. Found and reported once; deleting is the user's call |
+| FIX-3 | ✅ done | Non-ASCII survives the live-sync pipe | S | — | the helper read stdin with `[Console]::In`, which decodes using the console codepage — and a windowHidden `powershell.exe` has no console, so it fell back to OEM. An em-dash arrived as its UTF-8 bytes read as CP437. Explicit UTF-8 on both directions; found by dogfooding at work, invisible to manual testing because an interactive shell is already at 65001 |
+| FIX-4 | ✅ done | A failed test run no longer rewrites `test-counts.json` | S | — | there are two test hosts; when one died the other still printed a valid summary, and summing what survived wrote `{"total": 5}` over a file that said 136 — a number that looks real and is not. Exit status was preserved, so CI would have gone red, but the file was already clobbered. A non-zero exit now leaves it alone, `--check` included. Found incidentally while landing FIX-3 |
+| FIX-5 | ✅ done | Say why live sync did not run, and offer to enable it | S | — | **reported by @dondumitru.** `liveSyncPossible` is false both when the setting is off and when Excel cannot be reached; one message blamed integrity levels for both. Since `sync.liveWhenOpen` is off by default, the common case got a paragraph about COM elevation. Their log said `owner lock file present: true` — Excel held it from disk as that user — so we had the evidence to rule elevation out and showed it anyway. Now branches on setting/platform/lock file, with an **Enable live sync** action |
 | PQ-31 | 🟡 partial | bump-version: drop commit analysis, sync the README badge | S | [PUBLISHING_GUIDE](../PUBLISHING_GUIDE.md) | badge sync DONE by docs-tools `values`; commit analysis still there, and the `npm version` tag hazard is now documented rather than fixed |
 
 ### Data safety — the thing that must never break

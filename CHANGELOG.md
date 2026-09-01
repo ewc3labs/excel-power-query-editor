@@ -11,6 +11,48 @@ All notable changes to the "excel-power-query-editor" extension will be document
 ---
 
 
+## [0.7.2] - 2026-09-01
+
+### Fixed
+
+- **`FIX-3` — non-ASCII characters no longer corrupt when syncing to an open workbook.** An em-dash
+  in an M comment came back as `ΓÇö`: Node sends the payload to the live-sync helper as UTF-8, but
+  the helper read it with `[Console]::In`, which decodes using the console codepage. The extension
+  spawns PowerShell with no console attached, so that fell back to the OEM codepage — CP437 on a US
+  machine, where the em-dash's three UTF-8 bytes are exactly those characters. Both directions are
+  now pinned to UTF-8 explicitly.
+
+  This affected **every** non-ASCII character — accented names, smart quotes, `°`, `≥` — not just
+  em-dashes, and only under live sync. It never appeared in manual testing because an interactive
+  shell is normally already at codepage 65001; the bug existed solely under the spawn conditions the
+  extension itself uses.
+
+
+- **`FIX-5` — the message you get when a workbook is locked now says what is actually wrong.**
+  Reported by [@dondumitru](https://github.com/ewc3labs/excel-power-query-editor/discussions/7).
+  Live sync is off by default, so the most common reason it does not run is simply that — but the
+  message blamed Excel and VS Code running at different privilege levels, which sent people looking
+  at elevation and UAC for a setting they had not turned on.
+
+  It now distinguishes the cases: the setting being off says so and offers an **Enable live sync**
+  button; a non-Windows machine is told live sync needs Windows and Excel; and when the setting *is*
+  on and the workbook still cannot be reached, it points at the debug log rather than guessing. The
+  elevation explanation is kept for the one case where it remains a fair guess.
+
+  Their log showed `owner lock file present: true` — meaning Excel had the workbook open from disk
+  as that same user — so the evidence to rule elevation out was already in hand and printed one line
+  above the message contradicting it.
+
+### Internal
+
+- **`FIX-4` — a failed test run no longer overwrites the recorded test count.** There are two test
+  hosts. When one died, the other still finished and printed a valid mocha summary, so summing what
+  survived wrote `{"total": 5}` over a file that said `136`. The exit status was preserved, so CI
+  would have caught it — but the file was already wrong, and a passing re-run on another machine
+  would have committed that 5 as truth. A non-zero exit now leaves the file untouched, `--check`
+  included, since comparing against a partial count sends you chasing a number instead of the
+  failure above it.
+
 ## [0.7.1] - 2026-08-21
 
 Presentation and plumbing. No change to how live sync or extraction behave.

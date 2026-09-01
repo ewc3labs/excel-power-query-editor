@@ -59,6 +59,21 @@ child.on('close', code => {
 		process.exit(code || 1);
 	}
 
+	// A FAILED RUN MUST NOT REWRITE THE COUNT.
+	//
+	// There is more than one test host. If the first dies - a compile error, a host that never
+	// starts - the second can still finish and print a perfectly valid summary, and summing what
+	// survived produces a number that looks real and is not. That happened: one host failed, the
+	// other reported 5, and {"total": 5} was written over a file that said 136.
+	//
+	// The count only means anything when the whole suite ran, so a non-zero exit leaves the file
+	// alone. --check bails here too: comparing against a partial count reports a mismatch and sends
+	// somebody chasing a number when the real problem is the failure above it.
+	if (code !== 0) {
+		console.error('\nTests failed (exit ' + code + '); test-counts.json left unchanged. The partial run counted ' + total + '.');
+		process.exit(code);
+	}
+
 	// ONLY `total` is written. passing/pending depend on whether the machine has Excel - this rig
 	// reports 119 passing and 0 pending, every CI runner reports 114 and 5 - so persisting them makes
 	// the file differ by machine, and any check comparing it fails for everyone but its author.

@@ -8,6 +8,7 @@ import { parseSection, diffQueries } from './mSection';
 import { registerExcelSymbols, unregisterExcelSymbols, explainRegistration, watchForPowerQueryExtension, findLegacyLeftovers } from './powerQuerySymbols';
 import {
 	explainInvisibleWorkbook,
+	explainLiveSyncUnavailable,
 	explainLockedButUnreachable,
 	getLiveStatus,
 	hasOwnerLockFile,
@@ -887,12 +888,34 @@ async function syncToExcel(uri?: vscode.Uri, uris?: vscode.Uri[]): Promise<SyncO
 			// elevated Excel is invisible to a normal-integrity extension, and the reverse. Say that
 			// plainly rather than "possibly open in Excel", and name both ways out. Guessing at a
 			// similarly-named workbook we CAN see is how queries end up in the wrong file.
-			const message = explainLockedButUnreachable(excelFile);
-			log(`${fileName} is locked and not reachable through Excel `
-				+ `(owner lock file present: ${hasOwnerLockFile(excelFile)})`, 'syncToExcel', 'warn');
+			// WHY, SPECIFICALLY. `liveSyncPossible` is false for two unrelated reasons - the setting
+			// is off, or the setting is on and Excel could not be reached - and this used to answer
+			// both with a paragraph about integrity levels. A user hit the first, was sent after
+			// elevation, and found the setting himself. The owner lock file was right there in the
+			// log saying Excel held it from disk as that same user.
+			const ownerLockPresent = hasOwnerLockFile(excelFile);
+			const liveEnabled = config.get<boolean>('sync.liveWhenOpen', false) ?? false;
+			const { message, offerEnable } = explainLiveSyncUnavailable({
+				fileName,
+				enabled: liveEnabled,
+				supported: isLiveSyncSupported(),
+				ownerLockPresent
+			});
 
-			const retry = await vscode.window.showWarningMessage(message, 'Retry', 'Cancel');
-			if (retry === 'Retry') {
+			log(`${fileName} is locked and not reachable through Excel `
+				+ `(liveWhenOpen=${liveEnabled}, supported=${isLiveSyncSupported()}, `
+				+ `owner lock file present: ${ownerLockPresent})`, 'syncToExcel', 'warn');
+
+			const actions = offerEnable ? ['Enable live sync', 'Retry', 'Cancel'] : ['Retry', 'Cancel'];
+			const choice = await vscode.window.showWarningMessage(message, ...actions);
+
+			if (choice === 'Enable live sync') {
+				// Global, because the setting is about this machine's Excel rather than this project.
+				// Optional call: getConfig() returns a stub under test that has no update.
+				await config.update?.('sync.liveWhenOpen', true, vscode.ConfigurationTarget.Global);
+				log('sync.liveWhenOpen enabled from the locked-workbook prompt', 'syncToExcel', 'info');
+				setTimeout(() => syncToExcel(uri), 250);
+			} else if (choice === 'Retry') {
 				// Retry after a short delay
 				setTimeout(() => syncToExcel(uri), 1000);
 			}

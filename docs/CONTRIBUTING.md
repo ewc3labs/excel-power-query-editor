@@ -196,7 +196,7 @@ setup above is what everyone actually does, so that is what is documented.
 
 ### Test Architecture
 
-The suite has <!--ewc3:tests-->136<!--/ewc3:tests--> tests, organized by area:
+The suite has <!--ewc3:tests-->142<!--/ewc3:tests--> tests, organized by area:
 
 - **Commands** - extension command functionality
 - **Integration** - end-to-end Excel workflows against real workbooks
@@ -513,7 +513,7 @@ conventions are in [Overview](Overview.md).
 
 - **Operating Systems**: Ubuntu, Windows, macOS
 - **Node.js Versions**: 22, 24
-- **Quality Gates**: ESLint, TypeScript, <!--ewc3:tests-->136<!--/ewc3:tests--> tests
+- **Quality Gates**: ESLint, TypeScript, <!--ewc3:tests-->142<!--/ewc3:tests--> tests
   (<!--ewc3:testsNeedingExcel-->5<!--/ewc3:testsNeedingExcel--> need Excel), documentation checks
 - **Artifact Management**: VSIX packaging with 30-day retention
 

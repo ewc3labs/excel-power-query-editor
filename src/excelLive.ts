@@ -288,6 +288,65 @@ export function hasOwnerLockFile(filePath: string): boolean {
  *
  * Both ways out are the user's to choose, so say both.
  */
+/**
+ * Why live sync did not handle a locked workbook - and it is usually not what we used to say.
+ *
+ * REPORTED BY A USER, AND THEY WERE RIGHT. The old code showed one message whenever the workbook
+ * was locked and live sync had not handled it, and that message blamed integrity levels. But the
+ * probe is gated on `sync.liveWhenOpen`, which is OFF by default - so the overwhelmingly common
+ * case was "you have not turned it on", answered with a paragraph about COM and elevation.
+ *
+ * Their log said `owner lock file present: true`, meaning Excel had the workbook open FROM DISK as
+ * that same user. We had the evidence to rule elevation out and showed the elevation message
+ * anyway. Enabling the setting fixed it, after a round trip that should never have been needed.
+ *
+ * Kept pure and separated from the UI so every branch is testable without a workbook, an Excel, or
+ * a running COM server.
+ */
+export function explainLiveSyncUnavailable(opts: {
+	fileName: string;
+	/** `sync.liveWhenOpen` - off by default. */
+	enabled: boolean;
+	/** Windows, in practice. */
+	supported: boolean;
+	/** `~$Name.xlsx` beside the workbook: Excel opened it from disk, as this user. */
+	ownerLockPresent: boolean;
+}): { message: string; offerEnable: boolean } {
+	const { fileName, enabled, supported, ownerLockPresent } = opts;
+
+	if (!supported) {
+		return {
+			message: `${fileName} is open in Excel, so it cannot be written directly. Live sync can `
+				+ 'write into an open workbook, but it needs Windows and Excel - it works by asking '
+				+ 'Excel to make the change. Close the workbook and sync again.',
+			offerEnable: false
+		};
+	}
+
+	if (!enabled) {
+		return {
+			message: `${fileName} is open in Excel. This extension can write straight into an open `
+				+ 'workbook, but that is off by default - turn on '
+				+ '`excel-power-query-editor.sync.liveWhenOpen` and sync again. Or close the '
+				+ 'workbook and sync as usual.',
+			offerEnable: true
+		};
+	}
+
+	if (ownerLockPresent) {
+		// Excel holds it, from disk, as this user - so elevation is the wrong thing to blame.
+		return {
+			message: `${fileName} is open in Excel and live sync is on, but the workbook could not `
+				+ 'be reached through Excel. Set `excel-power-query-editor.log.level` to `debug` and '
+				+ 'check the Output panel for the `live sync` line - it names the reason. Closing the '
+				+ 'workbook and syncing again works meanwhile.',
+			offerEnable: false
+		};
+	}
+
+	return { message: explainLockedButUnreachable(fileName), offerEnable: false };
+}
+
 export function explainLockedButUnreachable(filePath: string): string {
 	return `${path.basename(filePath)} is open somewhere this extension cannot reach. The usual `
 		+ 'cause is Excel and VS Code running at different privilege levels - COM hides running '
