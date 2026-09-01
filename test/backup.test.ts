@@ -25,7 +25,21 @@ suite('Backup Tests', () => {
 		
 		// Clean up temp directory
 		if (fs.existsSync(tempDir)) {
-			fs.rmSync(tempDir, { recursive: true, force: true });
+			// RETRY, AND NEVER FAIL THE SUITE ON CLEANUP.
+			//
+			// Windows refuses to remove a directory something still holds a handle on, and a file
+			// watcher is exactly that - EPERM from rmSync, in an `after all` hook, turning a green
+			// run red. Seen on windows-latest/node 24 for commit 43a9150, where the SAME commit had
+			// passed minutes earlier: a race, not a defect.
+			//
+			// `force` does not help; it only ignores ENOENT. maxRetries is the documented answer -
+			// Node retries EBUSY/EPERM/ENOTEMPTY with a linear backoff. If it still will not go, say
+			// so and move on: a temp directory the OS will reap is not worth a failed build.
+			try {
+				fs.rmSync(tempDir, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
+			} catch (e) {
+				console.warn(`temp cleanup left ${tempDir} behind: ${e instanceof Error ? e.message : e}`);
+			}
 		}
 	});
 

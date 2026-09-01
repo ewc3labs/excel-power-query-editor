@@ -29,6 +29,25 @@ extension. If an item here turns out to be about the whole estate, it moves and 
 
 ---
 
+## 2026-09-01 — a Windows CI flake, caught by yesterday's guard
+
+**Items:**
+
+- [x] **`Watch Tests` teardown failed on windows-latest / node 24 with `EPERM` from `rmSync`.** A
+      file watcher still held a handle on the temp directory, so Windows refused to remove it and an
+      `after all` hook turned a green run red. The same commit had passed minutes earlier, which is
+      what identified it as a race rather than a defect.
+
+      Fixed with `maxRetries`/`retryDelay` — Node's documented answer for EBUSY/EPERM on Windows —
+      and a `try/catch` so cleanup can never fail a suite again. `force: true` was never going to
+      help; it only ignores ENOENT. Applied to all four temp-directory teardowns, since they had
+      identical exposure and only one had been unlucky.
+
+- [x] **`FIX-4` earned itself in production the day after it was written.** The failing run printed
+      *"Tests failed (exit 1); test-counts.json left unchanged. The partial run counted 143."*
+      Before that guard, a partial run would have written 143 over 142, and the next green build
+      would have failed on a count mismatch instead of the real problem.
+
 ## 2026-09-01 — refresh after sync, and what Excel is doing while we write
 **Items:**
 
