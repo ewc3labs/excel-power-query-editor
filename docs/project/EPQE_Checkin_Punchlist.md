@@ -33,6 +33,25 @@ extension. If an item here turns out to be about the whole estate, it moves and 
 
 **Items:**
 
+- [ ] **The helper knows busy-vs-hidden and throws the answer away.** `excel-live-sync.ps1:98`
+      extracts the HRESULT from the COMException and classifies it against `$BusyHResults`
+      (`RPC_E_CALL_REJECTED`, `RPC_E_SERVERCALL_RETRYLATER`, `0x80010005`) purely to decide whether
+      to retry — then discards it. So when retries exhaust against an **open Power Query / Advanced
+      Editor**, the message layer cannot tell *busy* from *hidden* and falls back to the
+      privilege-level explanation, which is wrong in exactly that case.
+
+      Reported from the SX_Coder side with the discriminator: **busy** is `RPC_E_CALL_REJECTED` /
+      `RPC_E_SERVERCALL_RETRYLATER`; **hidden** is `MK_E_UNAVAILABLE` / not-found. Both signals are
+      already available — process enumeration crosses integrity levels, a ROT bind does not — and we
+      collapse them. `FIX-5` built the branching message; this is the branch it still cannot reach.
+      Carry the HRESULT class out in the failure reason.
+
+- [ ] **The `FIX-3` regression test proves less than it looks like it proves.** Real corruption
+      found downstream carried **one `ΓÇö` and nine `╬ô├ç├╢`** in the same query — the same em-dash
+      at one and two rounds of CP1252 mangling. That is evidence of **multiple round trips**, not
+      one bad extraction. Our encoding test does a single pass, so a second-order corruption would
+      sail through it green. Round-trip twice in the fixture.
+
 - [x] **`Watch Tests` teardown failed on windows-latest / node 24 with `EPERM` from `rmSync`.** A
       file watcher still held a handle on the temp directory, so Windows refused to remove it and an
       `after all` hook turned a green run red. The same commit had passed minutes earlier, which is
@@ -75,6 +94,18 @@ extension. If an item here turns out to be about the whole estate, it moves and 
 
       **Must be tear-outable.** If it destabilises anything, deleting the refresh step has to leave
       the write path exactly as it is today. No shared state, no reordering, no "while we are here".
+
+      **And it must disarm on failure, not just default to off.** A sensor wired to an action is the
+      hazard; a sensor wired to an action that *re-fires after a human corrects it* is the one that
+      does not stay recoverable. That was MCAS's actual killing property - it reset after each
+      manual trim input and commanded nose-down again, so every correction bought seconds rather
+      than control. Here the same loop is cheap to build by accident: refresh fires, raises a
+      credential modal, the user cancels, and the next sync - seconds later, same file, same setting -
+      fires it again. The user's only escape is to find the setting mid-modal.
+
+      So a refresh that fails or prompts must **disable itself for that workbook until re-enabled**,
+      and say so in the notification. Off-by-default protects the user who never opts in. Disarm-on-
+      failure protects the one who did.
 
 - [ ] **UNTESTED, AND THE ONE THAT WORRIES ME: what happens when the Power Query editor or the Get
       Data wizard is open while we write?** The editor is modal to Excel, so the likely outcome is
@@ -178,6 +209,19 @@ extension. If an item here turns out to be about the whole estate, it moves and 
 - [x] ~~`generate-expected-results.js` sat at the repo root.~~ Moved to `scripts/`.
 - [x] ~~`docs/analysis/` and `docs/design/` do not exist here.~~ **Not true any more** — both exist
       and hold real work, exactly as intended: created when there was something to put in them.
+- [ ] **Reframe: the gap is not telemetry, it is that nothing WATCHES.** Reported from the SX_Coder
+      side, where the same assumption was found and named: *"nobody is watching prod; detection is
+      human, and it routes to Wilson."* Their instrumentation is decent — a health endpoint, run
+      rows that always write an end time so a failure is a row rather than an absence — and
+      **nothing reads any of it unattended.** Signal, no watcher.
+
+      EPQE is the same shape with worse instrumentation. Adding telemetry would produce signal and
+      still leave nobody reading it; both bugs fixed this cycle were detected by a *person* noticing
+      and writing in. So the two questions are separate and the second is the one that binds: **what
+      would read a signal, and who does it wake?** Decide that before deciding what to collect.
+
+      *"Someone is monitoring" is the kind of assumption that is never stated and never true.*
+
 - [ ] **Telemetry: decide, and write the decision down either way.** 5,500+ users and no telemetry,
       deliberately — which means breakage reaches us only when somebody opens an issue. That is not
       hypothetical: both bugs fixed this week reached real users, and neither was found by 142 tests
