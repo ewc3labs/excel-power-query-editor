@@ -199,6 +199,14 @@ function Resolve-Workbook {
     $exact = [RunningObjects]::Get($FullPath)
     if ($null -ne $exact) { return @{ book = $exact; how = 'exact-path' } }
 
+    # A workbook on a mapped network drive is registered under its UNC path, even when it was
+    # opened through the drive letter. See NetworkPaths in RunningObjects.cs.txt for the receipt.
+    $unc = [NetworkPaths]::ToUnc($FullPath)
+    if ($null -ne $unc) {
+        $byUnc = [RunningObjects]::Get($unc)
+        if ($null -ne $byUnc) { return @{ book = $byUnc; how = 'exact-unc'; registeredAs = $unc } }
+    }
+
     $url = ConvertTo-CloudUrl -LocalPath $FullPath
     if ($null -eq $url) { return $null }
 
@@ -252,11 +260,35 @@ if ($null -eq $book) {
         [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole(
             [Security.Principal.WindowsBuiltInRole]::Administrator)
 
+    # SAY WHAT WE COULD SEE, NOT ONLY WHAT WE COULD NOT. The network-drive case took three round
+    # trips of hand-pasted diagnostics to find, because this response stated a conclusion ("not
+    # open") and withheld the evidence: the workbook WAS registered, under a name we did not try.
+    # One list of registered workbook names would have shown it at once.
+    #
+    # ABSENT, NOT EMPTY, WHEN THE TABLE COULD NOT BE READ. The extension reads an empty list as "Excel
+    # runs and none of its workbooks are visible" and blames an integrity-level wall. A failed read is
+    # not that evidence - it is no evidence - so it must fall through to the neutral message instead.
+    # The first version turned a failure into @() and misdiagnosed it. (Copilot review, PR #8.)
+    #
+    # KEEP THIS A PLAIN ASSIGNMENT FROM THE METHOD CALL. PowerShell unrolls arrays that pass through the
+    # pipeline, and an EMPTY array unrolls to $null - so wrapping this call in Invoke-WithRetry, an if-
+    # expression or a pipeline turns "zero workbooks visible" back into "could not read the table",
+    # silently. Measured on Windows PowerShell 5.1: plain assignment keeps string[0], and an if-
+    # expression around the same call yields $null. A test runs this exact block from this file.
+    $registered = $null
+    try {
+        $names = [RunningObjects]::Names()
+        if ($null -ne $names) { $registered = @($names | Where-Object { $_ -match '\.xls[xmb]?$' }) }
+    } catch {
+        $registered = $null
+    }
+
     Respond @{
         ok             = $true
         open           = $false
         excelProcesses = $processes
         elevated       = [bool]$elevated
+        registered     = $registered
     }
 }
 
