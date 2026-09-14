@@ -250,6 +250,19 @@ export async function writeLive(
 export function explainInvisibleWorkbook(status: LiveStatus): string | undefined {
 	if (status.open || !status.excelProcesses) { return undefined; }
 
+	// VISIBLE WORKBOOKS FIRST, BECAUSE THEY OUTRANK EVERY OTHER SIGNAL. Seeing into Excel at all proves
+	// there is no integrity wall between us, whatever the helper's own elevation says. The first
+	// version checked elevation first, so an elevated helper that could see three workbooks still
+	// blamed a wall it had just proved absent. (Codex review, PR #8.)
+	if (status.registered && status.registered.length > 0) {
+		// We can see into Excel fine. This workbook just is not among what it registered.
+		const n = status.registered.length;
+		return `Excel is running and ${n} workbook${n === 1 ? ' is' : 's are'} visible to the `
+			+ 'extension, but not this one. It may be open under a different path - another drive '
+			+ 'mapping, a copy, or a synced location - or not open at all. The workbooks Excel has '
+			+ 'registered are listed in the log.';
+	}
+
 	if (status.elevated === true) {
 		return 'VS Code is running as administrator, and Excel probably is not. COM hides running '
 			+ 'objects across integrity levels, so every workbook is invisible from here. Run VS Code '
@@ -262,15 +275,6 @@ export function explainInvisibleWorkbook(status: LiveStatus): string | undefined
 			+ 'almost always means Excel was started as administrator and VS Code was not - COM '
 			+ 'hides running objects across integrity levels. Run both the same way (normally, for '
 			+ 'preference) and try again.';
-	}
-
-	if (status.registered && status.registered.length > 0) {
-		// We can see into Excel fine. This workbook just is not among what it registered.
-		const n = status.registered.length;
-		return `Excel is running and ${n} workbook${n === 1 ? ' is' : 's are'} visible to the `
-			+ 'extension, but not this one. It may be open under a different path - another drive '
-			+ 'mapping, a copy, or a synced location - or not open at all. The workbooks Excel has '
-			+ 'registered are listed in the log.';
 	}
 
 	// An older helper that does not report what it saw. Say what is possible, not what is usual.

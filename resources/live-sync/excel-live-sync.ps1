@@ -269,6 +269,12 @@ if ($null -eq $book) {
     # runs and none of its workbooks are visible" and blames an integrity-level wall. A failed read is
     # not that evidence - it is no evidence - so it must fall through to the neutral message instead.
     # The first version turned a failure into @() and misdiagnosed it. (Copilot review, PR #8.)
+    #
+    # KEEP THIS A PLAIN ASSIGNMENT FROM THE METHOD CALL. PowerShell unrolls arrays that pass through the
+    # pipeline, and an EMPTY array unrolls to $null - so wrapping this call in Invoke-WithRetry, an if-
+    # expression or a pipeline turns "zero workbooks visible" back into "could not read the table",
+    # silently. Measured on Windows PowerShell 5.1: plain assignment keeps string[0], and an if-
+    # expression around the same call yields $null. A test runs this exact block from this file.
     $registered = $null
     try {
         $names = [RunningObjects]::Names()

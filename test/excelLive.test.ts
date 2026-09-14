@@ -271,6 +271,15 @@ suite('Why a running Excel cannot see the workbook', function () {
 		assert.ok(/log/i.test(m), 'the names are in the log');
 	});
 
+	test('visible workbooks outrank the helper being elevated', () => {
+		// An elevated helper that can still SEE Excel's workbooks has proved there is no integrity
+		// wall. The first version checked elevation first and blamed one anyway. (Codex review, PR #8.)
+		const m = explainInvisibleWorkbook({ ...running, elevated: true, registered: ['C:\\Users\\me\\Other.xlsx'] })!;
+		assert.ok(!/elevat|administrator|integrity/i.test(m), 'seeing into Excel disproves the wall');
+		assert.ok(/1 workbook is visible/.test(m));
+		assert.ok(/different path/i.test(m));
+	});
+
 	test('no evidence - an older helper, or a table the helper could not read - does not claim what is usual', () => {
 		// `registered` absent is also what the helper sends when it FAILED to read the table. That must
 		// not be mistaken for an empty table, which would blame an integrity wall nobody measured.
@@ -318,5 +327,36 @@ suite('Mapped network drives', function () {
 		assert.strictEqual(line, 'RESULT:|||', 'local, UNC, empty and relative paths all have no second name');
 		const names = out.split(/\r?\n/).find((l) => l.startsWith('NAMES:'));
 		assert.strictEqual(names, 'NAMES:True:True', 'a readable table yields an array, so null is reserved for failure');
+	});
+
+	test('the shipped "registered" block reports an empty table as [] and a failed read as absent', async function () {
+		if (process.platform !== 'win32') { this.skip(); return; }
+
+		// Runs the EXACT block from excel-live-sync.ps1 - not a copy - against a table that is empty and
+		// one that failed. PowerShell unrolls an empty array to $null the moment it passes through a
+		// pipeline, so a harmless-looking refactor of this block would make "zero workbooks visible"
+		// indistinguishable from "could not read". A review flagged that risk; measurement showed the
+		// current block is correct; this keeps it that way.
+		const src = fs.readFileSync(path.join(helperDir, 'excel-live-sync.ps1'), 'utf8');
+		const start = src.indexOf('$registered = $null');
+		const end = src.indexOf('Respond @{', start);
+		assert.ok(start > 0 && end > start, 'the registered block moved - update this test to follow it');
+		const block = src.slice(start, end);
+		assert.ok(block.includes('[RunningObjects]::Names()'), 'the block no longer reads the ROT the way this test expects');
+
+		const script = [
+			'Add-Type -TypeDefinition \'public static class EmptyRot { public static string[] Names() { return new string[0]; } } public static class FailedRot { public static string[] Names() { return null; } }\'',
+			...['EmptyRot', 'FailedRot'].map((cls) =>
+				block.split('[RunningObjects]').join(`[${cls}]`) +
+				`\nWrite-Output ('${cls}=' + (@{ registered = $registered } | ConvertTo-Json -Compress))`),
+		].join('\n');
+
+		const out: string = await new Promise((resolve, reject) => {
+			execFile('powershell.exe', ['-NoProfile', '-NonInteractive', '-EncodedCommand', Buffer.from(script, 'utf16le').toString('base64')],
+				{ windowsHide: true }, (err, stdout, stderr) => (err ? reject(new Error(stderr || String(err))) : resolve(stdout)));
+		});
+		const line = (p: string) => out.split(/\r?\n/).find((l) => l.startsWith(p + '='));
+		assert.strictEqual(line('EmptyRot'), 'EmptyRot={"registered":[]}', `an empty table is evidence and must stay []: ${out}`);
+		assert.strictEqual(line('FailedRot'), 'FailedRot={"registered":null}', `a failed read is no evidence and must stay absent: ${out}`);
 	});
 });
