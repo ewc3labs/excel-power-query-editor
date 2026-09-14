@@ -29,6 +29,37 @@ extension. If an item here turns out to be about the whole estate, it moves and 
 
 ---
 
+## 2026-09-14 — running the real-Excel suite for PR #8
+
+> Context: *"I closed Excel myself...let 'er rip!"* — the first recorded run of the live sync
+> integration suite since the LF policy landed on 2026-08-16.
+
+**Items:**
+
+- [ ] **PQ-15 fails, and the test itself is the likeliest cause.** It forces CRLF onto the query
+      body (`readBack.replace(/\r?\n/g, '\r\n')`) and builds the header with the fixture's own line
+      ending. The fixture `simple_StudentResults.m` was CRLF when PQ-15 passed on 2026-08-14, and
+      the LF policy commit `f3d4d8d` (2026-08-16) converted it: **12 CR bytes before, 0 after**. So
+      the rebuilt document is LF header plus CRLF body, and never equals the source. **Not verified
+      either way:** whether extracting from an open workbook produces mixed line endings for real
+      users. The first read of this failure claimed it did, and the test line explains it without
+      needing that. Settle it before changing the product.
+- [x] **The suite disabled itself after one run.** Teardown never closed its workbook (backslashes
+      doubled inside a single-quoted PowerShell string), so Excel stayed running and every later run
+      skipped all five tests as "Excel is already running". The teardown swallowed its errors, so
+      nothing reported it. Fixed in PR #8, and proven by running the suite twice in a row: the
+      second run did not skip.
+- [ ] **Excel ignores `Quit()` after closing its last workbook, and the cause is unknown.** Accepted
+      without error, and the process stays with no workbooks or window. Reproduced every time. Six
+      hypotheses tested and disproven: a rejected call swallowed; quitting 0s, 45s or 3 minutes
+      after launch; `Saved` set with COM references released; COM add-ins (`/safe`, zero loaded); a
+      relaunch (same PID throughout); a COM formula write first. **One instance did exit**, after
+      sitting idle about 7 minutes, which is the one difference not tested. Worked around in the
+      suite by ending the exact PID it launched when it outlives `Quit` with nothing open. **The
+      product never calls `Quit`,** so this is test hygiene today, not a user-facing defect.
+
+---
+
 ## 2026-09-14 — live sync at work, on a network drive
 
 > Context: *"I'm not able to live-sync .m to open Excel at work"* — a workbook on `P:\`, a mapped
