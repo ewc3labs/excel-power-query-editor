@@ -84,17 +84,23 @@ or if another roadmap claims the same global one.
 
 **Rows are one line.** `Doc` pins a filename; anything wanting a paragraph wants a slice doc.
 
-States: `⬜ planned` · `⛔ blocked` · `🟨 coded` — built and deployed, nobody has used it yet ·
-`💨 proven` — someone used it and it worked · `⏸ retired` — tried, backed out, kept for the reason.
+States follow the [HQ legend ruling][legend-ruling] (2026-09-14). Software climbs a ladder, and **🟩
+must say where** it was proven:
+
+| kind | states |
+| --- | --- |
+| software | `⬜ planned` → `🟨 coded` — built, untested · `🟦 tested` — unit or smoke · `🟩 proven — <where>` — met a real environment |
+| not software | `⬜ planned` → `✅ done — <what done means>` |
+| off the ladder | `⛔ blocked` · `⏸ deferred` — may return · `🟥 cancelled — <reverted, refuted or retired: why>` |
 
 ### Shipping — the pipeline is the blocker
 
 | ID | State | Slice | Est | Doc | Status |
 | --- | --- | --- | --- | --- | --- |
-| PQ-01 | 💨 proven | Rebuild release.yml as tag-triggered | M | — | proven 2026-08-15 — v0.6.0-rc.1 built a draft, marketplace skipped |
-| PQ-02 | 🟡 half | Ship the settings refactor: 0.7.0 pre-release ✅, 0.8.0 stable ⬜ | S | — | 0.7.0 published 2026-08-18; stable still on 0.5.1 by design. NOT a patch — 13 settings renamed |
+| PQ-01 | 🟩 proven | Rebuild release.yml as tag-triggered | M | — | proven 2026-08-15 — GitHub Actions, real tag v0.6.0-rc.1: built a draft, marketplace skipped |
+| PQ-02 | ⬜ planned | Ship the settings refactor: 0.7.0 pre-release ✅, 0.8.0 stable ⬜ | S | — | 0.8.0 stable not started · the 0.7.0 half is done: pre-release published 2026-08-18, stable still 0.5.1 by design. NOT a patch — 13 settings renamed |
 | PQ-03 | ⬜ planned | Verify marketplace publish end to end | S | [PQ-34][pq-34] | pipeline is wired for Entra ID; the first successful publish is the proof, and nothing has published since 2025-07-21 |
-| PQ-04 | 💨 proven | Prune the release workflow | S | — | done with PQ-01 — 318 lines to 190 |
+| PQ-04 | 🟩 proven | Prune the release workflow | S | — | proven 2026-08-15 — GitHub Actions, ran with PQ-01 on v0.6.0-rc.1: 318 lines to 190 |
 
 ### v0.7.0 — live sync to an open workbook
 
@@ -104,12 +110,12 @@ Excel serves external automation. See `design/live-sync-to-open-excel.md`.
 
 | ID | State | Slice | Est | Doc | Status |
 | --- | --- | --- | --- | --- | --- |
-| PQ-12 | 💨 proven | Spike: rewrite a query in a workbook the user has OPEN | S | live-sync-to-open-excel.md | proven 2026-08-14 — attached via ROT, wrote, went dirty |
-| PQ-13 | 💨 proven | Helper process, status/write, error paths | L | live-sync-to-open-excel.md | proven 2026-08-14 — ROT lookup, retry on busy, stdin payload |
-| PQ-14 | 💨 proven | Split a section document and match queries by name | M | live-sync-to-open-excel.md | proven 2026-08-14 — 3 fixtures round-trip byte for byte |
-| PQ-15 | 💨 proven | Round-trip test: section -> N formulas -> Excel -> section | M | live-sync-to-open-excel.md | proven 2026-08-14 — byte-identical through a real Excel |
+| PQ-12 | 🟩 proven | Spike: rewrite a query in a workbook the user has OPEN | S | live-sync-to-open-excel.md | proven 2026-08-14 — real Excel, dev PC: attached via ROT, wrote, went dirty |
+| PQ-13 | 🟩 proven | Helper process, status/write, error paths | L | live-sync-to-open-excel.md | proven 2026-08-14 — real Excel, dev PC, local and OneDrive paths: ROT lookup, retry on busy, stdin payload. Network drives never covered, see PQ-35 |
+| PQ-14 | 🟩 proven | Split a section document and match queries by name | M | live-sync-to-open-excel.md | proven 2026-08-14 — real Excel, dev PC, by way of PQ-15 round trip; its own evidence is 3 fixtures byte for byte |
+| PQ-15 | 🟩 proven | Round-trip test: section -> N formulas -> Excel -> section | M | live-sync-to-open-excel.md | proven 2026-08-14 — real Excel, dev PC: byte-identical round trip |
 | PQ-16 | ✅ done | Reply to namgaw, and reach out to Ken Puls | S | [discussion #3][discussion-3] | replied with the built feature and a prerelease he can install; his Monkey Tools pointer is what unstuck it. Ken Puls NOT contacted, deliberately - he is credited in the README, which is better than cold-emailing the author of the commercial tool we just built a free alternative to |
-| PQ-17 | 💨 proven | Wire live sync into the sync command and settings | M | live-sync-to-open-excel.md | proven 2026-08-14 — real 29-query workbook in a OneDrive folder |
+| PQ-17 | 🟩 proven | Wire live sync into the sync command and settings | M | live-sync-to-open-excel.md | proven 2026-08-14 — real Excel, dev PC: a real 29-query workbook in a OneDrive folder. Failed on a network drive at work, see PQ-35 |
 
 ### Selective extract, and who is authoritative
 
@@ -129,23 +135,23 @@ The two write paths currently disagree about deletion, and nobody chose that. Se
 
 | ID | State | Slice | Est | Doc | Status |
 | --- | --- | --- | --- | --- | --- |
-| PQ-28 | ✅ done | CONFIGURATION.md still documents 13 renamed settings | S | [Config_Reference](../Config_Reference.md) | replaced by a reference generated from package.json; renames moved to Config_Changes |
+| PQ-28 | 🟩 proven | CONFIGURATION.md still documents 13 renamed settings | S | [Config_Reference](../Config_Reference.md) | proven — CI, `docs:config:check` inside `docs:check` on every build: reference generated from package.json; renames moved to Config_Changes |
 | PQ-29 | ✅ done | USER_GUIDE.md has no mention of live sync | S | [Live_Sync](../Live_Sync.md) | feature doc written; User_Guide now carries a section pointing into it |
 | PQ-30 | ✅ done | Retire the RELEASE_SUMMARY pattern | S | — | removed; CHANGELOG and the release body are the two homes |
-| PQ-32 | ✅ done | docs: link and orphan checking in CI | S | [Overview](../Overview.md) | `npm run docs:links` found 11 dead links and 1 unreachable doc on its first run |
-| PQ-34 | 💨 proven | Marketplace channels, and PAT-free auth before PATs die | M | [PQ-34][pq-34] | **proven 2026-08-18** — 0.7.0 published to the pre-release channel via `--azure-credential`, run 32084088671. Both modes behind `MARKETPLACE_AUTH`, fail-closed, no fallback; `oidc` stays unproven until the Marketplace ships its trust policy |
-| FIX-1 | ✅ done | Symbol registration no longer blocks activation | S | — | `registerExcelSymbols` awaited `activate()` on the Power Query extension, so our activation waited on theirs for a result used only to write one debug line. Fire-and-forget; `watchForPowerQueryExtension` already covers late arrival |
-| FIX-2 | ✅ done | Report the old file-based symbols leftovers, never delete them | S | [Excel Symbols](../Excel_Symbols.md) | upgrading left `excel-pq-symbols/` on disk and the folder in `additionalSymbolsDirectories`, so a stale copy kept loading beside the API-registered one. Found and reported once; deleting is the user's call |
-| FIX-3 | ✅ done | Non-ASCII survives the live-sync pipe | S | — | the helper read stdin with `[Console]::In`, which decodes using the console codepage — and a windowHidden `powershell.exe` has no console, so it fell back to OEM. An em-dash arrived as its UTF-8 bytes read as CP437. Explicit UTF-8 on both directions; found by dogfooding at work, invisible to manual testing because an interactive shell is already at 65001 |
-| FIX-4 | ✅ done | A failed test run no longer rewrites `test-counts.json` | S | — | there are two test hosts; when one died the other still printed a valid summary, and summing what survived wrote `{"total": 5}` over a file that said 136 — a number that looks real and is not. Exit status was preserved, so CI would have gone red, but the file was already clobbered. A non-zero exit now leaves it alone, `--check` included. Found incidentally while landing FIX-3 |
-| FIX-5 | ✅ done | Say why live sync did not run, and offer to enable it | S | — | **reported by @dondumitru.** `liveSyncPossible` is false both when the setting is off and when Excel cannot be reached; one message blamed integrity levels for both. Since `sync.liveWhenOpen` is off by default, the common case got a paragraph about COM elevation. Their log said `owner lock file present: true` — Excel held it from disk as that user — so we had the evidence to rule elevation out and showed it anyway. Now branches on setting/platform/lock file, with an **Enable live sync** action |
-| PQ-31 | 🟡 partial | bump-version: drop commit analysis, sync the README badge | S | [PUBLISHING_GUIDE](../PUBLISHING_GUIDE.md) | badge sync DONE by docs-tools `values`; commit analysis still there, and the `npm version` tag hazard is now documented rather than fixed |
+| PQ-32 | 🟩 proven | docs: link and orphan checking in CI | S | [Overview](../Overview.md) | proven — CI: `npm run docs:links` found 11 dead links and 1 unreachable doc on its first run |
+| PQ-34 | 🟩 proven | Marketplace channels, and PAT-free auth before PATs die | M | [PQ-34][pq-34] | proven 2026-08-18 — GitHub Actions to the Marketplace pre-release channel, `entra` mode only: 0.7.0 via `--azure-credential`, run 32084088671. `oidc` unproven until the Marketplace ships its trust policy. Fail-closed, no fallback |
+| FIX-1 | 🟦 tested | Symbol registration no longer blocks activation | S | — | tested — `powerQuerySymbols.test.ts` exercises registration; in 0.7.2, no user confirmation yet · `registerExcelSymbols` awaited `activate()` on the Power Query extension, so our activation waited on theirs for a result used only to write one debug line. Fire-and-forget; `watchForPowerQueryExtension` already covers late arrival |
+| FIX-2 | 🟦 tested | Report the old file-based symbols leftovers, never delete them | S | [Excel Symbols](../Excel_Symbols.md) | tested — `powerQuerySymbols.test.ts`; not yet seen on a real upgraded install · upgrading left `excel-pq-symbols/` on disk and the folder in `additionalSymbolsDirectories`, so a stale copy kept loading beside the API-registered one. Found and reported once; deleting is the user's call |
+| FIX-3 | 🟦 tested | Non-ASCII survives the live-sync pipe | S | — | tested — encoding test through a real powershell.exe; found at work, not yet re-run there · the helper read stdin with `[Console]::In`, which decodes using the console codepage — and a windowHidden `powershell.exe` has no console, so it fell back to OEM. An em-dash arrived as its UTF-8 bytes read as CP437. Explicit UTF-8 on both directions; found by dogfooding at work, invisible to manual testing because an interactive shell is already at 65001 |
+| FIX-4 | 🟩 proven | A failed test run no longer rewrites `test-counts.json` | S | — | proven 2026-09-01 — CI: a failing run printed the guard and left test-counts.json unchanged · there are two test hosts; when one died the other still printed a valid summary, and summing what survived wrote `{"total": 5}` over a file that said 136 — a number that looks real and is not. Exit status was preserved, so CI would have gone red, but the file was already clobbered. A non-zero exit now leaves it alone, `--check` included. Found incidentally while landing FIX-3 |
+| FIX-5 | 🟦 tested | Say why live sync did not run, and offer to enable it | S | — | tested — every message branch unit-tested; the reporter has not confirmed · **reported by @dondumitru.** `liveSyncPossible` is false both when the setting is off and when Excel cannot be reached; one message blamed integrity levels for both. Since `sync.liveWhenOpen` is off by default, the common case got a paragraph about COM elevation. Their log said `owner lock file present: true` — Excel held it from disk as that user — so we had the evidence to rule elevation out and showed it anyway. Now branches on setting/platform/lock file, with an **Enable live sync** action |
+| PQ-31 | ⬜ planned | bump-version: drop commit analysis, sync the README badge | S | [PUBLISHING_GUIDE](../PUBLISHING_GUIDE.md) | commit analysis still to remove; the `npm version` tag hazard is documented, not fixed · the badge-sync half is done and runs in CI via docs-tools `values` |
 
 ### Data safety — the thing that must never break
 
 | ID | State | Slice | Est | Doc | Status |
 | --- | --- | --- | --- | --- | --- |
-| PQ-33 | 🟡 measured | AutoSave vs live sync: untested interaction, and backups per sync | M | [PQ-33][pq-33] | MEASURED: AutoSave commits a live write in ~2s and closing without saving does NOT undo it. Docs corrected, message differentiated. Backup churn was already answered by retention |
+| PQ-33 | 🟩 proven | AutoSave vs live sync: untested interaction, and backups per sync | M | [PQ-33][pq-33] | proven 2026-08-16 — real Excel, local and OneDrive, AutoSave on and off: a live write commits in ~2s and close-without-saving does NOT undo it. Docs corrected; the differentiated message has no test |
 | PQ-05 | ⬜ planned | Audit every path that writes a workbook | M | — | backup-then-temp-then-swap, no exceptions |
 | PQ-06 | ⬜ planned | Prove `.xlsb` round-trips byte-for-byte | M | — | binary and unforgiving; fixtures exist |
 
@@ -155,13 +161,13 @@ The two write paths currently disagree about deletion, and nobody chose that. Se
 | --- | --- | --- | --- | --- | --- |
 | PQ-07 | ⬜ planned | Extract the workbook read/write seam from extension.ts | L | — | 2,152 lines in one file; extract WITH tests, never wholesale |
 | PQ-08 | ⬜ planned | Settings deprecation policy | S | — | 18 public settings; renaming one breaks configs silently |
-| PQ-09 | 💨 proven | Replace the settings WIPE with a real migration | M | settings-migration.md | proven 2026-08-14 — 7 legacy values migrated on a real install |
+| PQ-09 | 🟩 proven | Replace the settings WIPE with a real migration | M | settings-migration.md | proven 2026-08-14 — real install, dev PC: 7 legacy values migrated |
 | PQ-10 | 🟨 coded | Converge on ONE README | S | — | merged, split files and swap scripts deleted; needs a read |
-| PQ-11 | 💨 proven | Research: does the PQ/M extension ship Excel symbols | S | excel-symbols.md | answered 2026-08-14 — it does NOT ship Excel.CurrentWorkbook |
-| PQ-18 | 💨 proven | Push symbols through the Power Query API | M | excel-symbols.md | proven 2026-08-15 — survives the PQ extension being absent or added later |
-| PQ-19 | 🟨 coded | CI: get a real signal out of the matrix | M | — | fail-fast off + test timeout; windows-22 GREEN, first in a year |
-| PQ-20 | ✅ done | CI: macOS cannot launch VS Code at all | M | — | TWO bugs behind one excuse: test-electron 2.5.2 spawned `Contents/MacOS/Electron`, renamed to `Code` in VS Code 1.110+; then a 106-char user-data socket path against macOS's 104-byte limit. Both fixed, macOS green, continue-on-error removed |
-| PQ-21 | 🟨 coded | CI: ubuntu fails, and PQ-18 was part of why | M | — | workspace error GONE from CI; both windows legs now green |
+| PQ-11 | ✅ done | Research: does the PQ/M extension ship Excel symbols | S | excel-symbols.md | answered 2026-08-14 — it does NOT ship Excel.CurrentWorkbook. Research; nothing to test |
+| PQ-18 | 🟩 proven | Push symbols through the Power Query API | M | excel-symbols.md | proven 2026-08-15 — dev VS Code: survives the PQ extension being absent or added later |
+| PQ-19 | 🟩 proven | CI: get a real signal out of the matrix | M | — | proven — GitHub Actions: fail-fast off + test timeout; windows-22 green, then all six legs green 2026-08-16 |
+| PQ-20 | 🟩 proven | CI: macOS cannot launch VS Code at all | M | — | proven — GitHub Actions, macOS legs green · TWO bugs behind one excuse: test-electron 2.5.2 spawned `Contents/MacOS/Electron`, renamed to `Code` in VS Code 1.110+; then a 106-char user-data socket path against macOS's 104-byte limit. Both fixed, macOS green, continue-on-error removed |
+| PQ-21 | 🟩 proven | CI: ubuntu fails, and PQ-18 was part of why | M | — | proven — GitHub Actions: workspace error gone; windows legs green, then all six legs 2026-08-16 |
 
 ## Working Rules
 
@@ -178,6 +184,7 @@ The two write paths currently disagree about deletion, and nobody chose that. Se
 
 [discussion-3]: https://github.com/ewc3labs/excel-power-query-editor/discussions/3
 [ewc3-labs-prefix]: https://github.com/ewc3labs/ewc3labs-hq
+[legend-ruling]: https://github.com/ewc3labs/ewc3labs-hq/blob/main/docs/project/EWC3_Labs_HQ_Punchlist.md
 [marketplace-identity]: ../Marketplace_Identity.md
 [pq-33]: slices/PQ-33_AutoSave_And_Live_Sync.md
 [pq-34]: slices/PQ-34_Marketplace_Prerelease_Channel.md
