@@ -29,6 +29,26 @@ extension. If an item here turns out to be about the whole estate, it moves and 
 
 ---
 
+## 2026-09-14 — live sync at work, on a network drive
+
+> Context: *"I'm not able to live-sync .m to open Excel at work"* — a workbook on `P:\`, a mapped
+> network drive. *"So we need to handle network drive mappings properly in EPQE. This is a thing
+> now."*
+
+**Items:**
+
+- [x] **Live sync cannot find a workbook open from a mapped drive, and blames elevation.** Nothing
+      was elevated. The Running Object Table held the workbook under its UNC path while the helper
+      looked for `P:\...` — [PQ-35] minted in roadmap to address
+- [x] **The watcher reports ready on a network drive and then never fires.**
+      `UNKNOWN: unknown error, watch` 2ms after ready; polling only ever enabled in dev containers —
+      [PQ-36] minted in roadmap to address
+- [x] **The helper withholds the evidence behind "not visible".** Finding the UNC name took three
+      rounds of hand-pasted COM code; a list of registered workbooks would have shown it at once —
+      folded into [PQ-35]
+
+---
+
 ## 2026-09-01 — a Windows CI flake, caught by yesterday's guard
 
 **Items:**

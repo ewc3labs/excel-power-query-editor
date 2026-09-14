@@ -29,6 +29,8 @@ live sync in October 2025, has been replied to and can install it.
 
 ### What is actually next
 
+0. **`PQ-35` / `PQ-36` — network drives, found by exactly the item below.** Coded 2026-09-14, needs
+   proving on the work PC.
 1. **Beat up the RC on real workbooks.** Wilson is installing it on the work PC - a managed
    corporate environment, which is the case no CI runner can reach and the same situation `@namgaw`
    is in. If group policy blocks COM there, live sync must decline honestly rather than fail
@@ -60,7 +62,7 @@ not a summary of them.
 
 | Prefix | Scope | Owner | Last Used | Series |
 | --- | --- | --- | --- | --- |
-| PQ | global | excel-power-query-editor | <!--ewc3:lastPQ-->PQ-34<!--/ewc3:lastPQ--> | product slices, fixes and infrastructure |
+| PQ | global | excel-power-query-editor | <!--ewc3:lastPQ-->PQ-36<!--/ewc3:lastPQ--> | product slices, fixes and infrastructure |
 | FIX | repo-local | excel-power-query-editor | <!--ewc3:lastFIX-->FIX-5<!--/ewc3:lastFIX--> | small corrections not worth a slice |
 
 **Last Used is derived** from the ID tables below by `ewc3-docs values`, and CI fails if it is
@@ -116,6 +118,8 @@ Excel serves external automation. See `design/live-sync-to-open-excel.md`.
 | PQ-15 | 🟩 proven | Round-trip test: section -> N formulas -> Excel -> section | M | live-sync-to-open-excel.md | proven 2026-08-14 — real Excel, dev PC: byte-identical round trip |
 | PQ-16 | ✅ done | Reply to namgaw, and reach out to Ken Puls | S | [discussion #3][discussion-3] | replied with the built feature and a prerelease he can install; his Monkey Tools pointer is what unstuck it. Ken Puls NOT contacted, deliberately - he is credited in the README, which is better than cold-emailing the author of the commercial tool we just built a free alternative to |
 | PQ-17 | 🟩 proven | Wire live sync into the sync command and settings | M | live-sync-to-open-excel.md | proven 2026-08-14 — real Excel, dev PC: a real 29-query workbook in a OneDrive folder. Failed on a network drive at work, see PQ-35 |
+| PQ-35 | 🟨 coded | Live sync on mapped network drives: the ROT registers the UNC path | S | [PQ-35][pq-35] | started 2026-09-14 — unit tests cover the messages, the lookup order and a clean compile, but not the one case that matters: a real mapped drive. Needs the work PC or a loopback share |
+| PQ-36 | 🟨 coded | File watcher is deaf on network drives: fall back to polling | S | [PQ-36][pq-36] | started 2026-09-14 — no automated test; needs a real network share to prove |
 
 ### Selective extract, and who is authoritative
 
@@ -188,4 +192,6 @@ The two write paths currently disagree about deletion, and nobody chose that. Se
 [marketplace-identity]: ../Marketplace_Identity.md
 [pq-33]: slices/PQ-33_AutoSave_And_Live_Sync.md
 [pq-34]: slices/PQ-34_Marketplace_Prerelease_Channel.md
+[pq-35]: slices/PQ-35_Live_Sync_On_Mapped_Network_Drives.md
+[pq-36]: slices/PQ-36_File_Watcher_On_Network_Drives.md
 [prefix-registry]: https://github.com/ewc3labs/ewc3labs-hq/blob/main/docs/project/EWC3_Prefix_Registry.md

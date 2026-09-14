@@ -874,6 +874,14 @@ async function syncToExcel(uri?: vscode.Uri, uris?: vscode.Uri[]): Promise<SyncO
 				const explanation = explainInvisibleWorkbook(probe);
 				if (explanation) {
 					log(explanation, 'syncToExcel', 'warn');
+					if (probe.registered) {
+						// The evidence the message refers to. These are the user's own open files,
+						// written to their own local log - and without them, diagnosing a name
+						// mismatch takes hand-pasted COM code.
+						log(`Workbooks registered in the Running Object Table (${probe.registered.length}): `
+							+ (probe.registered.length ? probe.registered.join(' | ') : '(none)'),
+							'syncToExcel', 'info');
+					}
 					vscode.window.showWarningMessage(explanation);
 					return { status: 'aborted' };
 				}
@@ -1333,22 +1341,32 @@ async function watchFile(uri?: vscode.Uri, uris?: vscode.Uri[]): Promise<void> {
 	log(`Is dev container: ${vscode.env.remoteName === 'dev-container'}`, 'watchFile', 'verbose');
 	
 	const isDevContainer = vscode.env.remoteName === 'dev-container';
-	
-	// PRIMARY WATCHER: Always use Chokidar as the main watcher
-	const watcher = watch(mFile, { 
+
+	// A NETWORK PATH CANNOT BE WATCHED NATIVELY. There is no SMB equivalent of the local change
+	// notification fs.watch uses, so chokidar emits `UNKNOWN: unknown error, watch` and then reports
+	// nothing, ever - a watcher that says "ready" and is deaf. Reported from a mapped drive at work:
+	// the watcher reported ready, errored 2ms later, and every subsequent edit was silently unwatched.
+	// See docs/project/slices/PQ-36_File_Watcher_On_Network_Drives.md.
+	//
+	// We do NOT try to classify the drive first. Node cannot see whether P:\ is local or mapped, and
+	// a UNC test catches only the paths that were never abbreviated to a letter. So let the failure
+	// say so and retry with polling - detect, do not predict. Polling is slower and works everywhere,
+	// which is the correct trade for a path that has already proved it cannot do better.
+	let pollingFallbackTried = false;
+
+	const makeWatcher = (usePolling: boolean) => watch(mFile, {
 		ignoreInitial: true,
-		usePolling: isDevContainer, // Use polling in dev containers for better compatibility
-		interval: isDevContainer ? 1000 : undefined, // Poll every second in dev containers
+		usePolling,
+		interval: usePolling ? 1000 : undefined,
 		awaitWriteFinish: {
 			stabilityThreshold: 300,
 			pollInterval: 100
 		}
 	});
-	
-	log(`CHOKIDAR watcher created for ${path.basename(mFile)}, polling: ${isDevContainer}`, 'watchFile', 'verbose');
-	
-	// Add comprehensive event logging
-	watcher.on('change', async () => {			try {
+
+	const attachHandlers = (w: ReturnType<typeof watch>) => {
+		w.on('change', async () => {
+			try {
 				log(`CHOKIDAR: File change detected: ${path.basename(mFile)}`, 'watchFile', 'verbose');
 				vscode.window.showInformationMessage(`📝 File changed, syncing: ${path.basename(mFile)}`);
 				log(`File changed, triggering debounced sync: ${path.basename(mFile)}`, 'watchFile', 'verbose');
@@ -1362,24 +1380,47 @@ async function watchFile(uri?: vscode.Uri, uris?: vscode.Uri[]): Promise<void> {
 				vscode.window.showErrorMessage(errorMsg);
 				log(errorMsg, 'watchFile', 'error');
 			}
-	});
-	
-	watcher.on('add', (path) => {
-		log(`CHOKIDAR: File added: ${path}`, 'watchFile', 'info');
-		// DON'T trigger sync on file creation - only on user changes
-	});
-	
-	watcher.on('unlink', (path) => {
-		log(`CHOKIDAR: File deleted: ${path}`, 'watchFile', 'info');
-	});
-	
-	watcher.on('error', (error) => {
-		log(`CHOKIDAR: Watcher error: ${error}`, 'watchFile', 'error');
-	});
-	
-	watcher.on('ready', () => {
-		log(`CHOKIDAR: Watcher ready for ${path.basename(mFile)}`, 'watchFile', 'info');
-	});
+		});
+
+		w.on('add', (path) => {
+			log(`CHOKIDAR: File added: ${path}`, 'watchFile', 'info');
+			// DON'T trigger sync on file creation - only on user changes
+		});
+
+		w.on('unlink', (path) => {
+			log(`CHOKIDAR: File deleted: ${path}`, 'watchFile', 'info');
+		});
+
+		w.on('error', async (error) => {
+			log(`CHOKIDAR: Watcher error: ${error}`, 'watchFile', 'error');
+			if (pollingFallbackTried) {
+				// Polling failed too. Say so plainly rather than retrying forever - the file is
+				// genuinely unwatchable and the user needs to know sync will not fire on its own.
+				log(`Polling watcher also failed for ${path.basename(mFile)}; this file cannot be watched. Save-triggered sync will not fire - use "Sync to Excel" manually.`, 'watchFile', 'error');
+				vscode.window.showWarningMessage(`Cannot watch ${path.basename(mFile)} for changes. Use "Sync to Excel" manually.`);
+				return;
+			}
+			pollingFallbackTried = true;
+			log(`Native file watching failed for ${path.basename(mFile)} - this usually means a network drive or UNC path. Retrying with polling.`, 'watchFile', 'info');
+			await w.close().catch(() => { /* already dead; the retry is what matters */ });
+			watcher = makeWatcher(true);
+			attachHandlers(watcher);
+			// The watcher set is registered below, and on the retry path it already exists - repoint
+			// it, or close() at teardown would close the dead watcher and leak the live one.
+			const registered = fileWatchers.get(mFile);
+			if (registered) { registered.chokidar = watcher; }
+		});
+
+		w.on('ready', () => {
+			log(`CHOKIDAR: Watcher ready for ${path.basename(mFile)} (polling: ${pollingFallbackTried || isDevContainer})`, 'watchFile', 'info');
+		});
+	};
+
+	// PRIMARY WATCHER: Always use Chokidar as the main watcher
+	let watcher = makeWatcher(isDevContainer);
+	attachHandlers(watcher);
+
+	log(`CHOKIDAR watcher created for ${path.basename(mFile)}, polling: ${isDevContainer}`, 'watchFile', 'verbose');
 
 	// BACKUP WATCHER: Only add VS Code FileSystemWatcher in dev containers as backup
 	let vscodeWatcher: vscode.FileSystemWatcher | undefined;
