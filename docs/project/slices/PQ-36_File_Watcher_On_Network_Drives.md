@@ -29,23 +29,49 @@ The `error` handler logged and did nothing else.
 ## The fix
 
 **Detect, do not predict.** Node cannot tell whether `P:\` is a local disk or a mapped share, and a
-test for `\\` catches only paths that were never abbreviated to a drive letter. So rather than
-classifying the drive up front, the error handler now:
+test for `\\` catches only paths that were never abbreviated to a drive letter. So the failure
+decides, in `src/resilientWatcher.ts`:
 
-1. on the first native failure, closes the watcher and **retries with polling** (1s interval),
-   logging that this usually means a network drive or UNC path;
-2. **repoints the registered watcher set** at the new instance — otherwise teardown closes the dead
-   watcher and leaks the live one;
-3. if polling fails too, says so plainly in the log and a warning, and points at manual **Sync to
-   Excel** rather than retrying forever.
+| state | on error |
+| --- | --- |
+| native | build a **polling** watcher, then close the dead one — no moment with nothing watching |
+| polling | **stop**, close it, and report the file unwatchable — never loop |
+| stopped | ignore — including errors that arrive after the user stopped watching |
+
+Errors from a watcher that has already been **replaced or closed are ignored**, and the transition
+is claimed before any `await`, so two errors in one tick build one fallback, not two.
+
+When a file becomes unwatchable, it is **removed from the watch registry and the status bar**,
+rather than staying listed as watched. In a dev container the VS Code backup watcher is still
+running, so the file stays watched and only the log says chokidar failed.
 
 Polling is slower and works everywhere, which is the right trade for a path that has just proved it
 cannot do better.
 
+### The first version, and what review changed
+
+It lived inside `extension.ts`, and this slice said it could not be tested because *"faking the
+error would test the fake."* **That was wrong**, and the repository's own `AGENTS.md` says so: new
+functionality gets its own module, with tests. The thing needing tests is the **state machine**, and
+an injected watcher tests exactly that. It also had two real defects:
+
+- **A second failure left the file registered**, so the status bar and **Toggle Watch** kept
+  reporting a watcher that would never fire. *Found by review.*
+- **Stopping watching did not stop the fallback.** Teardown closed the raw chokidar watcher, so a
+  late error from it could start a polling watcher nothing held and nothing would close. The
+  registry now holds the resilient wrapper, and closing it moves the state to `stopped`. *Found
+  while extracting, not by review.*
+
 ## Tests
 
-Type-check and lint pass. **No automated test**: reproducing `fs.watch` failing needs a real network
-share, and faking the error would test the fake. The recovery path is small and linear.
+`test/resilientWatcher.test.ts`, eight cases against an injected watcher: it starts native with
+handlers attached; native→polling swaps once and closes the dead watcher; two errors in one tick
+build one fallback; a late error from the replaced watcher is ignored; a polling failure stops
+instead of looping; starting in polling mode has nothing to fall back to; an error after close does
+nothing; close after a fallback reaches the live watcher.
+
+**Not tested, and only a real share can test it:** whether chokidar's polling actually detects saves
+on a network drive. That is why this stays 🟨.
 
 ## To prove
 

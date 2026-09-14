@@ -57,7 +57,10 @@ PowerShell 7 — a trap already documented in `excelLive.ts`.
    — so it stays inside the helper's no-scoring rule. Local, SUBST, already-UNC and unparseable
    paths return null.
 2. **Report what the helper could see.** When nothing matches, the response now includes
-   `registered`: every workbook display name in the table. The extension logs them.
+   `registered`: every workbook display name in the table. The extension logs them. **If the table
+   cannot be read, `registered` is absent, not empty.** An empty list is evidence of an integrity
+   wall, and a failed read is no evidence. The first version conflated them in both the helper and
+   `RunningObjects.Names()`.
 3. **Let the evidence choose the message.** `explainInvisibleWorkbook` used to say "usually
    elevated" unconditionally, including for a helper that had just measured itself not elevated.
 
@@ -80,7 +83,13 @@ This is the third time a live-sync message stated a cause the evidence already c
   only network ones. `ToUnc` declines local, UNC, empty and relative paths.
 
 **Not covered by CI, and cannot be:** the positive case needs a real mapped drive, which a runner
-cannot create without changing the machine. Verified by hand against `\\medarms01\public`.
+cannot create without changing the machine.
+
+**What was verified by hand, and what was not.** On 2026-09-14, a ROT dump showed Excel registering
+a `P:\` workbook under `\\medarms01\public`. That is the *diagnosis*. **`ToUnc` itself has never run
+against a mapped drive, and live sync has never succeeded end to end on one.** The first version of
+this slice said the positive case was "verified by hand", which a review correctly flagged as
+contradicting the state and the section below.
 
 ## To prove
 

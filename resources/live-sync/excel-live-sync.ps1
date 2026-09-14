@@ -264,8 +264,18 @@ if ($null -eq $book) {
     # trips of hand-pasted diagnostics to find, because this response stated a conclusion ("not
     # open") and withheld the evidence: the workbook WAS registered, under a name we did not try.
     # One list of registered workbook names would have shown it at once.
-    $registered = @()
-    try { $registered = @([RunningObjects]::Names() | Where-Object { $_ -match '\.xls[xmb]?$' }) } catch { }
+    #
+    # ABSENT, NOT EMPTY, WHEN THE TABLE COULD NOT BE READ. The extension reads an empty list as "Excel
+    # runs and none of its workbooks are visible" and blames an integrity-level wall. A failed read is
+    # not that evidence - it is no evidence - so it must fall through to the neutral message instead.
+    # The first version turned a failure into @() and misdiagnosed it. (Copilot review, PR #8.)
+    $registered = $null
+    try {
+        $names = [RunningObjects]::Names()
+        if ($null -ne $names) { $registered = @($names | Where-Object { $_ -match '\.xls[xmb]?$' }) }
+    } catch {
+        $registered = $null
+    }
 
     Respond @{
         ok             = $true

@@ -19,6 +19,7 @@ import {
 import * as fs from 'fs';
 import * as path from 'path';
 import { watch, FSWatcher } from 'chokidar';
+import { createResilientWatcher, ResilientWatcher } from './resilientWatcher';
 import { getConfig } from './configHelper';
 
 /**
@@ -48,7 +49,10 @@ function getTestFixturePath(filename: string): string {
 }
 
 // File watchers storage 
-const fileWatchers = new Map<string, { chokidar: FSWatcher; vscode: vscode.FileSystemWatcher | null; document: vscode.Disposable | null }>();
+// `chokidar` holds the RESILIENT watcher, not a raw FSWatcher: it swaps to polling underneath on a
+// native failure, and closing it through the wrapper is what stops a late error from the old watcher
+// starting a fallback after the user has already stopped watching. Only close() is ever called here.
+const fileWatchers = new Map<string, { chokidar: ResilientWatcher<FSWatcher>; vscode: vscode.FileSystemWatcher | null; document: vscode.Disposable | null }>();
 const recentExtractions = new Set<string>(); // Track recently extracted files to prevent immediate auto-sync
 
 // Debounce timers for file sync operations
@@ -1342,29 +1346,11 @@ async function watchFile(uri?: vscode.Uri, uris?: vscode.Uri[]): Promise<void> {
 	
 	const isDevContainer = vscode.env.remoteName === 'dev-container';
 
-	// A NETWORK PATH CANNOT BE WATCHED NATIVELY. There is no SMB equivalent of the local change
-	// notification fs.watch uses, so chokidar emits `UNKNOWN: unknown error, watch` and then reports
-	// nothing, ever - a watcher that says "ready" and is deaf. Reported from a mapped drive at work:
-	// the watcher reported ready, errored 2ms later, and every subsequent edit was silently unwatched.
-	// See docs/project/slices/PQ-36_File_Watcher_On_Network_Drives.md.
-	//
-	// We do NOT try to classify the drive first. Node cannot see whether P:\ is local or mapped, and
-	// a UNC test catches only the paths that were never abbreviated to a letter. So let the failure
-	// say so and retry with polling - detect, do not predict. Polling is slower and works everywhere,
-	// which is the correct trade for a path that has already proved it cannot do better.
-	let pollingFallbackTried = false;
-
-	const makeWatcher = (usePolling: boolean) => watch(mFile, {
-		ignoreInitial: true,
-		usePolling,
-		interval: usePolling ? 1000 : undefined,
-		awaitWriteFinish: {
-			stabilityThreshold: 300,
-			pollInterval: 100
-		}
-	});
-
-	const attachHandlers = (w: ReturnType<typeof watch>) => {
+	// PRIMARY WATCHER. Native first, polling if native fails (network drives), stopped if polling fails
+	// too. The state machine lives in resilientWatcher.ts, where it is tested; see PQ-36.
+	const fileName = path.basename(mFile);
+	// Defined BEFORE the watcher is created: createResilientWatcher calls attach() synchronously.
+	const attachHandlers = (w: FSWatcher, usePolling: boolean) => {
 		w.on('change', async () => {
 			try {
 				log(`CHOKIDAR: File change detected: ${path.basename(mFile)}`, 'watchFile', 'verbose');
@@ -1391,36 +1377,45 @@ async function watchFile(uri?: vscode.Uri, uris?: vscode.Uri[]): Promise<void> {
 			log(`CHOKIDAR: File deleted: ${path}`, 'watchFile', 'info');
 		});
 
-		w.on('error', async (error) => {
-			log(`CHOKIDAR: Watcher error: ${error}`, 'watchFile', 'error');
-			if (pollingFallbackTried) {
-				// Polling failed too. Say so plainly rather than retrying forever - the file is
-				// genuinely unwatchable and the user needs to know sync will not fire on its own.
-				log(`Polling watcher also failed for ${path.basename(mFile)}; this file cannot be watched. Save-triggered sync will not fire - use "Sync to Excel" manually.`, 'watchFile', 'error');
-				vscode.window.showWarningMessage(`Cannot watch ${path.basename(mFile)} for changes. Use "Sync to Excel" manually.`);
-				return;
-			}
-			pollingFallbackTried = true;
-			log(`Native file watching failed for ${path.basename(mFile)} - this usually means a network drive or UNC path. Retrying with polling.`, 'watchFile', 'info');
-			await w.close().catch(() => { /* already dead; the retry is what matters */ });
-			watcher = makeWatcher(true);
-			attachHandlers(watcher);
-			// The watcher set is registered below, and on the retry path it already exists - repoint
-			// it, or close() at teardown would close the dead watcher and leak the live one.
-			const registered = fileWatchers.get(mFile);
-			if (registered) { registered.chokidar = watcher; }
-		});
-
 		w.on('ready', () => {
-			log(`CHOKIDAR: Watcher ready for ${path.basename(mFile)} (polling: ${pollingFallbackTried || isDevContainer})`, 'watchFile', 'info');
+			log(`CHOKIDAR: Watcher ready for ${fileName} (polling: ${usePolling})`, 'watchFile', 'info');
 		});
 	};
 
-	// PRIMARY WATCHER: Always use Chokidar as the main watcher
-	let watcher = makeWatcher(isDevContainer);
-	attachHandlers(watcher);
+	const resilient = createResilientWatcher<FSWatcher>({
+		startPolling: isDevContainer,
+		create: (usePolling) => watch(mFile, {
+			ignoreInitial: true,
+			usePolling,
+			interval: usePolling ? 1000 : undefined,
+			awaitWriteFinish: {
+				stabilityThreshold: 300,
+				pollInterval: 100
+			}
+		}),
+		attach: (w, usePolling) => attachHandlers(w, usePolling),
+		log: (message, level) => log(`CHOKIDAR (${fileName}): ${message}`, 'watchFile', level),
+		onReplaced: () => {
+			// The registry holds the wrapper, which already points at the replacement. Nothing to repoint.
+		},
+		onUnwatchable: () => {
+			const registered = fileWatchers.get(mFile);
+			if (registered?.vscode) {
+				// Dev container: the VS Code watcher is still running, so the file is NOT unwatched.
+				log(`Chokidar cannot watch ${fileName}; the VS Code backup watcher is still active.`, 'watchFile', 'error');
+				return;
+			}
+			// Genuinely unwatched. Stop claiming otherwise: remove it, so the status bar and toggleWatch
+			// stop reporting a watcher that will never fire.
+			registered?.document?.dispose();
+			fileWatchers.delete(mFile);
+			updateStatusBar();
+			log(`Polling also failed for ${fileName}; it is no longer watched. Save-triggered sync will not fire - use "Sync to Excel" manually.`, 'watchFile', 'error');
+			vscode.window.showWarningMessage(`Cannot watch ${fileName} for changes, so it is no longer watched. Use "Sync to Excel" manually.`);
+		}
+	});
 
-	log(`CHOKIDAR watcher created for ${path.basename(mFile)}, polling: ${isDevContainer}`, 'watchFile', 'verbose');
+	log(`CHOKIDAR watcher created for ${fileName}, polling: ${isDevContainer}`, 'watchFile', 'verbose');
 
 	// BACKUP WATCHER: Only add VS Code FileSystemWatcher in dev containers as backup
 	let vscodeWatcher: vscode.FileSystemWatcher | undefined;
@@ -1472,7 +1467,7 @@ async function watchFile(uri?: vscode.Uri, uris?: vscode.Uri[]): Promise<void> {
 		log(`Windows environment detected - using Chokidar only to avoid cascade events`, 'watchFile', 'verbose');
 	}		// Store watchers for cleanup (handle optional backup watchers)
 		const watcherSet = { 
-			chokidar: watcher, 
+			chokidar: resilient, 
 			vscode: vscodeWatcher || null,
 			document: documentWatcher || null
 		};

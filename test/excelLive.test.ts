@@ -271,8 +271,10 @@ suite('Why a running Excel cannot see the workbook', function () {
 		assert.ok(/log/i.test(m), 'the names are in the log');
 	});
 
-	test('an older helper that reports nothing does not claim what is usual', () => {
-		const m = explainInvisibleWorkbook({ ...running })!;
+	test('no evidence - an older helper, or a table the helper could not read - does not claim what is usual', () => {
+		// `registered` absent is also what the helper sends when it FAILED to read the table. That must
+		// not be mistaken for an empty table, which would blame an integrity wall nobody measured.
+		const m = explainInvisibleWorkbook({ ...running, elevated: false })!;
 		assert.ok(!/usually/i.test(m), 'we have no evidence either way, so do not rank the causes');
 		assert.ok(/different path/i.test(m) && /administrator/i.test(m), 'name both possibilities');
 	});
@@ -295,12 +297,16 @@ suite('Mapped network drives', function () {
 
 		// A compile error in RunningObjects.cs.txt would break EVERY live sync, not just network
 		// ones, so compile the real file. A mapped drive cannot be created in CI without changing the
-		// machine; the positive case was verified by hand against \\medarms01\public, 2026-09-14.
+		// machine, and ToUnc's POSITIVE case has not run anywhere yet. What was verified by hand on
+		// 2026-09-14 is only that Excel registered a P:\ workbook under \\medarms01\public in the ROT.
 		const cs = path.join(helperDir, 'RunningObjects.cs.txt').replace(/'/g, "''");
 		const script = [
 			`Add-Type -TypeDefinition (Get-Content -Raw '${cs}') -ErrorAction Stop`,
 			"$r = @('C:\\Windows\\win.ini', '\\\\server\\share\\x.xlsx', '', 'relative\\x.xlsx') | ForEach-Object { [string][NetworkPaths]::ToUnc($_) }",
 			"Write-Output ('RESULT:' + ($r -join '|'))",
+			// Names() returns NULL only when the table cannot be read. On a working machine it must be a
+			// real array, even an empty one - otherwise null would mean something besides failure.
+			"$n = [RunningObjects]::Names(); Write-Output ('NAMES:' + ($null -ne $n) + ':' + ($n -is [array]))",
 		].join('; ');
 
 		const out: string = await new Promise((resolve, reject) => {
@@ -310,5 +316,7 @@ suite('Mapped network drives', function () {
 		const line = out.split(/\r?\n/).find((l) => l.startsWith('RESULT:'));
 		assert.ok(line, `helper C# did not compile or run: ${out}`);
 		assert.strictEqual(line, 'RESULT:|||', 'local, UNC, empty and relative paths all have no second name');
+		const names = out.split(/\r?\n/).find((l) => l.startsWith('NAMES:'));
+		assert.strictEqual(names, 'NAMES:True:True', 'a readable table yields an array, so null is reserved for failure');
 	});
 });

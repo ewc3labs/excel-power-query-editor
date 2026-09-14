@@ -119,7 +119,7 @@ Excel serves external automation. See `design/live-sync-to-open-excel.md`.
 | PQ-16 | ✅ done | Reply to namgaw, and reach out to Ken Puls | S | [discussion #3][discussion-3] | replied with the built feature and a prerelease he can install; his Monkey Tools pointer is what unstuck it. Ken Puls NOT contacted, deliberately - he is credited in the README, which is better than cold-emailing the author of the commercial tool we just built a free alternative to |
 | PQ-17 | 🟩 proven | Wire live sync into the sync command and settings | M | live-sync-to-open-excel.md | proven 2026-08-14 — real Excel, dev PC: a real 29-query workbook in a OneDrive folder. Failed on a network drive at work, see PQ-35 |
 | PQ-35 | 🟨 coded | Live sync on mapped network drives: the ROT registers the UNC path | S | [PQ-35][pq-35] | started 2026-09-14 — unit tests cover the messages, the lookup order and a clean compile, but not the one case that matters: a real mapped drive. Needs the work PC or a loopback share |
-| PQ-36 | 🟨 coded | File watcher is deaf on network drives: fall back to polling | S | [PQ-36][pq-36] | started 2026-09-14 — no automated test; needs a real network share to prove |
+| PQ-36 | 🟨 coded | File watcher is deaf on network drives: fall back to polling | S | [PQ-36][pq-36] | started 2026-09-14 — the fallback state machine is unit-tested; whether polling detects saves on a real share is not |
 
 ### Selective extract, and who is authoritative
 
