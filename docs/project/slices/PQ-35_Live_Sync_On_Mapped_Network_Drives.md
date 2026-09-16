@@ -93,8 +93,16 @@ contradicting the state and the section below.
 
 ## To prove
 
-Install the build on the work PC, open a workbook from `P:\`, and live-sync to it. `matchedHow` in
-the status response should read `exact-unc`.
+Install the build on the work PC, open a workbook from `P:\`, and live-sync to it. The log should
+read:
+
+```text
+[syncToExcel] Excel file is locked; live sync CAN handle it (available=true, found via exact-unc as \\medarms01\public\...)
+```
+
+**This step was originally unobservable.** It named `matchedHow`, a field the helper always returned
+and the extension never parsed or printed, so the only available proof was inferring the UNC match
+from the sync succeeding. Caught while preparing the work-PC test build; the log line now prints it.
 
 ## Known limits
 

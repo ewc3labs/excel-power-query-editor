@@ -76,6 +76,24 @@ export interface LiveStatus {
 	 * is registered under a different name, or is not open. Absent from older helpers.
 	 */
 	registered?: string[];
+	/**
+	 * How the helper found the workbook: `exact-path`, `exact-unc` (a mapped network drive),
+	 * `exact-cloud-url` or `exact-cloud-url-normalized` (OneDrive/SharePoint). Present when open.
+	 */
+	matchedHow?: string;
+	/** The name the workbook was actually registered under, when that differs from its path. */
+	registeredAs?: string;
+}
+
+/**
+ * The part of a log line that says HOW an open workbook was found, or '' when there is nothing to say.
+ *
+ * The helper has always reported this and nothing ever printed it, so the proof that a mapped-drive
+ * workbook was reached through its UNC name (PQ-35) could only be inferred from the sync succeeding.
+ */
+export function describeLiveMatch(status: Pick<LiveStatus, 'open' | 'matchedHow' | 'registeredAs'>): string {
+	if (!status.open || !status.matchedHow) { return ''; }
+	return `, found via ${status.matchedHow}${status.registeredAs ? ' as ' + status.registeredAs : ''}`;
 }
 
 export interface LiveWriteResult {
@@ -173,7 +191,9 @@ export async function getLiveStatus(workbookPath: string, extensionPath: string)
 			saved: typeof r.saved === 'boolean' ? r.saved : undefined,
 			autoSaveOn: typeof r.autoSaveOn === 'boolean' ? r.autoSaveOn : undefined,
 			elevated: typeof r.elevated === 'boolean' ? r.elevated : undefined,
-			registered: Array.isArray(r.registered) ? (r.registered as unknown[]).map(String) : undefined
+			registered: Array.isArray(r.registered) ? (r.registered as unknown[]).map(String) : undefined,
+			matchedHow: typeof r.matchedHow === 'string' ? r.matchedHow : undefined,
+			registeredAs: typeof r.registeredAs === 'string' ? r.registeredAs : undefined
 		};
 	} catch (e) {
 		return {

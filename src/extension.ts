@@ -8,6 +8,7 @@ import { parseSection, diffQueries } from './mSection';
 import { registerExcelSymbols, unregisterExcelSymbols, explainRegistration, watchForPowerQueryExtension, findLegacyLeftovers } from './powerQuerySymbols';
 import {
 	explainInvisibleWorkbook,
+	describeLiveMatch,
 	explainLiveSyncUnavailable,
 	explainLockedButUnreachable,
 	getLiveStatus,
@@ -870,7 +871,7 @@ async function syncToExcel(uri?: vscode.Uri, uris?: vscode.Uri[]): Promise<SyncO
 
 				log(`Excel file is locked; live sync ${probe.open ? 'CAN' : 'cannot'} handle it ` +
 					`(available=${probe.available}${probe.reason ? ', ' + probe.reason : ''}` +
-					`${probe.excelProcesses ? ', excelProcesses=' + probe.excelProcesses : ''})`,
+					`${probe.excelProcesses ? ', excelProcesses=' + probe.excelProcesses : ''}${describeLiveMatch(probe)})`,
 					'syncToExcel', 'info');
 
 				// The file is locked AND Excel is running AND we cannot see the workbook. That is

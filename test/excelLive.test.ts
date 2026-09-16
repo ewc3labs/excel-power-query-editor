@@ -3,7 +3,7 @@ import * as path from 'path';
 import * as os from 'os';
 import * as fs from 'fs';
 import { execFile } from 'child_process';
-import { isLiveSyncSupported, getLiveStatus, writeLive, shouldRefuseUnsavedWorkbook, explainLiveSyncUnavailable, explainInvisibleWorkbook } from '../src/excelLive';
+import { isLiveSyncSupported, getLiveStatus, writeLive, shouldRefuseUnsavedWorkbook, explainLiveSyncUnavailable, explainInvisibleWorkbook, describeLiveMatch } from '../src/excelLive';
 
 /**
  * Live sync needs Windows, Excel, and a workbook actually open - none of which CI has. So these
@@ -269,6 +269,17 @@ suite('Why a running Excel cannot see the workbook', function () {
 		assert.ok(/2 workbooks are visible/.test(m), 'say how much we could see');
 		assert.ok(/different path/i.test(m));
 		assert.ok(/log/i.test(m), 'the names are in the log');
+	});
+
+	test('the log says HOW an open workbook was found, so a mapped-drive match is visible, not inferred', () => {
+		// PQ-35's proof on a real share is this line reading exact-unc. The helper always reported it;
+		// nothing printed it until now.
+		assert.strictEqual(
+			describeLiveMatch({ open: true, matchedHow: 'exact-unc', registeredAs: '\\\\medarms01\\public\\IT\\Book.xlsx' }),
+			', found via exact-unc as \\\\medarms01\\public\\IT\\Book.xlsx');
+		assert.strictEqual(describeLiveMatch({ open: true, matchedHow: 'exact-path' }), ', found via exact-path');
+		assert.strictEqual(describeLiveMatch({ open: false, matchedHow: 'exact-unc' }), '', 'nothing was found, so nothing to describe');
+		assert.strictEqual(describeLiveMatch({ open: true }), '', 'an older helper that does not report it');
 	});
 
 	test('visible workbooks outrank the helper being elevated', () => {
