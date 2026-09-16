@@ -8,6 +8,7 @@ import { parseSection, diffQueries } from './mSection';
 import { registerExcelSymbols, unregisterExcelSymbols, explainRegistration, watchForPowerQueryExtension, findLegacyLeftovers } from './powerQuerySymbols';
 import {
 	explainInvisibleWorkbook,
+	describeLiveMatch,
 	explainLiveSyncUnavailable,
 	explainLockedButUnreachable,
 	getLiveStatus,
@@ -19,6 +20,7 @@ import {
 import * as fs from 'fs';
 import * as path from 'path';
 import { watch, FSWatcher } from 'chokidar';
+import { createResilientWatcher, ResilientWatcher } from './resilientWatcher';
 import { getConfig } from './configHelper';
 
 /**
@@ -48,7 +50,10 @@ function getTestFixturePath(filename: string): string {
 }
 
 // File watchers storage 
-const fileWatchers = new Map<string, { chokidar: FSWatcher; vscode: vscode.FileSystemWatcher | null; document: vscode.Disposable | null }>();
+// `chokidar` holds the RESILIENT watcher, not a raw FSWatcher: it swaps to polling underneath on a
+// native failure, and closing it through the wrapper is what stops a late error from the old watcher
+// starting a fallback after the user has already stopped watching. Only close() is ever called here.
+const fileWatchers = new Map<string, { chokidar: ResilientWatcher<FSWatcher>; vscode: vscode.FileSystemWatcher | null; document: vscode.Disposable | null }>();
 const recentExtractions = new Set<string>(); // Track recently extracted files to prevent immediate auto-sync
 
 // Debounce timers for file sync operations
@@ -866,7 +871,7 @@ async function syncToExcel(uri?: vscode.Uri, uris?: vscode.Uri[]): Promise<SyncO
 
 				log(`Excel file is locked; live sync ${probe.open ? 'CAN' : 'cannot'} handle it ` +
 					`(available=${probe.available}${probe.reason ? ', ' + probe.reason : ''}` +
-					`${probe.excelProcesses ? ', excelProcesses=' + probe.excelProcesses : ''})`,
+					`${probe.excelProcesses ? ', excelProcesses=' + probe.excelProcesses : ''}${describeLiveMatch(probe)})`,
 					'syncToExcel', 'info');
 
 				// The file is locked AND Excel is running AND we cannot see the workbook. That is
@@ -874,6 +879,14 @@ async function syncToExcel(uri?: vscode.Uri, uris?: vscode.Uri[]): Promise<SyncO
 				const explanation = explainInvisibleWorkbook(probe);
 				if (explanation) {
 					log(explanation, 'syncToExcel', 'warn');
+					if (probe.registered) {
+						// The evidence the message refers to. These are the user's own open files,
+						// written to their own local log - and without them, diagnosing a name
+						// mismatch takes hand-pasted COM code.
+						log(`Workbooks registered in the Running Object Table (${probe.registered.length}): `
+							+ (probe.registered.length ? probe.registered.join(' | ') : '(none)'),
+							'syncToExcel', 'info');
+					}
 					vscode.window.showWarningMessage(explanation);
 					return { status: 'aborted' };
 				}
@@ -1333,22 +1346,14 @@ async function watchFile(uri?: vscode.Uri, uris?: vscode.Uri[]): Promise<void> {
 	log(`Is dev container: ${vscode.env.remoteName === 'dev-container'}`, 'watchFile', 'verbose');
 	
 	const isDevContainer = vscode.env.remoteName === 'dev-container';
-	
-	// PRIMARY WATCHER: Always use Chokidar as the main watcher
-	const watcher = watch(mFile, { 
-		ignoreInitial: true,
-		usePolling: isDevContainer, // Use polling in dev containers for better compatibility
-		interval: isDevContainer ? 1000 : undefined, // Poll every second in dev containers
-		awaitWriteFinish: {
-			stabilityThreshold: 300,
-			pollInterval: 100
-		}
-	});
-	
-	log(`CHOKIDAR watcher created for ${path.basename(mFile)}, polling: ${isDevContainer}`, 'watchFile', 'verbose');
-	
-	// Add comprehensive event logging
-	watcher.on('change', async () => {			try {
+
+	// PRIMARY WATCHER. Native first, polling if native fails (network drives), stopped if polling fails
+	// too. The state machine lives in resilientWatcher.ts, where it is tested; see PQ-36.
+	const fileName = path.basename(mFile);
+	// Defined BEFORE the watcher is created: createResilientWatcher calls attach() synchronously.
+	const attachHandlers = (w: FSWatcher, usePolling: boolean) => {
+		w.on('change', async () => {
+			try {
 				log(`CHOKIDAR: File change detected: ${path.basename(mFile)}`, 'watchFile', 'verbose');
 				vscode.window.showInformationMessage(`📝 File changed, syncing: ${path.basename(mFile)}`);
 				log(`File changed, triggering debounced sync: ${path.basename(mFile)}`, 'watchFile', 'verbose');
@@ -1362,24 +1367,56 @@ async function watchFile(uri?: vscode.Uri, uris?: vscode.Uri[]): Promise<void> {
 				vscode.window.showErrorMessage(errorMsg);
 				log(errorMsg, 'watchFile', 'error');
 			}
+		});
+
+		w.on('add', (path) => {
+			log(`CHOKIDAR: File added: ${path}`, 'watchFile', 'info');
+			// DON'T trigger sync on file creation - only on user changes
+		});
+
+		w.on('unlink', (path) => {
+			log(`CHOKIDAR: File deleted: ${path}`, 'watchFile', 'info');
+		});
+
+		w.on('ready', () => {
+			log(`CHOKIDAR: Watcher ready for ${fileName} (polling: ${usePolling})`, 'watchFile', 'info');
+		});
+	};
+
+	const resilient = createResilientWatcher<FSWatcher>({
+		startPolling: isDevContainer,
+		create: (usePolling) => watch(mFile, {
+			ignoreInitial: true,
+			usePolling,
+			interval: usePolling ? 1000 : undefined,
+			awaitWriteFinish: {
+				stabilityThreshold: 300,
+				pollInterval: 100
+			}
+		}),
+		attach: (w, usePolling) => attachHandlers(w, usePolling),
+		log: (message, level) => log(`CHOKIDAR (${fileName}): ${message}`, 'watchFile', level),
+		onReplaced: () => {
+			// The registry holds the wrapper, which already points at the replacement. Nothing to repoint.
+		},
+		onUnwatchable: () => {
+			const registered = fileWatchers.get(mFile);
+			if (registered?.vscode) {
+				// Dev container: the VS Code watcher is still running, so the file is NOT unwatched.
+				log(`Chokidar cannot watch ${fileName}; the VS Code backup watcher is still active.`, 'watchFile', 'error');
+				return;
+			}
+			// Genuinely unwatched. Stop claiming otherwise: remove it, so the status bar and toggleWatch
+			// stop reporting a watcher that will never fire.
+			registered?.document?.dispose();
+			fileWatchers.delete(mFile);
+			updateStatusBar();
+			log(`Polling also failed for ${fileName}; it is no longer watched. Save-triggered sync will not fire - use "Sync to Excel" manually.`, 'watchFile', 'error');
+			vscode.window.showWarningMessage(`Cannot watch ${fileName} for changes, so it is no longer watched. Use "Sync to Excel" manually.`);
+		}
 	});
-	
-	watcher.on('add', (path) => {
-		log(`CHOKIDAR: File added: ${path}`, 'watchFile', 'info');
-		// DON'T trigger sync on file creation - only on user changes
-	});
-	
-	watcher.on('unlink', (path) => {
-		log(`CHOKIDAR: File deleted: ${path}`, 'watchFile', 'info');
-	});
-	
-	watcher.on('error', (error) => {
-		log(`CHOKIDAR: Watcher error: ${error}`, 'watchFile', 'error');
-	});
-	
-	watcher.on('ready', () => {
-		log(`CHOKIDAR: Watcher ready for ${path.basename(mFile)}`, 'watchFile', 'info');
-	});
+
+	log(`CHOKIDAR watcher created for ${fileName}, polling: ${isDevContainer}`, 'watchFile', 'verbose');
 
 	// BACKUP WATCHER: Only add VS Code FileSystemWatcher in dev containers as backup
 	let vscodeWatcher: vscode.FileSystemWatcher | undefined;
@@ -1431,7 +1468,7 @@ async function watchFile(uri?: vscode.Uri, uris?: vscode.Uri[]): Promise<void> {
 		log(`Windows environment detected - using Chokidar only to avoid cascade events`, 'watchFile', 'verbose');
 	}		// Store watchers for cleanup (handle optional backup watchers)
 		const watcherSet = { 
-			chokidar: watcher, 
+			chokidar: resilient, 
 			vscode: vscodeWatcher || null,
 			document: documentWatcher || null
 		};

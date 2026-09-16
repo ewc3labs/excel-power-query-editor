@@ -67,6 +67,33 @@ export interface LiveStatus {
 	autoSaveOn?: boolean;
 	/** Whether the helper itself ran elevated. Half of the mismatch above. */
 	elevated?: boolean;
+	/**
+	 * Workbook display names the helper COULD see in the Running Object Table, reported only when
+	 * the requested workbook was not among them.
+	 *
+	 * This is the evidence behind "not visible", and it decides the explanation rather than a guess
+	 * does: none visible while Excel runs means an integrity mismatch; some visible means this one
+	 * is registered under a different name, or is not open. Absent from older helpers.
+	 */
+	registered?: string[];
+	/**
+	 * How the helper found the workbook: `exact-path`, `exact-unc` (a mapped network drive),
+	 * `exact-cloud-url` or `exact-cloud-url-normalized` (OneDrive/SharePoint). Present when open.
+	 */
+	matchedHow?: string;
+	/** The name the workbook was actually registered under, when that differs from its path. */
+	registeredAs?: string;
+}
+
+/**
+ * The part of a log line that says HOW an open workbook was found, or '' when there is nothing to say.
+ *
+ * The helper has always reported this and nothing ever printed it, so the proof that a mapped-drive
+ * workbook was reached through its UNC name (PQ-35) could only be inferred from the sync succeeding.
+ */
+export function describeLiveMatch(status: Pick<LiveStatus, 'open' | 'matchedHow' | 'registeredAs'>): string {
+	if (!status.open || !status.matchedHow) { return ''; }
+	return `, found via ${status.matchedHow}${status.registeredAs ? ' as ' + status.registeredAs : ''}`;
 }
 
 export interface LiveWriteResult {
@@ -163,7 +190,10 @@ export async function getLiveStatus(workbookPath: string, extensionPath: string)
 			excelProcesses: typeof r.excelProcesses === 'number' ? r.excelProcesses : undefined,
 			saved: typeof r.saved === 'boolean' ? r.saved : undefined,
 			autoSaveOn: typeof r.autoSaveOn === 'boolean' ? r.autoSaveOn : undefined,
-			elevated: typeof r.elevated === 'boolean' ? r.elevated : undefined
+			elevated: typeof r.elevated === 'boolean' ? r.elevated : undefined,
+			registered: Array.isArray(r.registered) ? (r.registered as unknown[]).map(String) : undefined,
+			matchedHow: typeof r.matchedHow === 'string' ? r.matchedHow : undefined,
+			registeredAs: typeof r.registeredAs === 'string' ? r.registeredAs : undefined
 		};
 	} catch (e) {
 		return {
@@ -228,13 +258,49 @@ export async function writeLive(
  * A human-readable explanation for "Excel is clearly running, but we cannot see the workbook".
  *
  * Returns undefined when there is nothing suspicious to explain.
+ *
+ * REPORTED FROM A NETWORK SHARE, AND THE OLD MESSAGE WAS WRONG. It said this "usually means one of
+ * them is elevated" every time - including for a user whose helper had just measured itself NOT
+ * elevated, and whose workbook was sitting in the Running Object Table under its UNC path. We had
+ * the evidence to rule elevation out and blamed it anyway, which is the same mistake
+ * explainLiveSyncUnavailable was written to stop making.
+ *
+ * So branch on what the helper saw instead of on what is usually true.
  */
 export function explainInvisibleWorkbook(status: LiveStatus): string | undefined {
 	if (status.open || !status.excelProcesses) { return undefined; }
-	return 'Excel is running but this workbook is not visible to the extension. '
-		+ 'This usually means one of them is elevated and the other is not - '
-		+ 'COM hides running objects across integrity levels. '
-		+ 'Run VS Code and Excel the same way (normally, for preference) and try again.';
+
+	// VISIBLE WORKBOOKS FIRST, BECAUSE THEY OUTRANK EVERY OTHER SIGNAL. Seeing into Excel at all proves
+	// there is no integrity wall between us, whatever the helper's own elevation says. The first
+	// version checked elevation first, so an elevated helper that could see three workbooks still
+	// blamed a wall it had just proved absent. (Codex review, PR #8.)
+	if (status.registered && status.registered.length > 0) {
+		// We can see into Excel fine. This workbook just is not among what it registered.
+		const n = status.registered.length;
+		return `Excel is running and ${n} workbook${n === 1 ? ' is' : 's are'} visible to the `
+			+ 'extension, but not this one. It may be open under a different path - another drive '
+			+ 'mapping, a copy, or a synced location - or not open at all. The workbooks Excel has '
+			+ 'registered are listed in the log.';
+	}
+
+	if (status.elevated === true) {
+		return 'VS Code is running as administrator, and Excel probably is not. COM hides running '
+			+ 'objects across integrity levels, so every workbook is invisible from here. Run VS Code '
+			+ 'normally and try again.';
+	}
+
+	if (status.registered && status.registered.length === 0) {
+		// Excel runs and we see NONE of its workbooks. Not a naming problem - a wall.
+		return 'Excel is running, but none of its workbooks are visible to the extension. That '
+			+ 'almost always means Excel was started as administrator and VS Code was not - COM '
+			+ 'hides running objects across integrity levels. Run both the same way (normally, for '
+			+ 'preference) and try again.';
+	}
+
+	// An older helper that does not report what it saw. Say what is possible, not what is usual.
+	return 'Excel is running but this workbook is not visible to the extension. It may be open '
+		+ 'under a different path, or one of VS Code and Excel may be running as administrator and '
+		+ 'the other not - COM hides running objects across integrity levels.';
 }
 
 /**

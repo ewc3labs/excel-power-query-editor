@@ -35,13 +35,26 @@ function ps(command: string): string {
 		{ encoding: 'utf8', timeout: 60000 }).trim();
 }
 
+/** A multi-line script, passed as -EncodedCommand so no quoting or newline survives the command line wrong. */
+function psScript(script: string): string {
+	return execFileSync('powershell.exe',
+		['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-EncodedCommand', Buffer.from(script, 'utf16le').toString('base64')],
+		{ encoding: 'utf8', timeout: 60000 }).trim();
+}
+
+/** A literal for a single-quoted PowerShell string: only ' is special, and it is escaped by doubling. */
+function psQuote(value: string): string {
+	return `'${value.replace(/'/g, "''")}'`;
+}
+
 suite('Live sync against a real Excel', function () {
 	// Excel is slow to start and slower to quit.
 	this.timeout(180_000);
 
 	const available = excelInstalled();
-	// Only an Excel this suite started may be quit by this suite.
-	let startedExcel = false;
+	// Only an Excel this suite started may be quit by this suite - identified by PROCESS ID, not by
+	// "whichever Excel COM hands us", which would be someone else's the moment they opened one.
+	let excelPid = 0;
 	const workdir = path.join(os.tmpdir(), 'epqe-live-integration');
 	const workbook = path.join(workdir, 'live-integration.xlsx');
 	let extensionPath = '';
@@ -79,9 +92,10 @@ suite('Live sync against a real Excel', function () {
 			workbook
 		);
 
-		// Open it the way a user does, then wait for Excel to register it in the ROT.
-		ps(`Start-Process '${workbook}'`);
-		startedExcel = true;
+		// Open it the way a user does, then wait for Excel to register it in the ROT. -PassThru returns
+		// the EXCEL process itself (measured 2026-09-14), which is how teardown knows what is ours.
+		excelPid = Number(ps(`(Start-Process ${psQuote(workbook)} -PassThru).Id`)) || 0;
+		if (!excelPid) { throw new Error('Start-Process did not report the Excel process it launched'); }
 		const deadline = Date.now() + 90_000;
 		while (Date.now() < deadline) {
 			const listed = ps(
@@ -95,22 +109,50 @@ suite('Live sync against a real Excel', function () {
 	});
 
 	suiteTeardown(() => {
-		if (!available || !startedExcel) { return; }
+		if (!available || !excelPid) { return; }
+
+		// THE SUITE USED TO DISABLE ITSELF AFTER ONE RUN. Two defects, found 2026-09-14:
+		//
+		// 1. The workbook path was put in a single-quoted PowerShell string with every backslash
+		//    doubled. Backslash is not an escape there, so the path never equalled FullName, nothing
+		//    closed, and Excel was never quit.
+		// 2. Even closed and quit correctly, EXCEL DOES NOT EXIT. Quit() is accepted and the process
+		//    stays, with zero workbooks and no window - reproduced on every trial: quit at 0s, 45s and
+		//    3 minutes after launch, with Saved set and COM references released, in /safe mode with
+		//    no add-ins, and after a COM formula write. Same PID throughout. Cause not found.
+		//
+		// Either way the next run saw "Excel is already running" and skipped all five tests.
+		//
+		// So identify our Excel by the PID we launched, and if it outlives Quit() with NOTHING open,
+		// end that process. If anything is open in it - someone opened a file mid-run and it joined
+		// our instance - leave it and say so. Ending a process with unsaved work in it is the one
+		// outcome this suite exists to never cause.
+		const cs = path.join(extensionPath, 'resources', 'live-sync', 'RunningObjects.cs.txt');
 		try {
-			// Close ONLY the workbooks this suite opened, matched by full name, and only then quit.
-			// Never iterate the whole Workbooks collection: on a machine where someone reattached to
-			// Excel mid-run, that is their unsaved work being discarded.
-			ps(
-				'try {' +
-				'  $xl = [Runtime.InteropServices.Marshal]::GetActiveObject("Excel.Application");' +
-				`  $ours = @('${workbook.replace(/\\/g, '\\\\')}');` +
-				'  foreach ($w in @($xl.Workbooks)) {' +
-				'    if ($ours -contains $w.FullName) { $w.Close($false) }' +
-				'  }' +
-				'  if (@($xl.Workbooks).Count -eq 0) { $xl.Quit() }' +
-				'} catch { }'
-			);
-		} catch { /* best effort */ }
+			const outcome = psScript(`
+				$excelPid = ${excelPid}
+				Add-Type -TypeDefinition (Get-Content -Raw ${psQuote(cs)})
+				$book = [RunningObjects]::Get(${psQuote(workbook)})
+				if ($null -ne $book) {
+					$app = $book.Application
+					$book.Close($false)
+					if (@($app.Workbooks).Count -eq 0) { $app.Quit() }
+					$book = $null; $app = $null; [GC]::Collect(); [GC]::WaitForPendingFinalizers()
+				}
+				$deadline = (Get-Date).AddSeconds(15)
+				while ((Get-Date) -lt $deadline -and (Get-Process -Id $excelPid -ErrorAction SilentlyContinue)) { Start-Sleep -Milliseconds 500 }
+				if (-not (Get-Process -Id $excelPid -ErrorAction SilentlyContinue)) { 'exited'; return }
+				$all = @(Get-Process EXCEL -ErrorAction SilentlyContinue)
+				if ($all.Count -ne 1) { "left running: $($all.Count) Excel processes, so COM may not be pointing at ours"; return }
+				$open = @([Runtime.InteropServices.Marshal]::GetActiveObject('Excel.Application').Workbooks).Count
+				if ($open -eq 0) { Stop-Process -Id $excelPid -Force; 'ended: outlived Quit with nothing open' }
+				else { "left running: $open workbook(s) open in it" }
+			`);
+			console.log(`    [teardown] Excel ${excelPid}: ${outcome.split(/\r?\n/).pop()}`);
+		} catch (e) {
+			// Not silent. A swallowed teardown failure is how this suite disabled itself unnoticed.
+			console.log(`    [teardown] Excel ${excelPid}: teardown failed - ${e instanceof Error ? e.message : e}`);
+		}
 		try { fs.rmSync(workdir, { recursive: true, force: true }); } catch { /* best effort */ }
 	});
 
