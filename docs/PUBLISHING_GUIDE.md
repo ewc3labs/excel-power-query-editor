@@ -38,11 +38,18 @@ testing with real tags is the only way to know a tag-triggered pipeline works.
 The Marketplace has no concept of a semver prerelease suffix. A version is **either** the stable one
 **or** the pre-release one, and the same version cannot be both. VS Code's convention is therefore:
 
-| Tag | Channel | Who receives it |
-| --- | --- | --- |
-| `v0.8.0` | **stable** — even minor | everyone, including auto-update |
-| `v0.7.0` | **pre-release** — odd minor | only users who opted in via the extension pane |
-| `v0.7.0-rc.2` | **neither** | nobody; a VSIX on a draft release, for handing to someone |
+| Tag | Channel | GitHub release | Who receives it |
+| --- | --- | --- | --- |
+| `v0.8.0` | **stable** — even minor | release | everyone, including auto-update |
+| `v0.7.0` | **pre-release** — odd minor | pre-release | only users who opted in via the extension pane |
+| `v0.7.0-rc.2` | **neither** | pre-release | nobody; a VSIX on a draft release, for handing to someone |
+
+**The GitHub release's pre-release flag comes from the same channel**, so the two cannot disagree.
+They did until 2026-09-20: the flag was set from whether the tag carried a *suffix*, so `v0.7.3`
+went to the Marketplace pre-release channel while its GitHub release was flagged a normal one —
+publishing that draft would have marked a pre-release build as **Latest** on the repository.
+Anything that is not the stable channel is a pre-release. **Copying this workflow to another
+Marketplace project carries the rule with it; do not re-derive it from the tag shape.**
 
 **The channel is derived from the version, so the wrong one is not possible.** It is, however,
 *silent* — believing you are shipping `0.7.0` to stable gets you a pre-release, having consumed the
