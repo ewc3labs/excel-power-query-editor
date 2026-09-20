@@ -130,13 +130,6 @@ jobs:
           echo "tag=$TAG"        >> "$GITHUB_OUTPUT"
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
-          # A prerelease is anything with a suffix: v0.6.0-rc.1, v0.6.0-beta.2
-          if [[ "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            echo "is_prerelease=false" >> "$GITHUB_OUTPUT"
-          else
-            echo "is_prerelease=true"  >> "$GITHUB_OUTPUT"
-          fi
-
           # The tag and package.json must agree, comparing BASE versions.
           #
           # A VS Code extension version must be plain x.y.z - vsce rejects a prerelease suffix - so
@@ -173,6 +166,23 @@ jobs:
           fi
           echo "channel=$CHANNEL" >> "$GITHUB_OUTPUT"
           echo "Marketplace channel: $CHANNEL"
+
+          # ONE SOURCE OF TRUTH FOR "IS THIS A PRE-RELEASE": the channel, decided just above.
+          #
+          # This used to be decided separately, from whether the tag carried a SUFFIX. The two rules
+          # then disagreed for every odd-minor tag: v0.7.3 shipped to the Marketplace PRE-RELEASE
+          # channel while its GitHub release was flagged a normal release, so publishing that draft
+          # would have marked a pre-release build as "Latest" on the repository. Measured on the real
+          # v0.7.3 run, 2026-09-20.
+          #
+          # Anything that is not the stable channel is a pre-release, which covers both cases without
+          # naming a version scheme twice: an odd minor (pre-release channel) and a suffixed tag
+          # (CHANNEL=none - no Marketplace at all, a VSIX to hand somebody).
+          if [[ "$CHANNEL" == "stable" ]]; then
+            echo "is_prerelease=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "is_prerelease=true"  >> "$GITHUB_OUTPUT"
+          fi
 
           # STATE YOUR INTENT AND HAVE IT CHECKED, if you are running this by hand.
           #

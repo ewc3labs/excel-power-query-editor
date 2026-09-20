@@ -19,6 +19,34 @@ function updatePackageVersion(newVersion) {
   packageJson.version = newVersion;
   fs.writeFileSync('package.json', JSON.stringify(packageJson, null, 2) + '\n');
   console.log(`✅ Updated package.json version to ${newVersion}`);
+  updateLockVersion(newVersion);
+}
+
+/**
+ * package-lock.json carries the SAME version number, in two places, and npm keeps them in step.
+ *
+ * This script did not, so the lockfile sat at 0.6.0 while package.json went 0.7.0, 0.7.1, 0.7.2,
+ * 0.7.3 - four releases of drift, found 2026-09-20. It breaks nothing directly (vsce packages from
+ * package.json), but the next person to run a plain `npm install` gets an unrelated two-line
+ * lockfile change mixed into whatever they were committing, which is how a stale number becomes
+ * somebody else's confusing diff.
+ *
+ * Only the two version fields are touched. Dependency resolution is npm's business, not ours.
+ */
+function updateLockVersion(newVersion) {
+  const file = 'package-lock.json';
+  if (!fs.existsSync(file)) { return; }
+  try {
+    const lock = JSON.parse(fs.readFileSync(file, 'utf8'));
+    const before = [lock.version, lock.packages && lock.packages[''] && lock.packages[''].version];
+    lock.version = newVersion;
+    if (lock.packages && lock.packages['']) { lock.packages[''].version = newVersion; }
+    fs.writeFileSync(file, JSON.stringify(lock, null, 2) + '\n');
+    console.log(`✅ Updated package-lock.json version to ${newVersion} (was ${before.filter(Boolean).join(', ')})`);
+  } catch (error) {
+    // Never fail a version bump over the lockfile: say so and let the release proceed.
+    console.warn(`⚠️ Could not update package-lock.json: ${error.message}`);
+  }
 }
 
 function getCommitsSinceLastTag() {
