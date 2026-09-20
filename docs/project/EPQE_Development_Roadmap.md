@@ -29,8 +29,8 @@ live sync in October 2025, has been replied to and can install it.
 
 ### What is actually next
 
-0. **`PQ-35` / `PQ-36` — network drives, found by exactly the item below.** Coded 2026-09-14, needs
-   proving on the work PC.
+0. **`PQ-35` / `PQ-36` — network drives, found by exactly the item below, and proven by it.** A week
+   of real use on a mapped drive at work, 2026-09-20. PR #8 is the change.
 1. **Beat up the RC on real workbooks.** Wilson is installing it on the work PC - a managed
    corporate environment, which is the case no CI runner can reach and the same situation `@namgaw`
    is in. If group policy blocks COM there, live sync must decline honestly rather than fail
@@ -118,8 +118,8 @@ Excel serves external automation. See `design/live-sync-to-open-excel.md`.
 | PQ-15 | 🟨 coded | Round-trip test: section -> N formulas -> Excel -> section | M | live-sync-to-open-excel.md | passed 2026-08-14 against a CRLF fixture; FAILS since the LF policy converted it — the test forces CRLF, product unverified, see punchlist 2026-09-14 |
 | PQ-16 | ✅ done | Reply to namgaw, and reach out to Ken Puls | S | [discussion #3][discussion-3] | replied with the built feature and a prerelease he can install; his Monkey Tools pointer is what unstuck it. Ken Puls NOT contacted, deliberately - he is credited in the README, which is better than cold-emailing the author of the commercial tool we just built a free alternative to |
 | PQ-17 | 🟩 proven | Wire live sync into the sync command and settings | M | live-sync-to-open-excel.md | proven 2026-08-14 — real Excel, dev PC: a real 29-query workbook in a OneDrive folder. Failed on a network drive at work, see PQ-35 |
-| PQ-35 | 🟨 coded | Live sync on mapped network drives: the ROT registers the UNC path | S | [PQ-35][pq-35] | started 2026-09-14 — unit tests cover the messages, the lookup order and a clean compile, but not the one case that matters: a real mapped drive. Needs the work PC or a loopback share |
-| PQ-36 | 🟨 coded | File watcher is deaf on network drives: fall back to polling | S | [PQ-36][pq-36] | started 2026-09-14 — the fallback state machine is unit-tested; whether polling detects saves on a real share is not |
+| PQ-35 | 🟩 proven | Live sync on mapped network drives: the ROT registers the UNC path | S | [PQ-35][pq-35] | proven 2026-09-20 — Wilson's work PC, mapped network drive (P:) with the PR #8 build: a week of real use, live sync reaching workbooks Excel registered under their UNC path |
+| PQ-36 | 🟩 proven | File watcher is deaf on network drives: fall back to polling | S | [PQ-36][pq-36] | proven 2026-09-20 — Wilson's work PC, mapped network drive (P:) with the PR #8 build: a week of real use, saves triggering sync on a share fs.watch cannot watch |
 
 ### Selective extract, and who is authoritative
 

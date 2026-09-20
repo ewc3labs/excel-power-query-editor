@@ -1,6 +1,7 @@
 # PQ-35 — Live sync on mapped network drives
 
-**State:** 🟨 coded · **Est:** S · Minted 2026-09-14 · Reported by Wilson from the work PC
+**State:** 🟩 proven — Wilson's work PC, mapped network drive (P:), week of 2026-09-20 · **Est:** S
+· Minted 2026-09-14
 
 ## The problem
 
@@ -85,13 +86,20 @@ This is the third time a live-sync message stated a cause the evidence already c
 **Not covered by CI, and cannot be:** the positive case needs a real mapped drive, which a runner
 cannot create without changing the machine.
 
-**What was verified by hand, and what was not.** On 2026-09-14, a ROT dump showed Excel registering
-a `P:\` workbook under `\\medarms01\public`. That is the *diagnosis*. **`ToUnc` itself has never run
-against a mapped drive, and live sync has never succeeded end to end on one.** The first version of
-this slice said the positive case was "verified by hand", which a review correctly flagged as
-contradicting the state and the section below.
+**What CI proved, and what it could not.** On 2026-09-14 a ROT dump showed Excel registering a `P:\`
+workbook under `\\medarms01\public` — the *diagnosis*. For six days after that, `ToUnc` had never
+run against a mapped drive and live sync had never succeeded end to end on one; this slice briefly
+claimed otherwise and a review caught it. **That gap closed on 2026-09-20, below.**
 
-## To prove
+## Proven
+
+**2026-09-20, on the environment CI cannot reach.** Wilson ran the PR #8 build for a week on his
+work PC against a **mapped network drive**, and live sync reached workbooks Excel had registered
+under their UNC path. The mapped drive is the case that matters: on a plain UNC path the old code
+would have worked, because the path VS Code holds and the name Excel registers are already the same
+string.
+
+### How it was to be proven
 
 Install the build on the work PC, open a workbook from `P:\`, and live-sync to it. The log should
 read:

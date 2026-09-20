@@ -1401,6 +1401,15 @@ async function watchFile(uri?: vscode.Uri, uris?: vscode.Uri[]): Promise<void> {
 		},
 		onUnwatchable: () => {
 			const registered = fileWatchers.get(mFile);
+			// ONLY TOUCH THE REGISTRATION THAT IS STILL OURS. This callback runs after an await, so a user
+			// who stopped and restarted watching during that gap has already put a NEW watcher set in the
+			// map. Deleting by key would then unregister the live watcher while leaving its chokidar
+			// running: auto-sync keeps firing while the status bar and Toggle Watch say the file is not
+			// watched. Identity, not the key. (Codex review, PR #8.)
+			if (registered && registered.chokidar !== resilient) {
+				log(`Chokidar gave up on ${fileName}, but it is already being watched again - leaving the new watcher alone.`, 'watchFile', 'info');
+				return;
+			}
 			if (registered?.vscode) {
 				// Dev container: the VS Code watcher is still running, so the file is NOT unwatched.
 				log(`Chokidar cannot watch ${fileName}; the VS Code backup watcher is still active.`, 'watchFile', 'error');

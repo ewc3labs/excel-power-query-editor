@@ -1,6 +1,7 @@
 # PQ-36 — The file watcher is deaf on network drives
 
-**State:** 🟨 coded · **Est:** S · Minted 2026-09-14 · Reported by Wilson from the work PC
+**State:** 🟩 proven — Wilson's work PC, mapped network drive (P:), week of 2026-09-20 · **Est:** S
+· Minted 2026-09-14
 
 ## The problem
 
@@ -70,10 +71,18 @@ build one fallback; a late error from the replaced watcher is ignored; a polling
 instead of looping; starting in polling mode has nothing to fall back to; an error after close does
 nothing; close after a fallback reaches the live watcher.
 
-**Not tested, and only a real share can test it:** whether chokidar's polling actually detects saves
-on a network drive. That is why this stays 🟨.
+**Was not tested here, and only a real share could test it:** whether chokidar's polling actually
+detects saves on a network drive. A week of use on one now says it does - see below.
 
-## To prove
+## Proven
+
+**2026-09-20, on the environment CI cannot reach.** Wilson ran the PR #8 build for a week on his
+work PC against a **mapped network drive**, and saves on the share triggered sync, which native
+watching cannot do there. Unlike the live-sync lookup, this half is not about drive letters at all:
+`fs.watch` has no SMB change notification, so a plain UNC path fails natively too. The share is what
+matters here, not how it is addressed.
+
+### How it was to be proven
 
 On the work PC, watch a `.m` file on `P:\`. The log should show the native error, then
 `Retrying with polling`, then `Watcher ready ... (polling: true)` — and a save should trigger a
