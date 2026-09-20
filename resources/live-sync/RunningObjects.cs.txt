@@ -31,14 +31,21 @@ public static class RunningObjects
     [DllImport("ole32.dll")]
     private static extern int CreateBindCtx(int reserved, out IBindCtx ppbc);
 
-    /// <summary>Display names of everything currently registered. Excel workbooks appear as full paths.</summary>
+    /// <summary>
+    /// Display names of everything currently registered, or NULL when the table could not be read.
+    ///
+    /// Null, not empty. The helper reports these names as evidence, and an empty list is evidence of
+    /// something specific - "Excel runs, and none of its workbooks are visible", an integrity wall. A
+    /// table we failed to open is no evidence at all. Returning an empty array for both made a failed
+    /// read indistinguishable from a real finding. (Copilot review, PR #8.)
+    /// </summary>
     public static string[] Names()
     {
         var names = new List<string>();
         IRunningObjectTable rot;
         IBindCtx ctx;
-        if (GetRunningObjectTable(0, out rot) != 0 || rot == null) { return names.ToArray(); }
-        if (CreateBindCtx(0, out ctx) != 0 || ctx == null) { return names.ToArray(); }
+        if (GetRunningObjectTable(0, out rot) != 0 || rot == null) { return null; }
+        if (CreateBindCtx(0, out ctx) != 0 || ctx == null) { return null; }
 
         IEnumMoniker monikers;
         rot.EnumRunning(out monikers);
@@ -87,5 +94,43 @@ public static class RunningObjects
             return found;
         }
         return null;
+    }
+}
+
+// A WORKBOOK ON A MAPPED NETWORK DRIVE IS REGISTERED UNDER ITS UNC PATH, NOT ITS DRIVE LETTER.
+//
+// Reported from a real network share, 2026-09-14. The user opened P:\IT\MedAR_Coder\X.xlsx.
+// Excel's own Workbook.FullName said P:\IT\MedAR_Coder\X.xlsx - and the Running Object Table held
+// \\medarms01\public\IT\MedAR_Coder\X.xlsx. Same file, two names, and live sync compared the one
+// the user sees against the one COM registered, found nothing, and blamed elevation.
+//
+// Note what nearly hid it: checking FullName appeared to rule the UNC form OUT. FullName is what
+// Excel reports; the ROT display name is what COM registered. Only the second is what we match.
+//
+// This is NOT a heuristic and does not break the no-scoring rule in the helper. WNetGetConnection
+// asks Windows what the drive letter is mapped to - the same mapping Excel resolved when it opened
+// the file - so the UNC form is the same identity, exactly, not a similar-looking one.
+public static class NetworkPaths
+{
+    [DllImport("mpr.dll", CharSet = CharSet.Unicode)]
+    private static extern int WNetGetConnection(string localName, System.Text.StringBuilder remoteName, ref int length);
+
+    /// <summary>
+    /// The UNC form of a path on a mapped network drive, or null when it is not on one.
+    ///
+    /// Null for local drives, SUBST drives, UNC paths already, and anything unparseable - every
+    /// case where there is no second name to try.
+    /// </summary>
+    public static string ToUnc(string path)
+    {
+        if (string.IsNullOrEmpty(path) || path.Length < 2 || path[1] != ':') { return null; }
+
+        int length = 1024;
+        var remote = new System.Text.StringBuilder(length);
+        if (WNetGetConnection(path.Substring(0, 2), remote, ref length) != 0) { return null; }
+
+        string root = remote.ToString().TrimEnd('\\');
+        if (root.Length == 0) { return null; }
+        return root + path.Substring(2);
     }
 }

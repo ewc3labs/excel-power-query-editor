@@ -3,7 +3,7 @@ import * as path from 'path';
 import * as os from 'os';
 import * as fs from 'fs';
 import { execFile } from 'child_process';
-import { isLiveSyncSupported, getLiveStatus, writeLive, shouldRefuseUnsavedWorkbook, explainLiveSyncUnavailable } from '../src/excelLive';
+import { isLiveSyncSupported, getLiveStatus, writeLive, shouldRefuseUnsavedWorkbook, explainLiveSyncUnavailable, explainInvisibleWorkbook, describeLiveMatch } from '../src/excelLive';
 
 /**
  * Live sync needs Windows, Excel, and a workbook actually open - none of which CI has. So these
@@ -231,5 +231,143 @@ suite('Why live sync did not run', function () {
 		const r = explainLiveSyncUnavailable(base);
 		assert.ok(/privilege|elevat|integrity/i.test(r.message));
 		assert.strictEqual(r.offerEnable, false);
+	});
+});
+
+suite('Why a running Excel cannot see the workbook', function () {
+	/*
+	 * REPORTED FROM A NETWORK SHARE. The old message said "this usually means one of them is
+	 * elevated" every time. The user's helper had measured itself NOT elevated, and the workbook was
+	 * sitting in the Running Object Table under its UNC path. So these branch on what the helper SAW.
+	 */
+	const running = { available: true, open: false, queries: [], excelProcesses: 1 };
+
+	test('nothing to explain when the workbook was found, or Excel is not running', () => {
+		assert.strictEqual(explainInvisibleWorkbook({ ...running, open: true }), undefined);
+		assert.strictEqual(explainInvisibleWorkbook({ ...running, excelProcesses: 0 }), undefined);
+	});
+
+	test('an elevated helper blames VS Code, specifically', () => {
+		const m = explainInvisibleWorkbook({ ...running, elevated: true, registered: [] })!;
+		assert.ok(/administrator/i.test(m));
+		assert.ok(/VS Code is running as administrator/.test(m), 'we measured which side is elevated - say so');
+	});
+
+	test('zero visible workbooks while Excel runs is an integrity wall', () => {
+		const m = explainInvisibleWorkbook({ ...running, elevated: false, registered: [] })!;
+		assert.ok(/none of its workbooks/i.test(m));
+		assert.ok(/administrator/i.test(m));
+	});
+
+	test('some workbooks visible rules elevation out and points at a different path', () => {
+		// The network-drive report: we could see into Excel fine, the name just did not match.
+		const m = explainInvisibleWorkbook({
+			...running, elevated: false,
+			registered: ['\\\\medarms01\\public\\IT\\Other.xlsx', 'C:\\Users\\me\\Book.xlsx']
+		})!;
+		assert.ok(!/elevat|administrator|integrity/i.test(m), 'we can see into Excel, so elevation is disproved');
+		assert.ok(/2 workbooks are visible/.test(m), 'say how much we could see');
+		assert.ok(/different path/i.test(m));
+		assert.ok(/log/i.test(m), 'the names are in the log');
+	});
+
+	test('the log says HOW an open workbook was found, so a mapped-drive match is visible, not inferred', () => {
+		// PQ-35's proof on a real share is this line reading exact-unc. The helper always reported it;
+		// nothing printed it until now.
+		assert.strictEqual(
+			describeLiveMatch({ open: true, matchedHow: 'exact-unc', registeredAs: '\\\\medarms01\\public\\IT\\Book.xlsx' }),
+			', found via exact-unc as \\\\medarms01\\public\\IT\\Book.xlsx');
+		assert.strictEqual(describeLiveMatch({ open: true, matchedHow: 'exact-path' }), ', found via exact-path');
+		assert.strictEqual(describeLiveMatch({ open: false, matchedHow: 'exact-unc' }), '', 'nothing was found, so nothing to describe');
+		assert.strictEqual(describeLiveMatch({ open: true }), '', 'an older helper that does not report it');
+	});
+
+	test('visible workbooks outrank the helper being elevated', () => {
+		// An elevated helper that can still SEE Excel's workbooks has proved there is no integrity
+		// wall. The first version checked elevation first and blamed one anyway. (Codex review, PR #8.)
+		const m = explainInvisibleWorkbook({ ...running, elevated: true, registered: ['C:\\Users\\me\\Other.xlsx'] })!;
+		assert.ok(!/elevat|administrator|integrity/i.test(m), 'seeing into Excel disproves the wall');
+		assert.ok(/1 workbook is visible/.test(m));
+		assert.ok(/different path/i.test(m));
+	});
+
+	test('no evidence - an older helper, or a table the helper could not read - does not claim what is usual', () => {
+		// `registered` absent is also what the helper sends when it FAILED to read the table. That must
+		// not be mistaken for an empty table, which would blame an integrity wall nobody measured.
+		const m = explainInvisibleWorkbook({ ...running, elevated: false })!;
+		assert.ok(!/usually/i.test(m), 'we have no evidence either way, so do not rank the causes');
+		assert.ok(/different path/i.test(m) && /administrator/i.test(m), 'name both possibilities');
+	});
+});
+
+suite('Mapped network drives', function () {
+	this.timeout(30_000);
+	const helperDir = path.join(__dirname, '..', '..', 'resources', 'live-sync');
+
+	test('the helper tries the UNC form after the exact path, before cloud URLs', () => {
+		const src = fs.readFileSync(path.join(helperDir, 'excel-live-sync.ps1'), 'utf8');
+		const exact = src.indexOf("how = 'exact-path'");
+		const unc = src.indexOf('[NetworkPaths]::ToUnc(');
+		const cloud = src.indexOf('ConvertTo-CloudUrl -LocalPath $FullPath');
+		assert.ok(exact > 0 && unc > exact && cloud > unc, 'order must be exact, then UNC, then cloud');
+	});
+
+	test('the shipped C# still compiles, and ToUnc declines everything that is not a mapped drive', async function () {
+		if (process.platform !== 'win32') { this.skip(); return; }
+
+		// A compile error in RunningObjects.cs.txt would break EVERY live sync, not just network
+		// ones, so compile the real file. A mapped drive cannot be created in CI without changing the
+		// machine, and ToUnc's POSITIVE case has not run anywhere yet. What was verified by hand on
+		// 2026-09-14 is only that Excel registered a P:\ workbook under \\medarms01\public in the ROT.
+		const cs = path.join(helperDir, 'RunningObjects.cs.txt').replace(/'/g, "''");
+		const script = [
+			`Add-Type -TypeDefinition (Get-Content -Raw '${cs}') -ErrorAction Stop`,
+			"$r = @('C:\\Windows\\win.ini', '\\\\server\\share\\x.xlsx', '', 'relative\\x.xlsx') | ForEach-Object { [string][NetworkPaths]::ToUnc($_) }",
+			"Write-Output ('RESULT:' + ($r -join '|'))",
+			// Names() returns NULL only when the table cannot be read. On a working machine it must be a
+			// real array, even an empty one - otherwise null would mean something besides failure.
+			"$n = [RunningObjects]::Names(); Write-Output ('NAMES:' + ($null -ne $n) + ':' + ($n -is [array]))",
+		].join('; ');
+
+		const out: string = await new Promise((resolve, reject) => {
+			execFile('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', script], { windowsHide: true },
+				(err, stdout, stderr) => (err ? reject(new Error(stderr || String(err))) : resolve(stdout)));
+		});
+		const line = out.split(/\r?\n/).find((l) => l.startsWith('RESULT:'));
+		assert.ok(line, `helper C# did not compile or run: ${out}`);
+		assert.strictEqual(line, 'RESULT:|||', 'local, UNC, empty and relative paths all have no second name');
+		const names = out.split(/\r?\n/).find((l) => l.startsWith('NAMES:'));
+		assert.strictEqual(names, 'NAMES:True:True', 'a readable table yields an array, so null is reserved for failure');
+	});
+
+	test('the shipped "registered" block reports an empty table as [] and a failed read as absent', async function () {
+		if (process.platform !== 'win32') { this.skip(); return; }
+
+		// Runs the EXACT block from excel-live-sync.ps1 - not a copy - against a table that is empty and
+		// one that failed. PowerShell unrolls an empty array to $null the moment it passes through a
+		// pipeline, so a harmless-looking refactor of this block would make "zero workbooks visible"
+		// indistinguishable from "could not read". A review flagged that risk; measurement showed the
+		// current block is correct; this keeps it that way.
+		const src = fs.readFileSync(path.join(helperDir, 'excel-live-sync.ps1'), 'utf8');
+		const start = src.indexOf('$registered = $null');
+		const end = src.indexOf('Respond @{', start);
+		assert.ok(start > 0 && end > start, 'the registered block moved - update this test to follow it');
+		const block = src.slice(start, end);
+		assert.ok(block.includes('[RunningObjects]::Names()'), 'the block no longer reads the ROT the way this test expects');
+
+		const script = [
+			'Add-Type -TypeDefinition \'public static class EmptyRot { public static string[] Names() { return new string[0]; } } public static class FailedRot { public static string[] Names() { return null; } }\'',
+			...['EmptyRot', 'FailedRot'].map((cls) =>
+				block.split('[RunningObjects]').join(`[${cls}]`) +
+				`\nWrite-Output ('${cls}=' + (@{ registered = $registered } | ConvertTo-Json -Compress))`),
+		].join('\n');
+
+		const out: string = await new Promise((resolve, reject) => {
+			execFile('powershell.exe', ['-NoProfile', '-NonInteractive', '-EncodedCommand', Buffer.from(script, 'utf16le').toString('base64')],
+				{ windowsHide: true }, (err, stdout, stderr) => (err ? reject(new Error(stderr || String(err))) : resolve(stdout)));
+		});
+		const line = (p: string) => out.split(/\r?\n/).find((l) => l.startsWith(p + '='));
+		assert.strictEqual(line('EmptyRot'), 'EmptyRot={"registered":[]}', `an empty table is evidence and must stay []: ${out}`);
+		assert.strictEqual(line('FailedRot'), 'FailedRot={"registered":null}', `a failed read is no evidence and must stay absent: ${out}`);
 	});
 });
