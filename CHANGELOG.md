@@ -11,6 +11,34 @@ All notable changes to the "excel-power-query-editor" extension will be document
 ---
 
 
+## [0.7.3] - 2026-09-20
+
+### Fixed
+
+- **`PQ-35` — live sync now works on mapped network drives.** A workbook opened from `P:\` could not
+  be reached, and the message blamed elevation while nothing was elevated. Excel registers a network
+  workbook in the Running Object Table under its **UNC path** — `\\server\share\...` — even when you
+  opened it through the drive letter, so the extension was looking up a name that was never there.
+  It now asks Windows what the drive is mapped to and tries that exact name as well. This is the
+  same mapping Excel itself resolved, not a guess: nothing is matched by similarity.
+
+  Proven on a real mapped drive over a week of daily use, which no CI runner can reproduce.
+
+- **`PQ-36` — saving a `.m` file on a network drive triggers a sync again.** Watching reported
+  success and then never fired: there is no SMB equivalent of the local change notification
+  `fs.watch` needs, so the watcher errored two milliseconds after saying it was ready, and every
+  later save went unnoticed. It now falls back to polling when native watching fails, and says so
+  plainly in the log if polling fails too, instead of claiming to watch a file it cannot.
+
+- **Diagnostics say what was measured instead of what is usually true.** When a workbook cannot be
+  reached, the extension now reports which workbooks Excel *could* see, and picks its explanation
+  from that: seeing other workbooks rules an elevation mismatch out, seeing none while Excel runs is
+  evidence for one, and a Running Object Table that could not be read is reported as no evidence
+  rather than as an empty one. A successful live sync also records **how** the workbook was found,
+  so `exact-unc` in the log is what proves the mapped-drive path.
+
+---
+
 ## [0.7.2] - 2026-09-01
 
 ### Fixed
